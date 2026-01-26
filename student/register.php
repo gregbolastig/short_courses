@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate required fields
     $required_fields = [
         'first_name', 'last_name', 'birthday', 'sex', 'civil_status',
-        'contact_number', 'province', 'city', 'barangay', 'place_of_birth',
-        'guardian_last_name', 'guardian_first_name', 'parent_contact', 'email', 'uli', 'last_school',
+        'country_code', 'contact_number', 'province', 'city', 'barangay', 'place_of_birth',
+        'guardian_last_name', 'guardian_first_name', 'parent_country_code', 'parent_contact', 'email', 'uli', 'last_school',
         'school_province', 'school_city', 'verification_input'
     ];
     
@@ -36,13 +36,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid email format';
     }
     
-    // Validate phone numbers
-    $phone_pattern = '/^(\+63|0)[0-9]{10}$/';
-    if (!empty($_POST['contact_number']) && !preg_match($phone_pattern, str_replace(' ', '', $_POST['contact_number']))) {
-        $errors[] = 'Invalid contact number format';
+    // Validate phone numbers with country codes
+    if (!empty($_POST['contact_number'])) {
+        $country_code = $_POST['country_code'] ?? '';
+        $phone_number = $_POST['contact_number'] ?? '';
+        
+        if (empty($country_code)) {
+            $errors[] = 'Country code is required for contact number';
+        } elseif (empty($phone_number)) {
+            $errors[] = 'Phone number is required';
+        } elseif (!preg_match('/^\+\d{1,4}$/', $country_code)) {
+            $errors[] = 'Invalid country code format';
+        } elseif (!preg_match('/^\d{7,15}$/', preg_replace('/\D/', '', $phone_number))) {
+            $errors[] = 'Invalid phone number format (7-15 digits required)';
+        }
     }
-    if (!empty($_POST['parent_contact']) && !preg_match($phone_pattern, str_replace(' ', '', $_POST['parent_contact']))) {
-        $errors[] = 'Invalid parent contact number format';
+    
+    if (!empty($_POST['parent_contact'])) {
+        $parent_country_code = $_POST['parent_country_code'] ?? '';
+        $parent_phone_number = $_POST['parent_contact'] ?? '';
+        
+        if (empty($parent_country_code)) {
+            $errors[] = 'Country code is required for parent contact number';
+        } elseif (empty($parent_phone_number)) {
+            $errors[] = 'Parent phone number is required';
+        } elseif (!preg_match('/^\+\d{1,4}$/', $parent_country_code)) {
+            $errors[] = 'Invalid parent country code format';
+        } elseif (!preg_match('/^\d{7,15}$/', preg_replace('/\D/', '', $parent_phone_number))) {
+            $errors[] = 'Invalid parent phone number format (7-15 digits required)';
+        }
     }   
  
     // Validate date of birth (no future dates)
@@ -134,6 +156,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $stmt = $conn->prepare($sql);
             
+            // Combine country code with phone numbers
+            $full_contact_number = ($_POST['country_code'] ?? '') . $_POST['contact_number'];
+            $full_parent_contact = ($_POST['parent_country_code'] ?? '') . $_POST['parent_contact'];
+            
             $stmt->bindParam(':student_id', $student_id);
             $stmt->bindParam(':first_name', $_POST['first_name']);
             $stmt->bindParam(':middle_name', $_POST['middle_name']);
@@ -143,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':age', $age);
             $stmt->bindParam(':sex', $_POST['sex']);
             $stmt->bindParam(':civil_status', $_POST['civil_status']);
-            $stmt->bindParam(':contact_number', $_POST['contact_number']);
+            $stmt->bindParam(':contact_number', $full_contact_number);
             $stmt->bindParam(':province', $_POST['province']);
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
@@ -153,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
             $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
             $stmt->bindParam(':guardian_extension', $_POST['guardian_extension']);
-            $stmt->bindParam(':parent_contact', $_POST['parent_contact']);
+            $stmt->bindParam(':parent_contact', $full_parent_contact);
             $stmt->bindParam(':email', $_POST['email']);
             $stmt->bindParam(':profile_picture', $profile_picture_path);
             $stmt->bindParam(':uli', $_POST['uli']);
@@ -249,15 +275,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="absolute inset-0 bg-black opacity-10"></div>
         <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grain\" width=\"100\" height=\"100\" patternUnits=\"userSpaceOnUse\"><circle cx=\"25\" cy=\"25\" r=\"1\" fill=\"white\" opacity=\"0.1\"/><circle cx=\"75\" cy=\"75\" r=\"1\" fill=\"white\" opacity=\"0.1\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grain)\"/></svg></div>
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between py-8">
+            <div class="flex items-center justify-between py-6">
                 <div class="text-center flex-1">
-                    <div class="flex items-center justify-center mb-4">
-                        <div class="bg-white/20 p-3 rounded-full mr-4">
-                            <i class="fas fa-graduation-cap text-2xl text-white"></i>
-                        </div>
+                    <div class="flex items-center justify-center mb-2">
+                        <img src="../assets/images/Logo.jpg" alt="School Logo" class="h-20 w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mr-6">
                         <div>
                             <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Student Registration</h1>
-
                         </div>
                     </div>
                 </div>
@@ -325,12 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="mt-2 text-sm text-green-700">
                             <?php echo htmlspecialchars($success_message); ?>
                         </div>
-                        <div class="mt-4">
-                            <a href="../index.html" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 transition duration-200">
-                                <i class="fas fa-home mr-2"></i>
-                                Return to Home
-                            </a>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -373,7 +391,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                         <div class="form-group">
                             <label for="first_name" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-user-tag text-primary-500 mr-2"></i>First Name *
@@ -403,11 +421,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="form-group">
                             <label for="extension_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-user-tag text-gray-400 mr-2"></i>Extension Name
+                                <i class="fas fa-user-tag text-gray-400 mr-2"></i>Extension
                             </label>
                             <select id="extension_name" name="extension_name" 
                                     class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                <option value="">Select extension (if any)</option>
+                                <option value="">None</option>
                                 <option value="Jr." <?php echo (($_POST['extension_name'] ?? '') === 'Jr.') ? 'selected' : ''; ?>>Jr.</option>
                                 <option value="Sr." <?php echo (($_POST['extension_name'] ?? '') === 'Sr.') ? 'selected' : ''; ?>>Sr.</option>
                                 <option value="II" <?php echo (($_POST['extension_name'] ?? '') === 'II') ? 'selected' : ''; ?>>II</option>
@@ -473,13 +491,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="contact_number" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
-                        <input type="tel" id="contact_number" name="contact_number" required 
-                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                               placeholder="e.g., +639123456789 or 09123456789"
-                               value="<?php echo htmlspecialchars($_POST['contact_number'] ?? ''); ?>">
+                        <div class="flex gap-2">
+                            <select id="country_code" name="country_code" 
+                                    class="w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
+                                <option value="">Loading...</option>
+                            </select>
+                            <input type="tel" id="contact_number" name="contact_number" required 
+                                   class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                                   placeholder="Enter phone number"
+                                   value="<?php echo htmlspecialchars($_POST['contact_number'] ?? ''); ?>">
+                        </div>
                         <p class="text-xs text-gray-500 mt-2 flex items-center">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Format: +639XXXXXXXXX or 09XXXXXXXXX
+                            Select country code and enter your phone number
                         </p>
                     </div>
                 </div>
@@ -625,10 +649,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
-                        <input type="tel" id="parent_contact" name="parent_contact" required 
-                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                               placeholder="e.g., +639123456789 or 09123456789"
-                               value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
+                        <div class="flex">
+                            <select id="parent_country_code" name="parent_country_code" 
+                                    class="px-3 py-3 border-2 border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50">
+                                <option value="">Loading...</option>
+                            </select>
+                            <input type="tel" id="parent_contact" name="parent_contact" required 
+                                   class="flex-1 px-4 py-3 border-2 border-l-0 border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                                   placeholder="Enter phone number"
+                                   value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 flex items-center">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Select country code and enter phone number
+                        </p>
                     </div>
                 </div>   
              <!-- Education Information Section -->
@@ -821,6 +855,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Philippine Address API Configuration
         const PSGC_API_BASE = 'https://psgc.gitlab.io/api';
         
+        // Country Code API Configuration
+        const COUNTRY_API_BASE = 'https://restcountries.com/v3.1';
+        
         // Utility functions
         function showLoading(elementId) {
             const loadingDiv = document.getElementById(elementId + '-loading');
@@ -897,6 +934,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const select = document.getElementById(selectId);
                 select.innerHTML = '<option value="">Error loading barangays</option>';
                 hideLoading(selectId);
+            }
+        }
+        
+        // Load country codes
+        async function loadCountryCodes(selectId) {
+            try {
+                const response = await fetch(`${COUNTRY_API_BASE}/all?fields=name,idd,flag`);
+                const countries = await response.json();
+                
+                // Sort countries by name
+                countries.sort((a, b) => a.name.common.localeCompare(b.name.common));
+                
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">Select country</option>';
+                
+                countries.forEach(country => {
+                    if (country.idd && country.idd.root && country.idd.suffixes) {
+                        const countryCode = country.idd.root + (country.idd.suffixes[0] || '');
+                        const option = document.createElement('option');
+                        option.value = countryCode;
+                        option.textContent = `${country.flag} ${country.name.common} (${countryCode})`;
+                        
+                        // Set Philippines as default
+                        if (country.name.common === 'Philippines') {
+                            option.selected = true;
+                        }
+                        
+                        select.appendChild(option);
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error loading country codes:', error);
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">Error loading countries</option>';
             }
         }
         
@@ -1122,6 +1194,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Load provinces for address and school
             loadProvinces('province');
             loadProvinces('school_province');
+            
+            // Load country codes for phone numbers
+            loadCountryCodes('country_code');
+            loadCountryCodes('parent_country_code');
             
             // Birthday change event with validation
             const birthdayField = document.getElementById('birthday');
