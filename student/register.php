@@ -36,6 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid email format';
     }
     
+    // Validate ULI format
+    if (!empty($_POST['uli'])) {
+        $uli = strtoupper(trim($_POST['uli']));
+        if (!preg_match('/^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/', $uli)) {
+            $errors[] = 'Invalid ULI format. Required format: ABC-12-123-12345-123 (3 letters followed by numbers)';
+        }
+        // Update the POST data with the formatted ULI
+        $_POST['uli'] = $uli;
+    }
+    
     // Validate phone numbers with country codes
     if (!empty($_POST['contact_number'])) {
         $country_code = $_POST['country_code'] ?? '';
@@ -649,13 +659,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
-                        <div class="flex">
+                        <div class="flex gap-2">
                             <select id="parent_country_code" name="parent_country_code" 
-                                    class="px-3 py-3 border-2 border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50">
+                                    class="w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
                                 <option value="">Loading...</option>
                             </select>
                             <input type="tel" id="parent_contact" name="parent_contact" required 
-                                   class="flex-1 px-4 py-3 border-2 border-l-0 border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                                   class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
                                    placeholder="Enter phone number"
                                    value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
                         </div>
@@ -740,9 +750,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-id-card text-primary-500 mr-2"></i>ULI (Unique Learner Identifier) *
                             </label>
                             <input type="text" id="uli" name="uli" required 
-                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Enter your ULI"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 font-mono tracking-wider"
+                                   placeholder="ABC-12-123-12345-123"
+                                   maxlength="19"
+                                   pattern="[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}"
+                                   title="Format: ABC-12-123-12345-123 (3 letters, then numbers separated by dashes)"
                                    value="<?php echo htmlspecialchars($_POST['uli'] ?? ''); ?>">
+                            <p class="text-xs text-gray-500 mt-2 flex items-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Format: 3 letters, then numbers (ABC-12-123-12345-123)
+                            </p>
                         </div>
                     </div> 
                    
@@ -969,6 +986,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 console.error('Error loading country codes:', error);
                 const select = document.getElementById(selectId);
                 select.innerHTML = '<option value="">Error loading countries</option>';
+            }
+        }
+        
+        // ULI formatting function
+        function formatULI(input) {
+            // Remove all non-alphanumeric characters
+            let value = input.value.replace(/[^A-Za-z0-9]/g, '');
+            
+            // Convert to uppercase
+            value = value.toUpperCase();
+            
+            // Apply formatting: ABC-12-123-12345-123
+            let formatted = '';
+            
+            if (value.length > 0) {
+                // First 3 characters (letters only)
+                formatted += value.substring(0, 3).replace(/[^A-Z]/g, '');
+            }
+            
+            if (value.length > 3) {
+                formatted += '-' + value.substring(3, 5).replace(/[^0-9]/g, '');
+            }
+            
+            if (value.length > 5) {
+                formatted += '-' + value.substring(5, 8).replace(/[^0-9]/g, '');
+            }
+            
+            if (value.length > 8) {
+                formatted += '-' + value.substring(8, 13).replace(/[^0-9]/g, '');
+            }
+            
+            if (value.length > 13) {
+                formatted += '-' + value.substring(13, 16).replace(/[^0-9]/g, '');
+            }
+            
+            input.value = formatted;
+            
+            // Validate format
+            const isValid = /^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/.test(formatted);
+            
+            if (formatted.length > 0 && !isValid && formatted.length === 19) {
+                input.classList.add('border-red-500', 'ring-red-500');
+                input.classList.remove('border-gray-200', 'border-green-500');
+            } else if (isValid) {
+                input.classList.add('border-green-500');
+                input.classList.remove('border-red-500', 'ring-red-500', 'border-gray-200');
+            } else {
+                input.classList.remove('border-red-500', 'ring-red-500', 'border-green-500');
+                input.classList.add('border-gray-200');
             }
         }
         
@@ -1220,6 +1286,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (profileInput) {
                 profileInput.addEventListener('change', function() {
                     previewProfilePicture(this);
+                });
+            }
+            
+            // ULI formatting
+            const uliInput = document.getElementById('uli');
+            if (uliInput) {
+                uliInput.addEventListener('input', function() {
+                    formatULI(this);
+                });
+                
+                uliInput.addEventListener('paste', function(e) {
+                    // Allow paste but format it
+                    setTimeout(() => {
+                        formatULI(this);
+                    }, 10);
+                });
+                
+                // Prevent non-alphanumeric characters on keypress
+                uliInput.addEventListener('keypress', function(e) {
+                    const char = String.fromCharCode(e.which);
+                    const currentValue = this.value.replace(/[^A-Za-z0-9]/g, '');
+                    
+                    // Allow backspace, delete, tab, escape, enter
+                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.keyCode === 65 && e.ctrlKey === true) ||
+                        (e.keyCode === 67 && e.ctrlKey === true) ||
+                        (e.keyCode === 86 && e.ctrlKey === true) ||
+                        (e.keyCode === 88 && e.ctrlKey === true)) {
+                        return;
+                    }
+                    
+                    // First 3 characters must be letters
+                    if (currentValue.length < 3) {
+                        if (!/[A-Za-z]/.test(char)) {
+                            e.preventDefault();
+                        }
+                    } else {
+                        // After first 3, only numbers allowed
+                        if (!/[0-9]/.test(char)) {
+                            e.preventDefault();
+                        }
+                    }
+                    
+                    // Limit total length (excluding dashes)
+                    if (currentValue.length >= 16) {
+                        e.preventDefault();
+                    }
                 });
             }
             
