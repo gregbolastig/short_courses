@@ -143,12 +143,9 @@ try {
             background: rgba(255, 255, 255, 0.9);
         }
         
-        /* Gradient text */
+        /* Solid text */
         .gradient-text {
-            background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #1e3a8a;
         }
         
         /* Card hover effects */
@@ -181,19 +178,6 @@ try {
             position: relative;
             overflow: hidden;
         }
-        .nav-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            transition: left 0.5s;
-        }
-        .nav-item:hover::before {
-            left: 100%;
-        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -201,7 +185,7 @@ try {
         <!-- Sidebar -->
         <div class="hidden md:flex md:flex-shrink-0">
             <div class="flex flex-col w-64">
-                <div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-gradient-to-b from-primary-800 to-primary-900 shadow-xl">
+                <div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto bg-primary-800 shadow-xl">
                     <!-- Logo/Brand -->
                     <div class="flex items-center flex-shrink-0 px-4 mb-8">
                         <div class="bg-white bg-opacity-20 p-3 rounded-lg mr-3">
@@ -287,7 +271,7 @@ try {
                     <div class="flex-shrink-0 border-t border-primary-700 p-4">
                         <div class="relative">
                             <button onclick="toggleProfileDropdown()" class="flex items-center w-full text-left hover:bg-primary-700 rounded-lg p-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500">
-                                <div class="bg-gradient-to-br from-primary-500 to-primary-600 rounded-full p-2 mr-3 shadow-lg relative">
+                                <div class="bg-primary-600 rounded-full p-2 mr-3 shadow-lg relative">
                                     <i class="fas fa-user text-white text-sm"></i>
                                     <?php if ($pending_approvals > 0): ?>
                                         <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold animate-pulse">
@@ -313,7 +297,7 @@ try {
                             <div id="profile-dropdown" class="hidden absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                                 <div class="px-4 py-3 border-b border-gray-100">
                                     <div class="flex items-center space-x-3">
-                                        <div class="bg-gradient-to-br from-primary-500 to-primary-700 rounded-full p-2">
+                                        <div class="bg-primary-600 rounded-full p-2">
                                             <i class="fas fa-user text-white text-sm"></i>
                                         </div>
                                         <div class="flex-1">
@@ -409,7 +393,7 @@ try {
         <!-- Mobile sidebar overlay -->
         <div id="mobile-sidebar-overlay" class="fixed inset-0 z-40 md:hidden hidden">
             <div class="fixed inset-0 bg-gray-600 bg-opacity-75" onclick="toggleMobileSidebar()"></div>
-            <div class="relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-b from-primary-800 to-primary-900">
+            <div class="relative flex-1 flex flex-col max-w-xs w-full bg-primary-800">
                 <!-- Mobile sidebar content (same as desktop) -->
                 <div class="flex flex-col flex-grow pt-5 pb-4 overflow-y-auto">
                     <div class="flex items-center justify-between flex-shrink-0 px-4 mb-8">
@@ -454,7 +438,7 @@ try {
                             </div>
                         </div>
                         <div class="hidden lg:block">
-                            <div class="bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg p-3 border border-primary-200">
+                            <div class="bg-primary-100 rounded-lg p-3 border border-primary-200">
                                 <p class="text-sm text-primary-800">
                                     <i class="fas fa-hand-wave text-primary-600 mr-2"></i>
                                     Welcome back, <span class="font-semibold"><?php echo htmlspecialchars($_SESSION['username']); ?></span>!
@@ -463,13 +447,7 @@ try {
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <!-- Search Bar -->
-                        <div class="hidden md:block relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-search text-gray-400"></i>
-                            </div>
-                            <input type="text" placeholder="Search students..." class="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
-                        </div>
+                        <!-- Empty space for future features -->
                     </div>
                 </div>
             </div>
@@ -511,7 +489,7 @@ try {
                                 <div class="p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl p-4 shadow-inner">
+                                            <div class="bg-blue-100 rounded-xl p-4 shadow-inner">
                                                 <i class="fas fa-users text-blue-600 text-2xl"></i>
                                             </div>
                                         </div>
@@ -527,7 +505,7 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-3">
+                                <div class="bg-blue-50 px-6 py-3">
                                     <a href="manage_students.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center">
                                         View all students
                                         <i class="fas fa-arrow-right ml-2"></i>
@@ -539,7 +517,7 @@ try {
                                 <div class="p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl p-4 shadow-inner">
+                                            <div class="bg-yellow-100 rounded-xl p-4 shadow-inner">
                                                 <i class="fas fa-clock text-yellow-600 text-2xl"></i>
                                             </div>
                                         </div>
@@ -562,7 +540,7 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 px-6 py-3">
+                                <div class="bg-yellow-50 px-6 py-3">
                                     <a href="pending_approvals.php" class="text-sm text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
                                         Review pending
                                         <i class="fas fa-arrow-right ml-2"></i>
@@ -574,7 +552,7 @@ try {
                                 <div class="p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-xl p-4 shadow-inner">
+                                            <div class="bg-green-100 rounded-xl p-4 shadow-inner">
                                                 <i class="fas fa-check-circle text-green-600 text-2xl"></i>
                                             </div>
                                         </div>
@@ -590,7 +568,7 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-gradient-to-r from-green-50 to-green-100 px-6 py-3">
+                                <div class="bg-green-50 px-6 py-3">
                                     <a href="manage_students.php?status=approved" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center">
                                         View approved
                                         <i class="fas fa-arrow-right ml-2"></i>
@@ -602,7 +580,7 @@ try {
                                 <div class="p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl p-4 shadow-inner">
+                                            <div class="bg-purple-100 rounded-xl p-4 shadow-inner">
                                                 <i class="fas fa-chart-line text-purple-600 text-2xl"></i>
                                             </div>
                                         </div>
@@ -618,7 +596,7 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-gradient-to-r from-purple-50 to-purple-100 px-6 py-3">
+                                <div class="bg-purple-50 px-6 py-3">
                                     <a href="manage_students.php?filter=recent" class="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center">
                                         View recent
                                         <i class="fas fa-arrow-right ml-2"></i>
@@ -630,15 +608,24 @@ try {
                         <!-- Recent Students Table -->
                         <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                                <div class="flex items-center justify-between">
+                                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <h3 class="text-lg font-semibold text-gray-900">
                                         <i class="fas fa-history text-gray-500 mr-2"></i>
                                         Recent Student Registrations
                                     </h3>
-                                    <a href="manage_students.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center">
-                                        View all
-                                        <i class="fas fa-arrow-right ml-1"></i>
-                                    </a>
+                                    <div class="flex items-center space-x-4">
+                                        <!-- Search Bar -->
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-search text-gray-400"></i>
+                                            </div>
+                                            <input type="text" id="studentSearch" placeholder="Search students..." class="block w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                        </div>
+                                        <a href="manage_students.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center">
+                                            View all
+                                            <i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -881,6 +868,74 @@ try {
         // Update clock every minute
         setInterval(updateClock, 60000);
         updateClock(); // Initial call
+        
+        // Student search functionality
+        function initializeStudentSearch() {
+            const searchInput = document.getElementById('studentSearch');
+            const studentTable = document.querySelector('.data-table tbody');
+            
+            if (searchInput && studentTable) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    const rows = studentTable.querySelectorAll('tr');
+                    
+                    rows.forEach(row => {
+                        const studentName = row.querySelector('td:first-child')?.textContent.toLowerCase() || '';
+                        const studentId = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+                        const email = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+                        const status = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+                        
+                        const matchesSearch = studentName.includes(searchTerm) || 
+                                            studentId.includes(searchTerm) || 
+                                            email.includes(searchTerm) || 
+                                            status.includes(searchTerm);
+                        
+                        if (matchesSearch || searchTerm === '') {
+                            row.style.display = '';
+                            row.classList.add('animate-fade-in');
+                        } else {
+                            row.style.display = 'none';
+                            row.classList.remove('animate-fade-in');
+                        }
+                    });
+                    
+                    // Show "no results" message if no rows are visible
+                    const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+                    const noResultsRow = studentTable.querySelector('.no-results-row');
+                    
+                    if (visibleRows.length === 0 && searchTerm !== '') {
+                        if (!noResultsRow) {
+                            const noResultsElement = document.createElement('tr');
+                            noResultsElement.className = 'no-results-row';
+                            noResultsElement.innerHTML = `
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="flex flex-col items-center">
+                                        <i class="fas fa-search text-gray-300 text-3xl mb-3"></i>
+                                        <p class="text-sm font-medium">No students found</p>
+                                        <p class="text-xs">Try adjusting your search terms</p>
+                                    </div>
+                                </td>
+                            `;
+                            studentTable.appendChild(noResultsElement);
+                        }
+                    } else if (noResultsRow) {
+                        noResultsRow.remove();
+                    }
+                });
+                
+                // Add search shortcut (Ctrl/Cmd + K)
+                document.addEventListener('keydown', function(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                        e.preventDefault();
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                });
+            }
+        }
+        
+        // Initialize search functionality
+        initializeStudentSearch();
     </script>
 </body>
 </html>

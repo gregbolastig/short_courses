@@ -55,6 +55,7 @@ function createDatabaseAndTable() {
             first_name VARCHAR(100) NOT NULL,
             middle_name VARCHAR(100),
             last_name VARCHAR(100) NOT NULL,
+            extension_name VARCHAR(20),
             birthday DATE NOT NULL,
             age INT NOT NULL,
             sex ENUM('Male','Female','Other') NOT NULL,
@@ -65,7 +66,10 @@ function createDatabaseAndTable() {
             barangay VARCHAR(100) NOT NULL,
             street_address VARCHAR(200),
             place_of_birth VARCHAR(200) NOT NULL,
-            parent_name VARCHAR(200) NOT NULL,
+            guardian_last_name VARCHAR(100) NOT NULL,
+            guardian_first_name VARCHAR(100) NOT NULL,
+            guardian_middle_name VARCHAR(100),
+            guardian_extension VARCHAR(20),
             parent_contact VARCHAR(20) NOT NULL,
             email VARCHAR(150) NOT NULL UNIQUE,
             profile_picture VARCHAR(255),
@@ -73,6 +77,8 @@ function createDatabaseAndTable() {
             last_school VARCHAR(200) NOT NULL,
             school_province VARCHAR(100) NOT NULL,
             school_city VARCHAR(100) NOT NULL,
+            verification_code VARCHAR(4) NOT NULL,
+            is_verified BOOLEAN DEFAULT FALSE,
             status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
             approved_by INT NULL,
             approved_at TIMESTAMP NULL,
@@ -121,6 +127,38 @@ function fixDatabase() {
                 $conn->exec("ALTER TABLE students ADD COLUMN status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'");
                 $conn->exec("ALTER TABLE students ADD COLUMN approved_by INT NULL");
                 $conn->exec("ALTER TABLE students ADD COLUMN approved_at TIMESTAMP NULL");
+            }
+            
+            // Check and add new guardian name columns
+            $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'guardian_last_name'");
+            $guardianExists = $stmt->fetch();
+            
+            if (!$guardianExists) {
+                $conn->exec("ALTER TABLE students ADD COLUMN guardian_last_name VARCHAR(100) NOT NULL DEFAULT ''");
+                $conn->exec("ALTER TABLE students ADD COLUMN guardian_first_name VARCHAR(100) NOT NULL DEFAULT ''");
+                $conn->exec("ALTER TABLE students ADD COLUMN guardian_middle_name VARCHAR(100)");
+                $conn->exec("ALTER TABLE students ADD COLUMN guardian_extension VARCHAR(20)");
+                
+                // Migrate existing parent_name data if exists
+                $conn->exec("UPDATE students SET guardian_last_name = parent_name WHERE guardian_last_name = ''");
+                $conn->exec("ALTER TABLE students DROP COLUMN parent_name");
+            }
+            
+            // Check and add extension name column for student
+            $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'extension_name'");
+            $extensionExists = $stmt->fetch();
+            
+            if (!$extensionExists) {
+                $conn->exec("ALTER TABLE students ADD COLUMN extension_name VARCHAR(20) AFTER last_name");
+            }
+            
+            // Check and add verification code columns
+            $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'verification_code'");
+            $verificationExists = $stmt->fetch();
+            
+            if (!$verificationExists) {
+                $conn->exec("ALTER TABLE students ADD COLUMN verification_code VARCHAR(4) NOT NULL DEFAULT '0000'");
+                $conn->exec("ALTER TABLE students ADD COLUMN is_verified BOOLEAN DEFAULT FALSE");
             }
         }
         

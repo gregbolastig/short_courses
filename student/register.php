@@ -5,48 +5,24 @@ require_once '../config/database.php';
 $errors = [];
 $success_message = '';
 
-// Generate captcha for display
-if (!isset($_SESSION['captcha_answer'])) {
-    $num1 = rand(1, 10);
-    $num2 = rand(1, 10);
-    $operators = ['+', '-', '*'];
-    $operator = $operators[array_rand($operators)];
-    
-    switch ($operator) {
-        case '+':
-            $captcha_answer = $num1 + $num2;
-            break;
-        case '-':
-            $captcha_answer = $num1 - $num2;
-            break;
-        case '*':
-            $captcha_answer = $num1 * $num2;
-            break;
-    }
-    
-    $_SESSION['captcha_question'] = "$num1 $operator $num2";
-    $_SESSION['captcha_answer'] = $captcha_answer;
+// Generate verification code for display
+if (!isset($_SESSION['verification_code'])) {
+    $_SESSION['verification_code'] = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validate captcha first
-    if (!isset($_POST['captcha_answer']) || !isset($_SESSION['captcha_answer']) || 
-        $_POST['captcha_answer'] != $_SESSION['captcha_answer']) {
-        $errors[] = 'Captcha verification failed. Please try again.';
-        // Generate new captcha
-        unset($_SESSION['captcha_answer']);
-        unset($_SESSION['captcha_question']);
-    }
-    
     // Generate unique student ID
     $student_id = 'STU' . date('Y') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+    
+    // Generate 4-digit verification code
+    $verification_code = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
     
     // Validate required fields
     $required_fields = [
         'first_name', 'last_name', 'birthday', 'sex', 'civil_status',
         'contact_number', 'province', 'city', 'barangay', 'place_of_birth',
-        'parent_name', 'parent_contact', 'email', 'uli', 'last_school',
-        'school_province', 'school_city'
+        'guardian_last_name', 'guardian_first_name', 'parent_contact', 'email', 'uli', 'last_school',
+        'school_province', 'school_city', 'verification_input'
     ];
     
     foreach ($required_fields as $field) {
@@ -76,6 +52,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($birthday > $today) {
             $errors[] = 'Date of birth cannot be in the future';
         }
+    }
+    
+    // Validate verification code
+    if (!empty($_POST['verification_input']) && !empty($_SESSION['verification_code'])) {
+        if ($_POST['verification_input'] !== $_SESSION['verification_code']) {
+            $errors[] = 'Verification code is incorrect';
+        }
+    } else {
+        $errors[] = 'Verification code is required';
     }
     
     // Calculate age
@@ -134,15 +119,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } 
            
             $sql = "INSERT INTO students (
-                student_id, first_name, middle_name, last_name, birthday, age, sex, civil_status,
+                student_id, first_name, middle_name, last_name, extension_name, birthday, age, sex, civil_status,
                 contact_number, province, city, barangay, street_address, place_of_birth,
-                parent_name, parent_contact, email, profile_picture, uli, last_school,
-                school_province, school_city, status
+                guardian_last_name, guardian_first_name, guardian_middle_name, guardian_extension, parent_contact, 
+                email, profile_picture, uli, last_school, school_province, school_city, 
+                verification_code, is_verified, status
             ) VALUES (
-                :student_id, :first_name, :middle_name, :last_name, :birthday, :age, :sex, :civil_status,
+                :student_id, :first_name, :middle_name, :last_name, :extension_name, :birthday, :age, :sex, :civil_status,
                 :contact_number, :province, :city, :barangay, :street_address, :place_of_birth,
-                :parent_name, :parent_contact, :email, :profile_picture, :uli, :last_school,
-                :school_province, :school_city, 'pending'
+                :guardian_last_name, :guardian_first_name, :guardian_middle_name, :guardian_extension, :parent_contact,
+                :email, :profile_picture, :uli, :last_school, :school_province, :school_city,
+                :verification_code, TRUE, 'pending'
             )";
             
             $stmt = $conn->prepare($sql);
@@ -151,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':first_name', $_POST['first_name']);
             $stmt->bindParam(':middle_name', $_POST['middle_name']);
             $stmt->bindParam(':last_name', $_POST['last_name']);
+            $stmt->bindParam(':extension_name', $_POST['extension_name']);
             $stmt->bindParam(':birthday', $_POST['birthday']);
             $stmt->bindParam(':age', $age);
             $stmt->bindParam(':sex', $_POST['sex']);
@@ -161,7 +149,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
             $stmt->bindParam(':place_of_birth', $_POST['place_of_birth']);
-            $stmt->bindParam(':parent_name', $_POST['parent_name']);
+            $stmt->bindParam(':guardian_last_name', $_POST['guardian_last_name']);
+            $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
+            $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
+            $stmt->bindParam(':guardian_extension', $_POST['guardian_extension']);
             $stmt->bindParam(':parent_contact', $_POST['parent_contact']);
             $stmt->bindParam(':email', $_POST['email']);
             $stmt->bindParam(':profile_picture', $profile_picture_path);
@@ -169,13 +160,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':last_school', $_POST['last_school']);
             $stmt->bindParam(':school_province', $_POST['school_province']);
             $stmt->bindParam(':school_city', $_POST['school_city']);
+            $stmt->bindParam(':verification_code', $_SESSION['verification_code']);
             
             if ($stmt->execute()) {
-                $success_message = 'Registration submitted successfully! Your Student ID is: ' . $student_id . '. Your registration is pending admin approval.';
-                // Clear form data and captcha
+                $success_message = 'Registration submitted successfully! Your Student ID is: ' . $student_id . '. Verification code used: ' . $_SESSION['verification_code'] . '. Your registration is pending admin approval.';
+                // Clear form data and verification code
                 $_POST = [];
-                unset($_SESSION['captcha_answer']);
-                unset($_SESSION['captcha_question']);
+                unset($_SESSION['verification_code']);
             } else {
                 $errors[] = 'Registration failed. Please try again.';
             }
@@ -410,6 +401,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    placeholder="Enter your last name"
                                    value="<?php echo htmlspecialchars($_POST['last_name'] ?? ''); ?>">
                         </div>
+                        <div class="form-group">
+                            <label for="extension_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-tag text-gray-400 mr-2"></i>Extension Name
+                            </label>
+                            <select id="extension_name" name="extension_name" 
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                <option value="">Select extension (if any)</option>
+                                <option value="Jr." <?php echo (($_POST['extension_name'] ?? '') === 'Jr.') ? 'selected' : ''; ?>>Jr.</option>
+                                <option value="Sr." <?php echo (($_POST['extension_name'] ?? '') === 'Sr.') ? 'selected' : ''; ?>>Sr.</option>
+                                <option value="II" <?php echo (($_POST['extension_name'] ?? '') === 'II') ? 'selected' : ''; ?>>II</option>
+                                <option value="III" <?php echo (($_POST['extension_name'] ?? '') === 'III') ? 'selected' : ''; ?>>III</option>
+                                <option value="IV" <?php echo (($_POST['extension_name'] ?? '') === 'IV') ? 'selected' : ''; ?>>IV</option>
+                                <option value="V" <?php echo (($_POST['extension_name'] ?? '') === 'V') ? 'selected' : ''; ?>>V</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -567,29 +573,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="form-group">
+                            <label for="guardian_last_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-friends text-primary-500 mr-2"></i>Last Name *
+                            </label>
+                            <input type="text" id="guardian_last_name" name="guardian_last_name" required 
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                                   placeholder="Guardian's last name"
+                                   value="<?php echo htmlspecialchars($_POST['guardian_last_name'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="guardian_first_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-friends text-primary-500 mr-2"></i>First Name *
+                            </label>
+                            <input type="text" id="guardian_first_name" name="guardian_first_name" required 
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                                   placeholder="Guardian's first name"
+                                   value="<?php echo htmlspecialchars($_POST['guardian_first_name'] ?? ''); ?>">
+                        </div>
+                    </div>
+                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="form-group">
-                            <label for="parent_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-user-friends text-primary-500 mr-2"></i>Full Name *
+                            <label for="guardian_middle_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-friends text-gray-400 mr-2"></i>Middle Name
                             </label>
-                            <input type="text" id="parent_name" name="parent_name" required 
+                            <input type="text" id="guardian_middle_name" name="guardian_middle_name" 
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Last Name, First Name, Middle Initial"
-                                   value="<?php echo htmlspecialchars($_POST['parent_name'] ?? ''); ?>">
-                            <p class="text-xs text-gray-500 mt-2 flex items-center">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Format: Last Name, First Name, Middle Initial
-                            </p>
+                                   placeholder="Guardian's middle name"
+                                   value="<?php echo htmlspecialchars($_POST['guardian_middle_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
+                            <label for="guardian_extension" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-friends text-gray-400 mr-2"></i>Extension
                             </label>
-                            <input type="tel" id="parent_contact" name="parent_contact" required 
-                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="e.g., +639123456789 or 09123456789"
-                                   value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
+                            <select id="guardian_extension" name="guardian_extension" 
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                <option value="">Select extension (if any)</option>
+                                <option value="Jr." <?php echo (($_POST['guardian_extension'] ?? '') === 'Jr.') ? 'selected' : ''; ?>>Jr.</option>
+                                <option value="Sr." <?php echo (($_POST['guardian_extension'] ?? '') === 'Sr.') ? 'selected' : ''; ?>>Sr.</option>
+                                <option value="II" <?php echo (($_POST['guardian_extension'] ?? '') === 'II') ? 'selected' : ''; ?>>II</option>
+                                <option value="III" <?php echo (($_POST['guardian_extension'] ?? '') === 'III') ? 'selected' : ''; ?>>III</option>
+                                <option value="IV" <?php echo (($_POST['guardian_extension'] ?? '') === 'IV') ? 'selected' : ''; ?>>IV</option>
+                                <option value="V" <?php echo (($_POST['guardian_extension'] ?? '') === 'V') ? 'selected' : ''; ?>>V</option>
+                            </select>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
+                        </label>
+                        <input type="tel" id="parent_contact" name="parent_contact" required 
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
+                               placeholder="e.g., +639123456789 or 09123456789"
+                               value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
                     </div>
                 </div>   
              <!-- Education Information Section -->
@@ -696,32 +735,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <!-- Security Verification Section -->
+                <!-- Verification Code Section -->
                 <div class="mb-10 border-t border-gray-200 pt-8">
                     <div class="flex items-center mb-6">
                         <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
-                            <i class="fas fa-shield-alt"></i>
+                            <i class="fas fa-key"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Security Verification</h3>
-                            <p class="text-gray-600 text-sm">Please solve the math problem to verify you're human</p>
+                            <h3 class="text-xl font-semibold text-gray-900">Verification Code</h3>
+                            <p class="text-gray-600 text-sm">Enter the 4-digit code to verify your registration</p>
                         </div>
                     </div>
                     
-                    <div class="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-6 border border-primary-200">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
                         <div class="text-center mb-4">
                             <div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
-                                <i class="fas fa-calculator text-primary-500 text-xl"></i>
+                                <i class="fas fa-key text-blue-500 text-xl"></i>
                             </div>
-                            <div class="text-2xl font-bold text-primary-700 mb-2">
-                                <?php echo $_SESSION['captcha_question'] ?? ''; ?> = ?
+                            <div class="text-3xl font-bold text-blue-700 mb-2 font-mono tracking-widest">
+                                <?php echo $_SESSION['verification_code'] ?? ''; ?>
                             </div>
-                            <p class="text-sm text-primary-600">Solve this simple math problem</p>
+                            <p class="text-sm text-blue-600">Enter this code below to verify</p>
                         </div>
                         <div class="max-w-xs mx-auto">
-                            <input type="number" id="captcha_answer" name="captcha_answer" required 
-                                   class="w-full px-4 py-3 border-2 border-primary-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 text-center text-lg font-semibold"
-                                   placeholder="Enter your answer">
+                            <input type="text" id="verification_input" name="verification_input" required 
+                                   maxlength="4" pattern="[0-9]{4}"
+                                   class="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-center text-lg font-semibold font-mono tracking-widest"
+                                   placeholder="0000">
                         </div>
                     </div>
                 </div>
@@ -734,7 +774,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="flex justify-end">
                             <button type="submit" 
-                                    class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-bold rounded-lg hover:from-primary-600 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                    class="inline-flex items-center px-8 py-3 bg-primary-500 text-white font-bold rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                                 <i class="fas fa-paper-plane mr-2"></i>
                                 Submit Registration
                             </button>
