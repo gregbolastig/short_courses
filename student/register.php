@@ -753,7 +753,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 font-mono tracking-wider"
                                    placeholder="ABC-12-123-12345-123"
                                    maxlength="19"
-                                   pattern="[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}"
                                    title="Format: ABC-12-123-12345-123 (3 letters, then numbers separated by dashes)"
                                    value="<?php echo htmlspecialchars($_POST['uli'] ?? ''); ?>">
                             <p class="text-xs text-gray-500 mt-2 flex items-center">
@@ -991,8 +990,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // ULI formatting function
         function formatULI(input) {
-            // Remove all non-alphanumeric characters
-            let value = input.value.replace(/[^A-Za-z0-9]/g, '');
+            // Remove all non-alphanumeric characters except dashes
+            let value = input.value.replace(/[^A-Za-z0-9-]/g, '');
+            
+            // Remove existing dashes to reformat properly
+            value = value.replace(/-/g, '');
             
             // Convert to uppercase
             value = value.toUpperCase();
@@ -1032,9 +1034,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else if (isValid) {
                 input.classList.add('border-green-500');
                 input.classList.remove('border-red-500', 'ring-red-500', 'border-gray-200');
+                
+                // Remove any error message
+                const errorMsg = input.parentNode.querySelector('.uli-error');
+                if (errorMsg) {
+                    errorMsg.remove();
+                }
             } else {
                 input.classList.remove('border-red-500', 'ring-red-500', 'border-green-500');
                 input.classList.add('border-gray-200');
+                
+                // Remove any error message for partial input
+                const errorMsg = input.parentNode.querySelector('.uli-error');
+                if (errorMsg) {
+                    errorMsg.remove();
+                }
             }
         }
         
@@ -1135,26 +1149,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function validateForm() {
             let isValid = true;
             const requiredFields = document.querySelectorAll('[required]');
+            const failedFields = []; // Debug array to track failed fields
             
             requiredFields.forEach(field => {
+                // Skip ULI field as it has special validation
+                if (field.id === 'uli') {
+                    return;
+                }
+                
                 if (!field.value.trim()) {
                     field.classList.add('border-red-500', 'ring-red-500');
                     field.classList.remove('border-gray-200', 'border-green-500');
                     isValid = false;
+                    failedFields.push(field.name || field.id); // Debug: track failed field
                 } else {
                     field.classList.remove('border-red-500', 'ring-red-500');
                     field.classList.add('border-gray-200');
                 }
             });
             
+            // Debug log for failed fields
+            if (failedFields.length > 0) {
+                console.log('Failed required fields:', failedFields);
+            }
+            
             // Special validation for date of birth
             const birthdayField = document.getElementById('birthday');
             if (birthdayField && birthdayField.value) {
                 if (!validateDateOfBirth(birthdayField)) {
                     isValid = false;
+                    console.log('Birthday validation failed');
                 }
             }
             
+            // Special validation for ULI format
+            const uliField = document.getElementById('uli');
+            if (uliField) {
+                console.log('ULI validation - Value:', uliField.value); // Debug log
+                
+                if (!uliField.value.trim()) {
+                    uliField.classList.add('border-red-500', 'ring-red-500');
+                    uliField.classList.remove('border-gray-200', 'border-green-500');
+                    isValid = false;
+                    console.log('ULI validation failed: empty');
+                    
+                    // Show required error message
+                    let errorMsg = uliField.parentNode.querySelector('.uli-error');
+                    if (!errorMsg) {
+                        errorMsg = document.createElement('p');
+                        errorMsg.className = 'uli-error text-xs text-red-500 mt-1 flex items-center';
+                        errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>ULI is required';
+                        uliField.parentNode.appendChild(errorMsg);
+                    }
+                } else {
+                    const uliPattern = /^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/;
+                    const isValidFormat = uliPattern.test(uliField.value);
+                    console.log('ULI pattern test:', isValidFormat, 'Pattern:', uliPattern, 'Value:', uliField.value); // Debug log
+                    
+                    if (!isValidFormat) {
+                        uliField.classList.add('border-red-500', 'ring-red-500');
+                        uliField.classList.remove('border-gray-200', 'border-green-500');
+                        isValid = false;
+                        console.log('ULI validation failed: invalid format');
+                        
+                        // Show format error message
+                        let errorMsg = uliField.parentNode.querySelector('.uli-error');
+                        if (!errorMsg) {
+                            errorMsg = document.createElement('p');
+                            errorMsg.className = 'uli-error text-xs text-red-500 mt-1 flex items-center';
+                            errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Please use format: ABC-12-123-12345-123';
+                            uliField.parentNode.appendChild(errorMsg);
+                        } else {
+                            errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Please use format: ABC-12-123-12345-123';
+                        }
+                    } else {
+                        uliField.classList.remove('border-red-500', 'ring-red-500');
+                        uliField.classList.add('border-green-500');
+                        console.log('ULI validation passed');
+                        
+                        // Remove error message if exists
+                        const errorMsg = uliField.parentNode.querySelector('.uli-error');
+                        if (errorMsg) {
+                            errorMsg.remove();
+                        }
+                    }
+                }
+            }
+            
+            console.log('Form validation result:', isValid); // Debug log
             return isValid;
         }
         
@@ -1303,18 +1385,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }, 10);
                 });
                 
-                // Prevent non-alphanumeric characters on keypress
+                // Prevent non-alphanumeric characters on keypress (except dashes)
                 uliInput.addEventListener('keypress', function(e) {
                     const char = String.fromCharCode(e.which);
-                    const currentValue = this.value.replace(/[^A-Za-z0-9]/g, '');
+                    const currentValue = this.value.replace(/[^A-Za-z0-9]/g, ''); // Remove dashes for counting
                     
-                    // Allow backspace, delete, tab, escape, enter
-                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                    // Allow backspace, delete, tab, escape, enter, and dash
+                    if ([8, 9, 27, 13, 46, 45].indexOf(e.keyCode) !== -1 ||
                         // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
                         (e.keyCode === 65 && e.ctrlKey === true) ||
                         (e.keyCode === 67 && e.ctrlKey === true) ||
                         (e.keyCode === 86 && e.ctrlKey === true) ||
                         (e.keyCode === 88 && e.ctrlKey === true)) {
+                        return;
+                    }
+                    
+                    // Allow dash character
+                    if (char === '-') {
                         return;
                     }
                     
@@ -1405,19 +1492,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault(); // Always prevent default submission
                     
-                    if (!validateForm()) {
-                        alert('Please fill in all required fields correctly.');
-                        
-                        // Scroll to first error
-                        const firstError = document.querySelector('.border-red-500');
-                        if (firstError) {
-                            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            firstError.focus();
-                        }
-                    } else {
-                        // Show confirmation modal
-                        showConfirmationModal();
+                    // Ensure ULI is properly formatted before validation
+                    const uliField = document.getElementById('uli');
+                    if (uliField && uliField.value) {
+                        formatULI(uliField);
                     }
+                    
+                    // Debug: Log all required fields and their values
+                    const allRequiredFields = document.querySelectorAll('[required]');
+                    console.log('=== FORM VALIDATION DEBUG ===');
+                    console.log('Total required fields:', allRequiredFields.length);
+                    allRequiredFields.forEach(field => {
+                        console.log(`Field: ${field.name || field.id} = "${field.value}" (${field.value.trim() ? 'FILLED' : 'EMPTY'})`);
+                    });
+                    console.log('==============================');
+                    
+                    // Small delay to ensure formatting is complete
+                    setTimeout(() => {
+                        if (!validateForm()) {
+                            alert('Please fill in all required fields correctly.');
+                            
+                            // Scroll to first error
+                            const firstError = document.querySelector('.border-red-500');
+                            if (firstError) {
+                                console.log('First error field:', firstError.name || firstError.id);
+                                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                firstError.focus();
+                            }
+                        } else {
+                            // Show confirmation modal
+                            showConfirmationModal();
+                        }
+                    }, 50);
                 });
             }
             
