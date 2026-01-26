@@ -768,17 +768,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Submit Section -->
                 <div class="border-t border-gray-200 pt-8">
-                    <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4">
-                        <div class="flex items-center text-sm text-gray-600">
-                            <i class="fas fa-lock text-primary-500 mr-2"></i>
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="submit" 
-                                    class="inline-flex items-center px-8 py-3 bg-primary-500 text-white font-bold rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                                <i class="fas fa-paper-plane mr-2"></i>
-                                Submit Registration
-                            </button>
-                        </div>
+                    <div class="flex justify-center">
+                        <button type="submit" 
+                                class="inline-flex items-center px-8 py-3 bg-primary-500 text-white font-bold rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Submit Registration
+                        </button>
                     </div>
                 </div>
             </form>
