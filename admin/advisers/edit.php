@@ -51,14 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Combine first name, middle initial, and last name
         $full_name = trim($_POST['first_name'] . ' ' . $_POST['middle_initial'] . ' ' . $_POST['last_name']);
         
-        $stmt = $conn->prepare("UPDATE advisers SET adviser_name = ?, email = ?, phone = ?, department = ?, specialization = ? WHERE adviser_id = ?");
+        $stmt = $conn->prepare("UPDATE advisers SET adviser_name = ? WHERE adviser_id = ?");
         
         $stmt->execute([
             $full_name,
-            $_POST['email'] ?: null,
-            $_POST['phone'] ?: null,
-            $_POST['department'] ?: null,
-            $_POST['specialization'] ?: null,
             $adviser_id
         ]);
         
@@ -240,71 +236,6 @@ if (count($name_parts) >= 3) {
                                                        placeholder="Cruz">
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label for="email" class="block text-lg font-semibold text-gray-700 mb-3">
-                                                Email Address
-                                            </label>
-                                            <div class="relative">
-                                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                    <i class="fas fa-envelope text-gray-400"></i>
-                                                </div>
-                                                <input type="email" name="email" id="email" 
-                                                       value="<?php echo htmlspecialchars($adviser['email']); ?>"
-                                                       class="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg transition-all duration-200"
-                                                       placeholder="juan.cruz@example.com">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label for="phone" class="block text-lg font-semibold text-gray-700 mb-3">
-                                                Phone Number
-                                            </label>
-                                            <div class="relative">
-                                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                    <i class="fas fa-phone text-gray-400"></i>
-                                                </div>
-                                                <input type="tel" name="phone" id="phone" 
-                                                       value="<?php echo htmlspecialchars($adviser['phone']); ?>"
-                                                       class="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg transition-all duration-200"
-                                                       placeholder="+1 (555) 123-4567">
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <label for="department" class="block text-lg font-semibold text-gray-700 mb-3">
-                                                Department
-                                            </label>
-                                            <div class="relative">
-                                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                    <i class="fas fa-building text-gray-400"></i>
-                                                </div>
-                                                <input type="text" name="department" id="department" 
-                                                       value="<?php echo htmlspecialchars($adviser['department']); ?>"
-                                                       class="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg transition-all duration-200"
-                                                       placeholder="Computer Science">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <label for="specialization" class="block text-lg font-semibold text-gray-700 mb-3">
-                                            Specialization
-                                        </label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <i class="fas fa-star text-gray-400"></i>
-                                            </div>
-                                            <input type="text" name="specialization" id="specialization" 
-                                                   value="<?php echo htmlspecialchars($adviser['specialization']); ?>"
-                                                   class="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg transition-all duration-200"
-                                                   placeholder="Web Development, Database Management">
-                                        </div>
-                                        <p class="mt-2 text-sm text-gray-500">Update the adviser's areas of expertise</p>
                                     </div>
                                     
                                     <div class="flex flex-col sm:flex-row gap-4 pt-6">

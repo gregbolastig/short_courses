@@ -51,12 +51,9 @@ try {
     $params = [];
     
     if (!empty($search)) {
-        $search_condition = "WHERE adviser_name LIKE :search OR email LIKE :search2 OR department LIKE :search3 OR specialization LIKE :search4";
+        $search_condition = "WHERE adviser_name LIKE :search";
         $search_param = "%$search%";
         $params[':search'] = $search_param;
-        $params[':search2'] = $search_param;
-        $params[':search3'] = $search_param;
-        $params[':search4'] = $search_param;
     }
     
     // Get total count
@@ -260,9 +257,7 @@ try {
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                                             <tr>
-                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Adviser</th>
-                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Department</th>
-                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Specialization</th>
+                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Adviser Name</th>
                                                 <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Created</th>
                                                 <th class="px-8 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                                             </tr>
@@ -279,29 +274,7 @@ try {
                                                                 <div class="text-lg font-semibold text-gray-900">
                                                                     <?php echo htmlspecialchars($adviser['adviser_name']); ?>
                                                                 </div>
-                                                                <?php if ($adviser['email']): ?>
-                                                                    <div class="text-sm text-gray-500">
-                                                                        <i class="fas fa-envelope mr-1"></i>
-                                                                        <?php echo htmlspecialchars($adviser['email']); ?>
-                                                                    </div>
-                                                                <?php endif; ?>
-                                                                <?php if ($adviser['phone']): ?>
-                                                                    <div class="text-sm text-gray-500">
-                                                                        <i class="fas fa-phone mr-1"></i>
-                                                                        <?php echo htmlspecialchars($adviser['phone']); ?>
-                                                                    </div>
-                                                                <?php endif; ?>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-8 py-6">
-                                                        <div class="text-sm font-medium text-gray-900">
-                                                            <?php echo $adviser['department'] ? htmlspecialchars($adviser['department']) : '-'; ?>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-8 py-6">
-                                                        <div class="text-sm text-gray-900">
-                                                            <?php echo $adviser['specialization'] ? htmlspecialchars($adviser['specialization']) : '-'; ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-8 py-6">
@@ -347,30 +320,6 @@ try {
                                                         <h4 class="text-lg font-semibold text-gray-900">
                                                             <?php echo htmlspecialchars($adviser['adviser_name']); ?>
                                                         </h4>
-                                                        <?php if ($adviser['email']): ?>
-                                                            <p class="text-sm text-gray-500">
-                                                                <i class="fas fa-envelope mr-1"></i>
-                                                                <?php echo htmlspecialchars($adviser['email']); ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if ($adviser['phone']): ?>
-                                                            <p class="text-sm text-gray-500">
-                                                                <i class="fas fa-phone mr-1"></i>
-                                                                <?php echo htmlspecialchars($adviser['phone']); ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if ($adviser['department']): ?>
-                                                            <p class="text-sm text-gray-600 mt-1">
-                                                                <i class="fas fa-building mr-1"></i>
-                                                                <?php echo htmlspecialchars($adviser['department']); ?>
-                                                            </p>
-                                                        <?php endif; ?>
-                                                        <?php if ($adviser['specialization']): ?>
-                                                            <p class="text-sm text-gray-600">
-                                                                <i class="fas fa-star mr-1"></i>
-                                                                <?php echo htmlspecialchars($adviser['specialization']); ?>
-                                                            </p>
-                                                        <?php endif; ?>
                                                         <div class="flex items-center space-x-2 mt-2">
                                                             <i class="fas fa-calendar-alt text-gray-400 text-xs"></i>
                                                             <span class="text-sm text-gray-600">
@@ -442,12 +391,70 @@ try {
         </div>
     </div>
     
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeDeleteModal()"></div>
+
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            Delete Adviser
+                        </h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Are you sure you want to delete <strong id="adviserNameToDelete"></strong>? This action cannot be undone and will permanently remove the adviser from the system.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirmDeleteBtn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+                        <i class="fas fa-trash mr-2"></i>
+                        Delete Adviser
+                    </button>
+                    <button type="button" onclick="closeDeleteModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
+        let adviserToDelete = null;
+        
         function confirmDelete(adviserName, adviserId) {
-            if (confirm(`Are you sure you want to delete the adviser "${adviserName}"?\n\nThis action cannot be undone and will permanently remove the adviser from the system.`)) {
-                window.location.href = `?delete=${adviserId}`;
-            }
+            adviserToDelete = adviserId;
+            document.getElementById('adviserNameToDelete').textContent = adviserName;
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
         }
+        
+        function closeDeleteModal() {
+            adviserToDelete = null;
+            document.getElementById('deleteModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+        
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (adviserToDelete) {
+                window.location.href = `?delete=${adviserToDelete}`;
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && !document.getElementById('deleteModal').classList.contains('hidden')) {
+                closeDeleteModal();
+            }
+        });
     </script>
     
     <?php include '../components/admin-scripts.php'; ?>
