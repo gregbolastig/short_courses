@@ -302,41 +302,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </header>    
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
-        <!-- Progress Indicator -->
-        <div class="mb-6 sm:mb-8">
-            <div class="flex items-center justify-center overflow-x-auto pb-2">
-                <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 min-w-max px-2 sm:px-4">
-                    <div class="flex items-center">
-                        <div class="bg-primary-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">1</div>
-                        <span class="ml-1 text-xs font-medium text-gray-700 sm:hidden">Info</span>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline md:hidden">Personal</span>
-                        <span class="ml-2 text-sm font-medium text-gray-700 hidden md:inline">Personal Information</span>
-                    </div>
-                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
-                    <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">2</div>
-                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Addr</span>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Address</span>
-                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Address Information</span>
-                    </div>
-                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
-                    <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">3</div>
-                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Edu</span>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Education</span>
-                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Education Information</span>
-                    </div>
-                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
-                    <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">4</div>
-                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Done</span>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Review</span>
-                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Review & Submit</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Alert Messages -->
         <?php if (!empty($errors)): ?>
             <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-slide-up">
