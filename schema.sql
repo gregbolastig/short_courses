@@ -89,6 +89,20 @@ CREATE TABLE admin (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Courses Table
+CREATE TABLE courses (
+    course_id INT PRIMARY KEY AUTO_INCREMENT,
+    course_name VARCHAR(200) NOT NULL UNIQUE,
+    nc_level VARCHAR(50) NOT NULL,
+    description TEXT,
+    start_date DATE,
+    end_date DATE,
+    duration_months INT DEFAULT 6,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Cashier Table
 CREATE TABLE cashier (
     cashier_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -105,3 +119,27 @@ CREATE INDEX idx_registration_status ON student_registration(registration_status
 CREATE INDEX idx_student_lastname ON student(lastname, firstname);
 CREATE INDEX idx_enrollment_student ON student_enrollment(student_id);
 CREATE INDEX idx_enrollment_status ON student_enrollment(enrollment_status);
+
+-- Insert sample courses
+INSERT INTO courses (course_name, nc_level, description, start_date, end_date, duration_months, is_active) VALUES
+('Computer Programming', 'NC II', 'Learn programming fundamentals, web development, and software engineering principles.', '2025-02-01', '2025-08-01', 6, 1),
+('Computer Programming', 'NC III', 'Advanced programming concepts, database management, and system development.', '2025-03-01', '2025-11-01', 8, 1),
+('Automotive Servicing', 'NC I', 'Basic automotive maintenance, engine diagnostics, and repair fundamentals.', '2025-02-15', '2025-06-15', 4, 1),
+('Automotive Servicing', 'NC II', 'Advanced automotive repair, electrical systems, and diagnostic procedures.', '2025-04-01', '2025-10-01', 6, 1),
+('Welding', 'NC I', 'Basic welding techniques, safety procedures, and metal fabrication.', '2025-03-01', '2025-06-01', 3, 1),
+('Welding', 'NC II', 'Advanced welding processes, blueprint reading, and quality control.', '2025-05-01', '2025-10-01', 5, 1),
+('Electrical Installation', 'NC II', 'Electrical wiring, circuit installation, and safety compliance.', '2025-02-01', '2025-08-01', 6, 1),
+('Plumbing', 'NC I', 'Basic plumbing installation, pipe fitting, and maintenance procedures.', '2025-03-15', '2025-07-15', 4, 1),
+('Carpentry', 'NC II', 'Wood construction, furniture making, and building techniques.', '2025-04-01', '2025-09-01', 5, 1),
+('Masonry', 'NC I', 'Concrete work, brick laying, and construction fundamentals.', '2025-05-01', '2025-09-01', 4, 1),
+('Electronics', 'NC II', 'Electronic circuits, component testing, and device repair.', '2025-06-01', '2025-12-01', 6, 1),
+('Food Processing', 'NC II', 'Food safety, preservation techniques, and quality control.', '2025-07-01', '2025-12-01', 5, 1);
+
+-- Insert sample admin user (password: admin123)
+INSERT INTO admin (fullname, username, password) VALUES 
+('System Administrator', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+
+-- Create indexes for better performance
+CREATE INDEX idx_courses_active ON courses(is_active);
+CREATE INDEX idx_courses_name ON courses(course_name);
+CREATE INDEX idx_courses_nc_level ON courses(nc_level);
