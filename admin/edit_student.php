@@ -213,8 +213,10 @@ include '../includes/header.php';
                                value="<?php echo htmlspecialchars($student['first_name']); ?>">
                     </div>
                     <div class="form-group">
-                        <label for="middle_name">Middle Name</label>
+                        <label for="middle_name">Middle Initial</label>
                         <input type="text" id="middle_name" name="middle_name" 
+                               maxlength="2"
+                               placeholder="M."
                                value="<?php echo htmlspecialchars($student['middle_name']); ?>">
                     </div>
                     <div class="form-group">

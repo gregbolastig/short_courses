@@ -57,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Phone number is required';
         } elseif (!preg_match('/^\+\d{1,4}$/', $country_code)) {
             $errors[] = 'Invalid country code format';
-        } elseif (!preg_match('/^\d{7,15}$/', preg_replace('/\D/', '', $phone_number))) {
-            $errors[] = 'Invalid phone number format (7-15 digits required)';
+        } elseif (!preg_match('/^\d{10}$/', $phone_number)) {
+            $errors[] = "Phone number must be exactly 10 digits. You entered: '$phone_number' (length: " . strlen($phone_number) . ")";
         }
     }
     
@@ -72,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Parent phone number is required';
         } elseif (!preg_match('/^\+\d{1,4}$/', $parent_country_code)) {
             $errors[] = 'Invalid parent country code format';
-        } elseif (!preg_match('/^\d{7,15}$/', preg_replace('/\D/', '', $parent_phone_number))) {
-            $errors[] = 'Invalid parent phone number format (7-15 digits required)';
+        } elseif (!preg_match('/^\d{10}$/', $parent_phone_number)) {
+            $errors[] = "Parent phone number must be exactly 10 digits. You entered: '$parent_phone_number' (length: " . strlen($parent_phone_number) . ")";
         }
     }   
  
@@ -303,31 +303,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
         <!-- Progress Indicator -->
-        <div class="mb-8">
-            <div class="flex items-center justify-center overflow-x-auto">
-                <div class="flex items-center space-x-2 sm:space-x-4 min-w-max px-4">
+        <div class="mb-6 sm:mb-8">
+            <div class="flex items-center justify-center overflow-x-auto pb-2">
+                <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4 min-w-max px-2 sm:px-4">
                     <div class="flex items-center">
-                        <div class="bg-primary-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">1</div>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Personal</span>
+                        <div class="bg-primary-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">1</div>
                         <span class="ml-1 text-xs font-medium text-gray-700 sm:hidden">Info</span>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline md:hidden">Personal</span>
+                        <span class="ml-2 text-sm font-medium text-gray-700 hidden md:inline">Personal Information</span>
                     </div>
-                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">2</div>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Address</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">2</div>
                         <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Addr</span>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Address</span>
+                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Address Information</span>
                     </div>
-                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">3</div>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Education</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">3</div>
                         <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Edu</span>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Education</span>
+                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Education Information</span>
                     </div>
-                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-4 sm:w-8 md:w-16 h-0.5 sm:h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">4</div>
-                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Review</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">4</div>
                         <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Done</span>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline md:hidden">Review</span>
+                        <span class="ml-2 text-sm font-medium text-gray-500 hidden md:inline">Review & Submit</span>
                     </div>
                 </div>
             </div>
@@ -420,11 +424,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="form-group">
                             <label for="middle_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-user-tag text-gray-400 mr-2"></i>Middle Name
+                                <i class="fas fa-user-tag text-gray-400 mr-2"></i>Middle Initial
                             </label>
                             <input type="text" id="middle_name" name="middle_name" 
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Enter your middle name"
+                                   placeholder="M."
+                                   maxlength="2"
                                    value="<?php echo htmlspecialchars($_POST['middle_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
@@ -515,25 +520,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </select>
                             <input type="tel" id="contact_number" name="contact_number" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Enter phone number"
+                                   placeholder="9123456789"
+                                   maxlength="10"
+                                   pattern="[0-9]{10}"
+                                   inputmode="numeric"
                                    value="<?php echo htmlspecialchars($_POST['contact_number'] ?? ''); ?>">
                         </div>
                         <p class="text-xs text-gray-500 mt-2 flex items-center">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Select country code and enter your phone number
+                            Select country code and enter 10-digit phone number (e.g., 9123456789)
                         </p>
                     </div>
                 </div>
 
                 <!-- Address Information Section -->
-                <div class="mb-10 border-t border-gray-200 pt-8">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10 border-t border-gray-200 pt-6 sm:pt-8">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Address Information</h3>
-                            <p class="text-gray-600 text-sm">Where do you currently live?</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Address Information</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Where do you currently live?</p>
                         </div>
                     </div>
                     
@@ -619,14 +627,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Parent/Guardian Information Section -->
-                <div class="mb-10 border-t border-gray-200 pt-8">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10 border-t border-gray-200 pt-6 sm:pt-8">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-users"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Parent/Guardian Information</h3>
-                            <p class="text-gray-600 text-sm">Emergency contact information</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Parent/Guardian Information</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Emergency contact information</p>
                         </div>
                     </div>
                     
@@ -651,14 +659,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="form-group">
                             <label for="guardian_middle_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-user-friends text-gray-400 mr-2"></i>Middle Name
+                                <i class="fas fa-user-friends text-gray-400 mr-2"></i>Middle Initial
                             </label>
                             <input type="text" id="guardian_middle_name" name="guardian_middle_name" 
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Guardian's middle name"
+                                   placeholder="M."
+                                   maxlength="2"
                                    value="<?php echo htmlspecialchars($_POST['guardian_middle_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
@@ -678,7 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group mb-6">
                         <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
@@ -689,24 +698,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </select>
                             <input type="tel" id="parent_contact" name="parent_contact" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                                   placeholder="Enter phone number"
+                                   placeholder="9123456789"
+                                   maxlength="10"
+                                   pattern="[0-9]{10}"
+                                   inputmode="numeric"
                                    value="<?php echo htmlspecialchars($_POST['parent_contact'] ?? ''); ?>">
                         </div>
                         <p class="text-xs text-gray-500 mt-2 flex items-center">
                             <i class="fas fa-info-circle mr-1"></i>
-                            Select country code and enter phone number
+                            Select country code and enter 10-digit phone number (e.g., 9123456789)
                         </p>
                     </div>
                 </div>   
              <!-- Education Information Section -->
-                <div class="mb-10 border-t border-gray-200 pt-8">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10 border-t border-gray-200 pt-6 sm:pt-8">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-school"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Education Information</h3>
-                            <p class="text-gray-600 text-sm">Your academic background</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Education Information</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Your academic background</p>
                         </div>
                     </div>
                     
@@ -747,14 +759,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Additional Information Section -->
-                <div class="mb-10 border-t border-gray-200 pt-8">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10 border-t border-gray-200 pt-6 sm:pt-8">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-info-circle"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Additional Information</h3>
-                            <p class="text-gray-600 text-sm">Contact details and identification</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Additional Information</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Contact details and identification</p>
                         </div>
                     </div>
                     
@@ -809,14 +821,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Verification Code Section -->
-                <div class="mb-10 border-t border-gray-200 pt-8">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10 border-t border-gray-200 pt-6 sm:pt-8">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-key"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Verification Code</h3>
-                            <p class="text-gray-600 text-sm">Enter the 4-digit code to verify your registration</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Verification Code</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Enter the 4-digit code to verify your registration</p>
                         </div>
                     </div>
                     
@@ -1484,6 +1496,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
             
+            // Phone number validation - numbers only
+            const phoneFields = ['contact_number', 'parent_contact'];
+            phoneFields.forEach(fieldId => {
+                const phoneInput = document.getElementById(fieldId);
+                if (phoneInput) {
+                    // Allow only numbers on keypress
+                    phoneInput.addEventListener('keypress', function(e) {
+                        // Allow control keys (backspace, delete, tab, escape, enter)
+                        if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                            // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                            (e.ctrlKey === true)) {
+                            return;
+                        }
+                        
+                        const char = String.fromCharCode(e.which);
+                        
+                        // Only allow numbers
+                        if (!/[0-9]/.test(char)) {
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    // Remove non-numeric characters on input
+                    phoneInput.addEventListener('input', function() {
+                        // Remove any non-numeric characters
+                        const oldValue = this.value;
+                        this.value = this.value.replace(/[^0-9]/g, '');
+                        
+                        // Limit to 10 digits
+                        if (this.value.length > 10) {
+                            this.value = this.value.substring(0, 10);
+                        }
+                        
+                        // Debug logging
+                        if (oldValue !== this.value) {
+                            console.log(`Phone field ${fieldId}: "${oldValue}" -> "${this.value}"`);
+                        }
+                    });
+                    
+                    // Format on paste - remove non-numeric characters
+                    phoneInput.addEventListener('paste', function(e) {
+                        setTimeout(() => {
+                            this.value = this.value.replace(/[^0-9]/g, '');
+                            if (this.value.length > 10) {
+                                this.value = this.value.substring(0, 10);
+                            }
+                        }, 10);
+                    });
+                }
+            });
+            
+            // Middle initial validation - letters only, max 2 characters
+            const middleInitialFields = ['middle_name', 'guardian_middle_name'];
+            middleInitialFields.forEach(fieldId => {
+                const initialInput = document.getElementById(fieldId);
+                if (initialInput) {
+                    // Allow only letters and periods on keypress
+                    initialInput.addEventListener('keypress', function(e) {
+                        // Allow control keys (backspace, delete, tab, escape, enter)
+                        if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                            // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                            (e.ctrlKey === true)) {
+                            return;
+                        }
+                        
+                        const char = String.fromCharCode(e.which);
+                        
+                        // Only allow letters and periods
+                        if (!/[A-Za-z.]/.test(char)) {
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    // Auto-format middle initial
+                    initialInput.addEventListener('input', function() {
+                        // Remove any non-letter/period characters
+                        let value = this.value.replace(/[^A-Za-z.]/g, '');
+                        
+                        // Limit to 2 characters
+                        if (value.length > 2) {
+                            value = value.substring(0, 2);
+                        }
+                        
+                        // Auto-capitalize first letter
+                        if (value.length > 0) {
+                            value = value.charAt(0).toUpperCase() + value.slice(1);
+                        }
+                        
+                        this.value = value;
+                    });
+                }
+            });
+            
             // Province change handlers
             const provinceSelect = document.getElementById('province');
             if (provinceSelect) {
@@ -1664,30 +1769,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         });
         
-        // Phone number formatting
+        // Phone number formatting - DISABLED since we now use separate country code dropdowns
         function formatPhoneNumber(input) {
-            let value = input.value.replace(/\D/g, '');
-            if (value.startsWith('63')) {
-                value = '+' + value;
-            } else if (value.startsWith('9') && value.length === 10) {
-                value = '+63' + value;
-            } else if (value.startsWith('0') && value.length === 11) {
-                value = '+63' + value.substring(1);
-            }
-            input.value = value;
+            // No longer needed - country codes are handled separately
+            return;
         }
         
-        // Add phone formatting to contact fields
+        // Phone formatting removed - using separate country code dropdowns instead
         document.addEventListener('DOMContentLoaded', function() {
-            const phoneFields = ['contact_number', 'parent_contact'];
-            phoneFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    field.addEventListener('blur', function() {
-                        formatPhoneNumber(this);
-                    });
-                }
-            });
+            // Phone formatting no longer needed
         });
     </script>
 </body>
