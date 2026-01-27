@@ -7,8 +7,6 @@ require_once '../../includes/auth_middleware.php';
 requireAdmin();
 
 $page_title = 'Edit Student';
-$css_path = '../../assets/css/style.css';
-$js_path = '../../assets/js/main.js';
 
 $student = null;
 $errors = [];
@@ -170,34 +168,115 @@ try {
     $errors[] = 'Database error: ' . $e->getMessage();
 }
 
-include '../includes/header.php';
+// Get pending approvals count for sidebar
+try {
+    $database = new Database();
+    $conn = $database->getConnection();
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+} catch (PDOException $e) {
+    $pending_approvals = 0;
+}
 ?>
 
-<header class="admin-header">
-    <h1>Edit Student</h1>
-</header>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?> - JZGMSAT Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <?php include '../components/sidebar.php'; ?>
+    
+    <!-- Main Content -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <?php include '../components/header.php'; ?>
+        
+        <!-- Page Content -->
+        <main class="p-4 md:p-6 lg:p-8">
+            <!-- Breadcrumb -->
+            <nav class="flex mb-6" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="../dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-home mr-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <a href="index.php" class="text-sm font-medium text-gray-700 hover:text-blue-600">Students</a>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <a href="view.php?id=<?php echo $student_id; ?>" class="text-sm font-medium text-gray-700 hover:text-blue-600">View Student</a>
+                        </div>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <span class="text-sm font-medium text-gray-500">Edit</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
 
-<nav class="admin-nav">
-    <ul>
-        <li><a href="../dashboard.php">Dashboard</a></li>
-        <li><a href="index.php">Manage Students</a></li>
-        <li><a href="view.php?id=<?php echo $student_id; ?>">View Student</a></li>
-        <li><a href="../../index.php">Back to Home</a></li>
-    </ul>
-</nav>
+            <!-- Page Header -->
+            <div class="mb-6 md:mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Edit Student</h1>
+                        <p class="text-gray-600">Update student information and details</p>
+                    </div>
+                </div>
+            </div>
 
-<main class="main-content">
-    <div class="form-container">
-        <div id="form-errors">
+            <!-- Alert Messages -->
             <?php if (!empty($errors)): ?>
-                <div class="alert alert-error">
-                    <?php echo implode('<br>', $errors); ?>
+                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-circle mr-2 mt-0.5"></i>
+                        <div>
+                            <h4 class="font-medium mb-1">Please fix the following errors:</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                <?php foreach ($errors as $error): ?>
+                                    <li><?php echo htmlspecialchars($error); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             <?php endif; ?>
             
             <?php if ($success_message): ?>
-                <div class="alert alert-success">
-                    <?php echo $success_message; ?>
+                <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <?php echo htmlspecialchars($success_message); ?>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>

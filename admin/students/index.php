@@ -7,8 +7,6 @@ require_once '../../includes/auth_middleware.php';
 requireAdmin();
 
 $page_title = 'Manage Students';
-$css_path = '../../assets/css/style.css';
-$js_path = '../../assets/js/main.js';
 
 $students = [];
 $error_message = '';
@@ -48,13 +46,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 $search = $_GET['search'] ?? '';
 $filter_province = $_GET['filter_province'] ?? '';
 $filter_sex = $_GET['filter_sex'] ?? '';
+$filter_status = $_GET['filter_status'] ?? '';
+
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
 
 // Build query
 $where_conditions = [];
 $params = [];
 
 if (!empty($search)) {
-    $where_conditions[] = "(first_name LIKE :search OR last_name LIKE :search OR email LIKE :search OR uli LIKE :search)";
+    $where_conditions[] = "(first_name LIKE :search OR last_name LIKE :search OR email LIKE :search OR uli LIKE :search OR student_id LIKE :search)";
     $params[':search'] = '%' . $search . '%';
 }
 
@@ -68,164 +72,527 @@ if (!empty($filter_sex)) {
     $params[':sex'] = $filter_sex;
 }
 
+if (!empty($filter_status)) {
+    $where_conditions[] = "status = :status";
+    $params[':status'] = $filter_status;
+}
+
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
 try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    // Get students with filters
-    $sql = "SELECT id, first_name, middle_name, last_name, email, uli, sex, province, city, contact_number, created_at 
-            FROM students $where_clause ORDER BY created_at DESC";
+    // Get total count for pagination
+    $count_sql = "SELECT COUNT(*) as total FROM students $where_clause";
+    $stmt = $conn->prepare($count_sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_pages = ceil($total_students / $limit);
+    
+    // Get students with filters and pagination
+    $sql = "SELECT id, student_id, first_name, middle_name, last_name, email, uli, sex, province, city, contact_number, status, created_at 
+            FROM students $where_clause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
     
     $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
     }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get unique provinces for filter
-    $stmt = $conn->query("SELECT DISTINCT province FROM students ORDER BY province");
+    $stmt = $conn->query("SELECT DISTINCT province FROM students WHERE province IS NOT NULL AND province != '' ORDER BY province");
     $provinces = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    // Get statistics
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    
+    $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'");
+    $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
+    
+    $stmt = $conn->query("SELECT COUNT(*) as rejected FROM students WHERE status = 'rejected'");
+    $rejected_count = $stmt->fetch(PDO::FETCH_ASSOC)['rejected'];
     
 } catch (PDOException $e) {
     $error_message = 'Database error: ' . $e->getMessage();
 }
 
-include '../includes/header.php';
+// Get pending approvals count for sidebar
+try {
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+} catch (PDOException $e) {
+    $pending_approvals = 0;
+}
 ?>
 
-<header class="admin-header">
-    <h1>Manage Students</h1>
-</header>
-
-<nav class="admin-nav">
-    <ul>
-        <li><a href="../dashboard.php">Dashboard</a></li>
-        <li><a href="index.php">Manage Students</a></li>
-        <li><a href="../../index.php">Back to Home</a></li>
-    </ul>
-</nav>
-
-<main class="main-content">
-    <?php if ($error_message): ?>
-        <div class="alert alert-error">
-            <?php echo $error_message; ?>
-        </div>
-    <?php endif; ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?> - JZGMSAT Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <?php include '../components/sidebar.php'; ?>
     
-    <?php if ($success_message): ?>
-        <div class="alert alert-success">
-            <?php echo $success_message; ?>
-        </div>
-    <?php endif; ?>
-    
-    <!-- Search and Filter Form -->
-    <div class="search-filter-container" style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;">
-        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">Search & Filter Students</h3>
+    <!-- Main Content -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <?php include '../components/header.php'; ?>
         
-        <form method="GET" style="display: grid; gap: 1rem;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                <div class="form-group">
-                    <label for="search">Search (Name, Email, ULI)</label>
-                    <input type="text" id="search" name="search" placeholder="Enter search term..." 
-                           value="<?php echo htmlspecialchars($search); ?>">
-                </div>
-                
-                <div class="form-group">
-                    <label for="filter_province">Filter by Province</label>
-                    <select id="filter_province" name="filter_province">
-                        <option value="">All Provinces</option>
-                        <?php foreach ($provinces as $province): ?>
-                            <option value="<?php echo htmlspecialchars($province); ?>" 
-                                    <?php echo ($filter_province === $province) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($province); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="filter_sex">Filter by Sex</label>
-                    <select id="filter_sex" name="filter_sex">
-                        <option value="">All</option>
-                        <option value="Male" <?php echo ($filter_sex === 'Male') ? 'selected' : ''; ?>>Male</option>
-                        <option value="Female" <?php echo ($filter_sex === 'Female') ? 'selected' : ''; ?>>Female</option>
-                        <option value="Other" <?php echo ($filter_sex === 'Other') ? 'selected' : ''; ?>>Other</option>
-                    </select>
+        <!-- Page Content -->
+        <main class="p-4 md:p-6 lg:p-8">
+            <!-- Page Header -->
+            <div class="mb-6 md:mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Manage Students</h1>
+                        <p class="text-gray-600">View, edit, and manage all student registrations</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <!-- Removed Add New Student button - students should register themselves -->
+                    </div>
                 </div>
             </div>
+
+            <!-- Alert Messages -->
+            <?php if ($error_message): ?>
+                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
             
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <button type="submit" class="btn btn-primary">Search & Filter</button>
-                <a href="index.php" class="btn btn-secondary">Clear Filters</a>
-                <a href="../../student/register.php" class="btn btn-primary">Add New Student</a>
-            </div>
-        </form>
-    </div>
-    
-    <!-- Students Table -->
-    <div class="students-container" style="background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
-            Students List 
-            <span style="font-size: 0.875rem; color: #6c757d;">(<?php echo count($students); ?> found)</span>
-        </h3>
-        
-        <?php if (empty($students)): ?>
-            <p>No students found matching your criteria.</p>
-        <?php else: ?>
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>ULI</th>
-                            <th>Sex</th>
-                            <th>Province</th>
-                            <th>City</th>
-                            <th>Contact</th>
-                            <th>Registration Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($students as $student): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($student['id']); ?></td>
-                                <td>
-                                    <?php 
-                                    $full_name = trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name']);
-                                    echo htmlspecialchars($full_name); 
-                                    ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($student['email']); ?></td>
-                                <td><?php echo htmlspecialchars($student['uli']); ?></td>
-                                <td><?php echo htmlspecialchars($student['sex']); ?></td>
-                                <td><?php echo htmlspecialchars($student['province']); ?></td>
-                                <td><?php echo htmlspecialchars($student['city']); ?></td>
-                                <td><?php echo htmlspecialchars($student['contact_number']); ?></td>
-                                <td><?php echo date('M j, Y', strtotime($student['created_at'])); ?></td>
-                                <td>
-                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <a href="view.php?id=<?php echo $student['id']; ?>" 
-                                           class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</a>
-                                        <a href="edit.php?id=<?php echo $student['id']; ?>" 
-                                           class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
-                                        <a href="?action=delete&id=<?php echo $student['id']; ?>" 
-                                           class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; background-color: var(--error-color); color: white;"
-                                           onclick="return confirm('Are you sure you want to delete this student? This action cannot be undone.')">Delete</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    </div>
-</main>
+            <?php if ($success_message): ?>
+                <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <?php echo htmlspecialchars($success_message); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
 
-<?php include '../includes/footer.php'; ?>
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-blue-600 text-lg md:text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-600">Total Students</p>
+                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($total_students_count); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-yellow-600 text-lg md:text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-600">Pending</p>
+                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($pending_count); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check text-green-600 text-lg md:text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-600">Approved</p>
+                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($approved_count); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-times text-red-600 text-lg md:text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1">
+                            <p class="text-sm font-medium text-gray-600">Rejected</p>
+                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($rejected_count); ?></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Search and Filter Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6 md:mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Search & Filter Students</h2>
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                
+                <form method="GET" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="search" name="search" 
+                                       placeholder="Name, Email, ULI, Student ID..." 
+                                       value="<?php echo htmlspecialchars($search); ?>"
+                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="filter_province" class="block text-sm font-medium text-gray-700 mb-2">Province</label>
+                            <select id="filter_province" name="filter_province" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">All Provinces</option>
+                                <?php foreach ($provinces as $province): ?>
+                                    <option value="<?php echo htmlspecialchars($province); ?>" 
+                                            <?php echo ($filter_province === $province) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($province); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="filter_sex" class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                            <select id="filter_sex" name="filter_sex" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">All Genders</option>
+                                <option value="Male" <?php echo ($filter_sex === 'Male') ? 'selected' : ''; ?>>Male</option>
+                                <option value="Female" <?php echo ($filter_sex === 'Female') ? 'selected' : ''; ?>>Female</option>
+                                <option value="Other" <?php echo ($filter_sex === 'Other') ? 'selected' : ''; ?>>Other</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <select id="filter_status" name="filter_status" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">All Status</option>
+                                <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
+                                <option value="rejected" <?php echo ($filter_status === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                            <i class="fas fa-search mr-2"></i>Apply Filters
+                        </button>
+                        <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>Clear Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Students Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-4 md:px-6 py-4 border-b border-gray-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Students List</h2>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Showing <?php echo count($students); ?> of <?php echo number_format($total_students); ?> students
+                            </p>
+                        </div>
+                        <?php if ($total_pages > 1): ?>
+                            <div class="mt-3 sm:mt-0">
+                                <span class="text-sm text-gray-600">
+                                    Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <?php if (empty($students)): ?>
+                    <div class="text-center py-12">
+                        <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-users text-gray-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+                        <p class="text-gray-600 mb-6">No students match your current search criteria.</p>
+                        <a href="index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                            <i class="fas fa-refresh mr-2"></i>Clear Filters
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <!-- Desktop Table -->
+                    <div class="hidden lg:block overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Info</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <?php foreach ($students as $student): ?>
+                                    <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-10 w-10">
+                                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                        <span class="text-sm font-medium text-blue-600">
+                                                            <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars(trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name'])); ?>
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">
+                                                        ULI: <?php echo htmlspecialchars($student['uli']); ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo htmlspecialchars($student['email']); ?></div>
+                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($student['contact_number']); ?></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-gray-900"><?php echo htmlspecialchars($student['city']); ?></div>
+                                            <div class="text-sm text-gray-500"><?php echo htmlspecialchars($student['province']); ?></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <?php
+                                            $status_class = '';
+                                            switch ($student['status']) {
+                                                case 'approved':
+                                                    $status_class = 'bg-green-100 text-green-800 border-green-200';
+                                                    break;
+                                                case 'rejected':
+                                                    $status_class = 'bg-red-100 text-red-800 border-red-200';
+                                                    break;
+                                                default:
+                                                    $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                                            }
+                                            ?>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                                <?php echo ucfirst($student['status']); ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <?php echo date('M j, Y', strtotime($student['created_at'])); ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <div class="flex items-center justify-end space-x-2">
+                                                <a href="view.php?id=<?php echo $student['id']; ?>" 
+                                                   class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                                    <i class="fas fa-eye mr-1"></i>View
+                                                </a>
+                                                <a href="edit.php?id=<?php echo $student['id']; ?>" 
+                                                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-semibold rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
+                                                    <i class="fas fa-edit mr-1"></i>Edit
+                                                </a>
+                                                <button onclick="confirmDelete(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
+                                                        class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
+                                                    <i class="fas fa-trash mr-1"></i>Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile Cards -->
+                    <div class="lg:hidden">
+                        <?php foreach ($students as $student): ?>
+                            <div class="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-200">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-center flex-1 min-w-0">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <span class="text-sm font-medium text-blue-600">
+                                                    <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-3 flex-1 min-w-0">
+                                            <div class="text-sm font-medium text-gray-900 truncate">
+                                                <?php echo htmlspecialchars(trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name'])); ?>
+                                            </div>
+                                            <div class="text-sm text-gray-500 truncate">
+                                                <?php echo htmlspecialchars($student['email']); ?>
+                                            </div>
+                                            <div class="text-xs text-gray-400 mt-1">
+                                                ULI: <?php echo htmlspecialchars($student['uli']); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-shrink-0 ml-2">
+                                        <?php
+                                        $status_class = '';
+                                        switch ($student['status']) {
+                                            case 'approved':
+                                                $status_class = 'bg-green-100 text-green-800 border-green-200';
+                                                break;
+                                            case 'rejected':
+                                                $status_class = 'bg-red-100 text-red-800 border-red-200';
+                                                break;
+                                            default:
+                                                $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                                        }
+                                        ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                            <?php echo ucfirst($student['status']); ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                    <div>
+                                        <span class="font-medium">Location:</span>
+                                        <div><?php echo htmlspecialchars($student['city'] . ', ' . $student['province']); ?></div>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium">Contact:</span>
+                                        <div><?php echo htmlspecialchars($student['contact_number']); ?></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3 text-xs text-gray-500">
+                                    Registered: <?php echo date('M j, Y', strtotime($student['created_at'])); ?>
+                                </div>
+                                
+                                <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100">
+                                    <a href="view.php?id=<?php echo $student['id']; ?>" 
+                                       class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
+                                        <i class="fas fa-eye mr-1"></i>View
+                                    </a>
+                                    <a href="edit.php?id=<?php echo $student['id']; ?>" 
+                                       class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-semibold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                                        <i class="fas fa-edit mr-1"></i>Edit
+                                    </a>
+                                    <button onclick="confirmDelete(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
+                                            class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition-colors duration-200">
+                                        <i class="fas fa-trash mr-1"></i>Delete
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Pagination -->
+                <?php if ($total_pages > 1): ?>
+                    <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <?php if ($page > 1): ?>
+                                    <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" 
+                                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                        Previous
+                                    </a>
+                                <?php endif; ?>
+                                <?php if ($page < $total_pages): ?>
+                                    <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" 
+                                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                        Next
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        Showing <span class="font-medium"><?php echo (($page - 1) * $limit) + 1; ?></span> to 
+                                        <span class="font-medium"><?php echo min($page * $limit, $total_students); ?></span> of 
+                                        <span class="font-medium"><?php echo $total_students; ?></span> results
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <?php if ($page > 1): ?>
+                                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" 
+                                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                        
+                                        <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>" 
+                                               class="relative inline-flex items-center px-4 py-2 border text-sm font-medium <?php echo ($i == $page) ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'; ?>">
+                                                <?php echo $i; ?>
+                                            </a>
+                                        <?php endfor; ?>
+                                        
+                                        <?php if ($page < $total_pages): ?>
+                                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" 
+                                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function confirmDelete(studentId, studentName) {
+            if (confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
+                window.location.href = `?action=delete&id=${studentId}`;
+            }
+        }
+    </script>
+</body>
+</html>
