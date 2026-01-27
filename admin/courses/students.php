@@ -145,8 +145,12 @@ try {
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get active courses for dropdown
-    $stmt = $conn->query("SELECT course_id, course_name, nc_level FROM courses WHERE is_active = 1 ORDER BY course_name");
+    $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
     $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get advisers for dropdown
+    $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
@@ -603,11 +607,11 @@ try {
                                         <label for="adviser" class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
                                         <select name="adviser" id="adviser" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Select Adviser</option>
-                                            <option value="Juan dela Cruz">Juan dela Cruz</option>
-                                            <option value="Jane Smith">Jane Smith</option>
-                                            <option value="Mike Johnson">Mike Johnson</option>
-                                            <option value="Sarah Wilson">Sarah Wilson</option>
-                                            <option value="David Brown">David Brown</option>
+                                            <?php foreach ($advisers as $adviser): ?>
+                                                <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                                    <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                 </div>

@@ -120,8 +120,25 @@ try {
     $stmt->execute();
     $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Get active courses for approval modal
+    $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+    $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get advisers for approval modal
+    $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
+    // Set default values in case of error
+    $recent_students = [];
+    $total_students = 0;
+    $pending_approvals = 0;
+    $approved_students = 0;
+    $recent_registrations = 0;
+    $total_pages = 0;
+    $active_courses = [];
+    $advisers = [];
 }
 ?>
 <!DOCTYPE html>
@@ -681,14 +698,11 @@ try {
                                         <label for="course" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
                                         <select name="course" id="course" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Select Course</option>
-                                            <option value="Computer Programming">Computer Programming</option>
-                                            <option value="Automotive Servicing">Automotive Servicing</option>
-                                            <option value="Welding">Welding</option>
-                                            <option value="Electrical Installation">Electrical Installation</option>
-                                            <option value="Plumbing">Plumbing</option>
-                                            <option value="Carpentry">Carpentry</option>
-                                            <option value="Masonry">Masonry</option>
-                                            <option value="Electronics">Electronics</option>
+                                            <?php foreach ($active_courses as $course): ?>
+                                                <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                                    <?php echo htmlspecialchars($course['course_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                     
@@ -701,6 +715,7 @@ try {
                                             <option value="NC II">NC II</option>
                                             <option value="NC III">NC III</option>
                                             <option value="NC IV">NC IV</option>
+                                            <option value="NC V">NC V</option>
                                         </select>
                                     </div>
                                     
@@ -721,11 +736,11 @@ try {
                                         <label for="adviser" class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
                                         <select name="adviser" id="adviser" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Select Adviser</option>
-                                            <option value="Juan dela Cruz">Juan dela Cruz</option>
-                                            <option value="Jane Smith">Jane Smith</option>
-                                            <option value="Mike Johnson">Mike Johnson</option>
-                                            <option value="Sarah Wilson">Sarah Wilson</option>
-                                            <option value="David Brown">David Brown</option>
+                                            <?php foreach ($advisers as $adviser): ?>
+                                                <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                                    <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
                                         </select>
                                     </div>
                                 </div>
