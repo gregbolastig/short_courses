@@ -291,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="flex items-center justify-center py-4 sm:py-6">
                 <div class="text-center">
                     <div class="flex flex-col sm:flex-row items-center justify-center mb-2">
-                        <img src="../assets/images/Logo.jpg" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
+                        <img src="../assets/images/Logo.png" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
                         <div>
                             <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight">Student Registration</h1>
                         </div>
