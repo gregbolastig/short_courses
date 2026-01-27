@@ -132,9 +132,10 @@ project-root/
 │
 ├─ admin/                    # Admin Portal (Admin Access Only)
 │   ├─ dashboard.php         # Admin dashboard with statistics
-│   ├─ manage_students.php   # Student management interface
-│   ├─ view_student.php      # Detailed student profile view
-│   ├─ edit_student.php      # Edit student information
+│   ├─ students/             # Student Management Module
+│   │   ├─ index.php         # Student management interface
+│   │   ├─ view.php          # Detailed student profile view
+│   │   └─ edit.php          # Edit student information
 │   └─ pending_approvals.php # Review and approve registrations
 │
 ├─ student/                  # Student Portal (Student Access Only)

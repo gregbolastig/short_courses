@@ -1,10 +1,14 @@
 <?php
 session_start();
-require_once '../config/database.php';
+require_once '../../config/database.php';
+require_once '../../includes/auth_middleware.php';
+
+// Require admin authentication
+requireAdmin();
 
 $page_title = 'View Student';
-$css_path = '../assets/css/style.css';
-$js_path = '../assets/js/main.js';
+$css_path = '../../assets/css/style.css';
+$js_path = '../../assets/js/main.js';
 
 $student = null;
 $error_message = '';
@@ -40,9 +44,9 @@ include '../includes/header.php';
 
 <nav class="admin-nav">
     <ul>
-        <li><a href="dashboard.php">Dashboard</a></li>
-        <li><a href="manage_students.php">Manage Students</a></li>
-        <li><a href="../index.php">Back to Home</a></li>
+        <li><a href="../dashboard.php">Dashboard</a></li>
+        <li><a href="index.php">Manage Students</a></li>
+        <li><a href="../../index.php">Back to Home</a></li>
     </ul>
 </nav>
 
@@ -52,7 +56,7 @@ include '../includes/header.php';
             <?php echo $error_message; ?>
         </div>
         <div style="text-align: center; margin-top: 2rem;">
-            <a href="manage_students.php" class="btn btn-secondary">Back to Students List</a>
+            <a href="index.php" class="btn btn-secondary">Back to Students List</a>
         </div>
     <?php else: ?>
         
@@ -140,8 +144,8 @@ include '../includes/header.php';
             <!-- Action Buttons -->
             <div class="action-buttons" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color); text-align: center;">
                 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                    <a href="edit_student.php?id=<?php echo $student['id']; ?>" class="btn btn-primary">Edit Student</a>
-                    <a href="manage_students.php" class="btn btn-secondary">Back to Students List</a>
+                    <a href="edit.php?id=<?php echo $student['id']; ?>" class="btn btn-primary">Edit Student</a>
+                    <a href="index.php" class="btn btn-secondary">Back to Students List</a>
                     <a href="?action=delete&id=<?php echo $student['id']; ?>" 
                        class="btn" style="background-color: var(--error-color); color: white;"
                        onclick="return confirm('Are you sure you want to delete this student? This action cannot be undone.')">Delete Student</a>

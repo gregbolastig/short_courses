@@ -1,17 +1,21 @@
 <?php
 session_start();
-require_once '../config/database.php';
+require_once '../../config/database.php';
+require_once '../../includes/auth_middleware.php';
+
+// Require admin authentication
+requireAdmin();
 
 $page_title = 'Edit Student';
-$css_path = '../assets/css/style.css';
-$js_path = '../assets/js/main.js';
+$css_path = '../../assets/css/style.css';
+$js_path = '../../assets/js/main.js';
 
 $student = null;
 $errors = [];
 $success_message = '';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: manage_students.php');
+    header('Location: index.php');
     exit;
 }
 
@@ -67,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($file_size > 2 * 1024 * 1024) {
             $errors[] = 'Profile picture must be less than 2MB';
         } else {
-            $upload_dir = '../uploads/profiles/';
+            $upload_dir = '../../uploads/profiles/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
@@ -158,7 +162,7 @@ try {
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$student) {
-        header('Location: manage_students.php');
+        header('Location: index.php');
         exit;
     }
     
@@ -175,10 +179,10 @@ include '../includes/header.php';
 
 <nav class="admin-nav">
     <ul>
-        <li><a href="dashboard.php">Dashboard</a></li>
-        <li><a href="manage_students.php">Manage Students</a></li>
-        <li><a href="view_student.php?id=<?php echo $student_id; ?>">View Student</a></li>
-        <li><a href="../index.php">Back to Home</a></li>
+        <li><a href="../dashboard.php">Dashboard</a></li>
+        <li><a href="index.php">Manage Students</a></li>
+        <li><a href="view.php?id=<?php echo $student_id; ?>">View Student</a></li>
+        <li><a href="../../index.php">Back to Home</a></li>
     </ul>
 </nav>
 
@@ -395,8 +399,8 @@ include '../includes/header.php';
             
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">Update Student</button>
-                <a href="view_student.php?id=<?php echo $student_id; ?>" class="btn btn-secondary">Cancel</a>
-                <a href="manage_students.php" class="btn btn-secondary">Back to Students List</a>
+                <a href="view.php?id=<?php echo $student_id; ?>" class="btn btn-secondary">Cancel</a>
+                <a href="index.php" class="btn btn-secondary">Back to Students List</a>
             </div>
         </form>
         <?php endif; ?>

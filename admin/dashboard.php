@@ -246,7 +246,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 px-4 md:px-6 py-3">
-                                    <a href="manage_students.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="students/index.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
                                         View all students
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
@@ -309,7 +309,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-green-50 px-4 md:px-6 py-3">
-                                    <a href="manage_students.php?status=approved" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="students/index.php?status=approved" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
                                         View approved
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
@@ -337,7 +337,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-purple-50 px-4 md:px-6 py-3">
-                                    <a href="manage_students.php?filter=recent" class="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="students/index.php?filter=recent" class="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center transition-colors duration-200">
                                         View recent
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
@@ -361,7 +361,7 @@ try {
                                             </div>
                                             <input type="text" id="studentSearch" placeholder="Search students..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
                                         </div>
-                                        <a href="manage_students.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center justify-center sm:justify-start">
+                                        <a href="students/index.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center justify-center sm:justify-start">
                                             View all
                                             <i class="fas fa-arrow-right ml-1"></i>
                                         </a>
@@ -433,7 +433,7 @@ try {
                                                         </div>
                                                         
                                                         <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="view_student.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
                                                                class="text-primary-600 hover:text-primary-900 flex items-center text-xs">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
@@ -506,7 +506,7 @@ try {
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div class="flex items-center space-x-3">
-                                                            <a href="view_student.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
                                                                class="text-primary-600 hover:text-primary-900 flex items-center">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
@@ -616,7 +616,7 @@ try {
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Manage all student records, approvals, and registrations.</p>
                                 <div class="space-y-2">
-                                    <a href="manage_students.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="students/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View All Students
                                     </a>
                                     <a href="pending_approvals.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
@@ -668,92 +668,117 @@ try {
     </div>
     
     <!-- Approval Modal -->
-    <div id="approvalModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div id="approvalModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay -->
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeApprovalModal()"></div>
+            <!-- Background overlay with blur effect -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeApprovalModal()"></div>
             
-            <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <!-- Modal panel with enhanced design -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100">
                 <form id="approvalForm" method="POST" action="">
                     <input type="hidden" name="action" value="approve">
                     <input type="hidden" name="student_id" id="modalStudentId">
                     
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
-                                <i class="fas fa-check text-green-600"></i>
-                            </div>
-                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                                    Approve Student Registration
-                                </h3>
-                                <p class="text-sm text-gray-500 mb-4">
-                                    Approving: <span id="modalStudentName" class="font-semibold"></span>
-                                </p>
-                                
-                                <div class="space-y-4">
-                                    <!-- Course Dropdown -->
-                                    <div>
-                                        <label for="course" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                                        <select name="course" id="course" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">Select Course</option>
-                                            <?php foreach ($active_courses as $course): ?>
-                                                <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
-                                                    <?php echo htmlspecialchars($course['course_name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <!-- NC Level Dropdown -->
-                                    <div>
-                                        <label for="nc_level" class="block text-sm font-medium text-gray-700 mb-1">NC Level</label>
-                                        <select name="nc_level" id="nc_level" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">Select NC Level</option>
-                                            <option value="NC I">NC I</option>
-                                            <option value="NC II">NC II</option>
-                                            <option value="NC III">NC III</option>
-                                            <option value="NC IV">NC IV</option>
-                                            <option value="NC V">NC V</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <!-- Training Duration -->
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label for="training_start" class="block text-sm font-medium text-gray-700 mb-1">Training Start</label>
-                                            <input type="date" name="training_start" id="training_start" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                        <div>
-                                            <label for="training_end" class="block text-sm font-medium text-gray-700 mb-1">Training End</label>
-                                            <input type="date" name="training_end" id="training_end" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Adviser Dropdown -->
-                                    <div>
-                                        <label for="adviser" class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
-                                        <select name="adviser" id="adviser" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">Select Adviser</option>
-                                            <?php foreach ($advisers as $adviser): ?>
-                                                <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
-                                                    <?php echo htmlspecialchars($adviser['adviser_name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                </div>
+                    <!-- Header Section -->
+                    <div class="text-center mb-6">
+                        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 mb-4 shadow-lg">
+                            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-inner">
+                                <i class="fas fa-user-check text-white text-lg"></i>
                             </div>
                         </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2" id="modal-title">
+                            Approve Student Registration
+                        </h3>
+                        <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
                     </div>
-                    
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+
+                    <!-- Student Info Section -->
+                    <div class="text-center mb-6">
+                        <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <div class="bg-blue-100 rounded-lg p-2">
+                                    <i class="fas fa-user-graduate text-blue-600"></i>
+                                </div>
+                                <span class="font-semibold text-gray-900 text-lg" id="modalStudentName"></span>
+                            </div>
+                            <p class="text-sm text-gray-600">Complete the course assignment details below</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Fields -->
+                    <div class="space-y-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Course Dropdown -->
+                            <div>
+                                <label for="course" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-book text-gray-400 mr-2"></i>Course
+                                </label>
+                                <select name="course" id="course" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    <option value="">Select Course</option>
+                                    <?php foreach ($active_courses as $course): ?>
+                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                            <?php echo htmlspecialchars($course['course_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <!-- NC Level Dropdown -->
+                            <div>
+                                <label for="nc_level" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-certificate text-gray-400 mr-2"></i>NC Level
+                                </label>
+                                <select name="nc_level" id="nc_level" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    <option value="">Select NC Level</option>
+                                    <option value="NC I">NC I</option>
+                                    <option value="NC II">NC II</option>
+                                    <option value="NC III">NC III</option>
+                                    <option value="NC IV">NC IV</option>
+                                    <option value="NC V">NC V</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Training Duration -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="training_start" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>Training Start Date
+                                </label>
+                                <input type="date" name="training_start" id="training_start" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                            </div>
+                            <div>
+                                <label for="training_end" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-check text-gray-400 mr-2"></i>Training End Date
+                                </label>
+                                <input type="date" name="training_end" id="training_end" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <!-- Adviser Dropdown -->
+                        <div>
+                            <label for="adviser" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser
+                            </label>
+                            <select name="adviser" id="adviser" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                <option value="">Select Adviser</option>
+                                <?php foreach ($advisers as $adviser): ?>
+                                    <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                        <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row-reverse gap-3">
+                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
                             <i class="fas fa-check mr-2"></i>
                             Approve Student
                         </button>
-                        <button type="button" onclick="closeApprovalModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+                        <button type="button" onclick="closeApprovalModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>
                             Cancel
                         </button>
                     </div>

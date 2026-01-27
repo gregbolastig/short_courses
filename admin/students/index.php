@@ -1,10 +1,14 @@
 <?php
 session_start();
-require_once '../config/database.php';
+require_once '../../config/database.php';
+require_once '../../includes/auth_middleware.php';
+
+// Require admin authentication
+requireAdmin();
 
 $page_title = 'Manage Students';
-$css_path = '../assets/css/style.css';
-$js_path = '../assets/js/main.js';
+$css_path = '../../assets/css/style.css';
+$js_path = '../../assets/js/main.js';
 
 $students = [];
 $error_message = '';
@@ -98,9 +102,9 @@ include '../includes/header.php';
 
 <nav class="admin-nav">
     <ul>
-        <li><a href="dashboard.php">Dashboard</a></li>
-        <li><a href="manage_students.php">Manage Students</a></li>
-        <li><a href="../index.php">Back to Home</a></li>
+        <li><a href="../dashboard.php">Dashboard</a></li>
+        <li><a href="index.php">Manage Students</a></li>
+        <li><a href="../../index.php">Back to Home</a></li>
     </ul>
 </nav>
 
@@ -155,8 +159,8 @@ include '../includes/header.php';
             
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <button type="submit" class="btn btn-primary">Search & Filter</button>
-                <a href="manage_students.php" class="btn btn-secondary">Clear Filters</a>
-                <a href="../student/register.php" class="btn btn-primary">Add New Student</a>
+                <a href="index.php" class="btn btn-secondary">Clear Filters</a>
+                <a href="../../student/register.php" class="btn btn-primary">Add New Student</a>
             </div>
         </form>
     </div>
@@ -206,9 +210,9 @@ include '../includes/header.php';
                                 <td><?php echo date('M j, Y', strtotime($student['created_at'])); ?></td>
                                 <td>
                                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <a href="view_student.php?id=<?php echo $student['id']; ?>" 
+                                        <a href="view.php?id=<?php echo $student['id']; ?>" 
                                            class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</a>
-                                        <a href="edit_student.php?id=<?php echo $student['id']; ?>" 
+                                        <a href="edit.php?id=<?php echo $student['id']; ?>" 
                                            class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
                                         <a href="?action=delete&id=<?php echo $student['id']; ?>" 
                                            class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; background-color: var(--error-color); color: white;"

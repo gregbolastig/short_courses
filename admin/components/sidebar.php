@@ -46,6 +46,8 @@
                         echo 'index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../courses/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo '../courses/index.php';
                     } else {
                         echo 'courses/index.php';
                     }
@@ -54,6 +56,24 @@
                         <i class="fas fa-graduation-cap text-base"></i>
                     </div>
                     <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
+                </a>
+                
+                <!-- Manage Students -->
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo '../students/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../students/index.php';
+                    } else {
+                        echo 'students/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'students/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                    <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
+                        <i class="fas fa-users text-base"></i>
+                    </div>
+                    <span class="sidebar-text transition-all duration-200 truncate">Manage Students</span>
                 </a>
                 
                 <!-- Adviser List -->
@@ -275,6 +295,8 @@
                         echo 'index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../courses/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo '../courses/index.php';
                     } else {
                         echo 'courses/index.php';
                     }
@@ -283,6 +305,24 @@
                         <i class="fas fa-graduation-cap text-base"></i>
                     </div>
                     <span class="truncate">Manage Courses</span>
+                </a>
+                
+                <!-- Manage Students -->
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo '../students/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../students/index.php';
+                    } else {
+                        echo 'students/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'students/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                    <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
+                        <i class="fas fa-users text-base"></i>
+                    </div>
+                    <span class="truncate">Manage Students</span>
                 </a>
                 
                 <!-- Adviser List -->
