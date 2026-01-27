@@ -172,15 +172,41 @@ try {
         
         <!-- Page Content -->
         <main class="p-4 md:p-6 lg:p-8">
-            <!-- Page Header -->
-            <div class="mb-6 md:mb-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div class="mb-4 md:mb-0">
-                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Manage Students</h1>
-                        <p class="text-gray-600">View, edit, and manage all student registrations</p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <!-- Removed Add New Student button - students should register themselves -->
+            <!-- Page Header with Enhanced Design -->
+            <div class="mb-8">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 md:p-8 text-white shadow-xl">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div class="mb-4 md:mb-0">
+                            <div class="flex items-center mb-3">
+                                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center mr-4">
+                                    <i class="fas fa-users text-2xl text-white"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-3xl md:text-4xl font-bold mb-1">Manage Students</h1>
+                                    <p class="text-blue-100 text-lg">Comprehensive student management system</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-4 text-sm text-blue-100">
+                                <div class="flex items-center">
+                                    <i class="fas fa-database mr-2"></i>
+                                    <span>Total: <?php echo number_format($total_students_count); ?> students</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-clock mr-2"></i>
+                                    <span>Pending: <?php echo number_format($pending_count); ?></span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    <span>Approved: <?php echo number_format($approved_count); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold"><?php echo number_format($total_students_count); ?></div>
+                                <div class="text-xs text-blue-200">Total Students</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -204,69 +230,104 @@ try {
                 </div>
             <?php endif; ?>
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-users text-blue-600 text-lg md:text-xl"></i>
+            <!-- Enhanced Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-users text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Students</p>
+                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($total_students_count); ?></p>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <p class="text-sm font-medium text-gray-600">Total Students</p>
-                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($total_students_count); ?></p>
+                        <div class="text-blue-500">
+                            <i class="fas fa-arrow-up text-sm"></i>
                         </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500">All registered students</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-clock text-yellow-600 text-lg md:text-xl"></i>
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-clock text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Pending</p>
+                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($pending_count); ?></p>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <p class="text-sm font-medium text-gray-600">Pending</p>
-                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($pending_count); ?></p>
+                        <div class="text-yellow-500">
+                            <i class="fas fa-exclamation-triangle text-sm"></i>
                         </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500">Awaiting approval</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-check text-green-600 text-lg md:text-xl"></i>
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-check text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Approved</p>
+                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($approved_count); ?></p>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <p class="text-sm font-medium text-gray-600">Approved</p>
-                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($approved_count); ?></p>
+                        <div class="text-green-500">
+                            <i class="fas fa-check-circle text-sm"></i>
                         </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500">Successfully approved</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 md:w-12 md:h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-times text-red-600 text-lg md:text-xl"></i>
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-times text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Rejected</p>
+                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($rejected_count); ?></p>
                             </div>
                         </div>
-                        <div class="ml-4 flex-1">
-                            <p class="text-sm font-medium text-gray-600">Rejected</p>
-                            <p class="text-xl md:text-2xl font-bold text-gray-900"><?php echo number_format($rejected_count); ?></p>
+                        <div class="text-red-500">
+                            <i class="fas fa-times-circle text-sm"></i>
                         </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500">Application rejected</p>
                     </div>
                 </div>
             </div>
-            <!-- Search and Filter Section -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 mb-6 md:mb-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-semibold text-gray-900">Search & Filter Students</h2>
-                    <i class="fas fa-search text-gray-400"></i>
+            <!-- Enhanced Search and Filter Section -->
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3">
+                            <i class="fas fa-search text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">Search & Filter Students</h2>
+                            <p class="text-sm text-gray-600">Find and filter students by various criteria</p>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center text-sm text-gray-500">
+                        <i class="fas fa-filter mr-2"></i>
+                        <span>Advanced Filtering</span>
+                    </div>
                 </div>
                 
                 <form method="GET" class="space-y-4">
@@ -332,21 +393,28 @@ try {
                 </form>
             </div>
 
-            <!-- Students Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="px-4 md:px-6 py-4 border-b border-gray-200">
+            <!-- Enhanced Students Table -->
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 md:px-8 py-6 border-b border-gray-200">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h2 class="text-lg font-semibold text-gray-900">Students List</h2>
-                            <p class="text-sm text-gray-600 mt-1">
-                                Showing <?php echo count($students); ?> of <?php echo number_format($total_students); ?> students
-                            </p>
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3">
+                                <i class="fas fa-table text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">Students Directory</h2>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    Showing <?php echo count($students); ?> of <?php echo number_format($total_students); ?> students
+                                </p>
+                            </div>
                         </div>
                         <?php if ($total_pages > 1): ?>
-                            <div class="mt-3 sm:mt-0">
-                                <span class="text-sm text-gray-600">
-                                    Page <?php echo $page; ?> of <?php echo $total_pages; ?>
-                                </span>
+                            <div class="mt-3 sm:mt-0 flex items-center">
+                                <div class="bg-white rounded-lg px-3 py-2 border border-gray-200 shadow-sm">
+                                    <span class="text-sm font-medium text-gray-600">
+                                        Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                                    </span>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>
