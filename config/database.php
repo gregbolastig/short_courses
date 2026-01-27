@@ -88,11 +88,25 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_students);
         
+        // Create courses table
+        $sql_courses = "CREATE TABLE IF NOT EXISTS courses (
+            course_id INT AUTO_INCREMENT PRIMARY KEY,
+            course_name VARCHAR(200) NOT NULL UNIQUE,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        
+        $pdo->exec($sql_courses);
+        
+        // Don't insert sample courses - let users add them manually
+        
         // Insert default admin user if not exists
         $admin_check = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
         if ($admin_check->fetchColumn() == 0) {
             $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
-            $pdo->exec("INSERT INTO users (username, email, password, role) VALUES ('admin', 'admin@system.com', '$admin_password', 'admin')");
+            $stmt = $pdo->prepare("INSERT IGNORE INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt->execute(['admin', 'admin@system.com', $admin_password, 'admin']);
         }
         
         return true;
@@ -168,6 +182,24 @@ function fixDatabase() {
             if (!$verificationExists) {
                 $conn->exec("ALTER TABLE students ADD COLUMN verification_code VARCHAR(4) NOT NULL DEFAULT '0000'");
                 $conn->exec("ALTER TABLE students ADD COLUMN is_verified BOOLEAN DEFAULT FALSE");
+            }
+            
+            // Check if courses table exists
+            $stmt = $conn->query("SHOW TABLES LIKE 'courses'");
+            $coursesTableExists = $stmt->fetch();
+            
+            if (!$coursesTableExists) {
+                // Create courses table
+                $sql_courses = "CREATE TABLE courses (
+                    course_id INT AUTO_INCREMENT PRIMARY KEY,
+                    course_name VARCHAR(200) NOT NULL UNIQUE,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )";
+                $conn->exec($sql_courses);
+                
+                // Don't insert sample courses - let users add them manually
             }
         }
         

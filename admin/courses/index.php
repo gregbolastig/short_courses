@@ -75,16 +75,29 @@ try {
     // Get total count
     $count_sql = "SELECT COUNT(*) as total FROM courses $search_condition";
     $stmt = $conn->prepare($count_sql);
-    $stmt->execute($params);
+    
+    if (!empty($search)) {
+        $stmt->bindValue(1, $search_param, PDO::PARAM_STR);
+    }
+    
+    $stmt->execute();
     $total_courses = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages = ceil($total_courses / $per_page);
     
     // Get courses
-    $sql = "SELECT * FROM courses $search_condition ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    $params[] = $per_page;
-    $params[] = $offset;
+    $sql = "SELECT * FROM courses $search_condition ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
     $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
+    
+    // Bind search parameters if they exist
+    if (!empty($search)) {
+        $stmt->bindValue(1, $search_param, PDO::PARAM_STR);
+    }
+    
+    // Bind pagination parameters
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    
+    $stmt->execute();
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get statistics
@@ -286,7 +299,7 @@ try {
                                     </div>
                                     <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No courses found</h3>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
-                                        <?php echo !empty($search) ? 'No courses match your search criteria.' : 'Start by creating your first course.'; ?>
+                                        <?php echo !empty($search) ? 'No courses match your search criteria.' : 'Get started by adding your first course to the system.'; ?>
                                     </p>
                                     <?php if (empty($search)): ?>
                                         <a href="add.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
