@@ -617,10 +617,10 @@ try {
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Manage academic advisers and their assignments.</p>
                                 <div class="space-y-2">
-                                    <a href="adviser_list.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="advisers/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View Adviser List
                                     </a>
-                                    <a href="add_adviser.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="advisers/add.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Add New Adviser
                                     </a>
                                 </div>
@@ -721,7 +721,7 @@ try {
                                         <label for="adviser" class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
                                         <select name="adviser" id="adviser" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Select Adviser</option>
-                                            <option value="John Doe">John Doe</option>
+                                            <option value="Juan dela Cruz">Juan dela Cruz</option>
                                             <option value="Jane Smith">Jane Smith</option>
                                             <option value="Mike Johnson">Mike Johnson</option>
                                             <option value="Sarah Wilson">Sarah Wilson</option>

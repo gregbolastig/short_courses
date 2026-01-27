@@ -26,8 +26,9 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             $adviser = $_POST['adviser'];
             
             // Get course details
-            $stmt = $conn->prepare("SELECT course_name, nc_level FROM courses WHERE course_id = ?");
-            $stmt->execute([$course_id]);
+            $stmt = $conn->prepare("SELECT course_name, nc_level FROM courses WHERE course_id = :course_id");
+            $stmt->bindParam(':course_id', $course_id);
+            $stmt->execute();
             $course = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Update student with approval details
@@ -114,24 +115,33 @@ try {
     $params = [];
     
     if (!empty($search)) {
-        $search_condition = "WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR uli LIKE ?";
+        $search_condition = "WHERE first_name LIKE :search OR last_name LIKE :search2 OR email LIKE :search3 OR uli LIKE :search4";
         $search_param = "%$search%";
-        $params = [$search_param, $search_param, $search_param, $search_param];
+        $params[':search'] = $search_param;
+        $params[':search2'] = $search_param;
+        $params[':search3'] = $search_param;
+        $params[':search4'] = $search_param;
     }
     
     // Get total count for pagination
     $count_sql = "SELECT COUNT(*) as total FROM students $search_condition";
     $stmt = $conn->prepare($count_sql);
-    $stmt->execute($params);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
     $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages = ceil($total_students_count / $per_page);
     
     // Get students with pagination
-    $sql = "SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, created_at FROM students $search_condition ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    $params[] = $per_page;
-    $params[] = $offset;
+    $sql = "SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, created_at FROM students $search_condition ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
     $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get active courses for dropdown
@@ -593,7 +603,7 @@ try {
                                         <label for="adviser" class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
                                         <select name="adviser" id="adviser" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="">Select Adviser</option>
-                                            <option value="John Doe">John Doe</option>
+                                            <option value="Juan dela Cruz">Juan dela Cruz</option>
                                             <option value="Jane Smith">Jane Smith</option>
                                             <option value="Mike Johnson">Mike Johnson</option>
                                             <option value="Sarah Wilson">Sarah Wilson</option>

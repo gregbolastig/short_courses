@@ -10,7 +10,13 @@
             <!-- Logo/Brand -->
             <div class="flex items-center flex-shrink-0 px-3 md:px-4 mb-6 md:mb-8">
                 <div class="bg-white bg-opacity-20 p-2 md:p-3 rounded-lg mr-2 md:mr-3 flex-shrink-0 backdrop-blur-sm">
-                    <img src="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../../assets/images/logo.png' : '../assets/images/logo.png'; ?>" alt="Logo" class="w-6 h-6 md:w-8 md:h-8 object-contain">
+                    <img src="<?php 
+                        if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                            echo '../../assets/images/logo.png';
+                        } else {
+                            echo '../assets/images/logo.png';
+                        }
+                    ?>" alt="Logo" class="w-6 h-6 md:w-8 md:h-8 object-contain">
                 </div>
                 <div id="sidebar-text" class="transition-all duration-200 min-w-0 flex-1">
                     <h1 class="text-lg md:text-xl font-bold text-white truncate">JZGMSAT</h1>
@@ -21,7 +27,13 @@
             <!-- Navigation -->
             <nav class="mt-3 md:mt-5 flex-1 px-2 space-y-1 md:space-y-2">
                 <!-- Dashboard -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../dashboard.php' : 'dashboard.php'; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../dashboard.php';
+                    } else {
+                        echo 'dashboard.php';
+                    }
+                ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
                         <i class="fas fa-tachometer-alt text-base"></i>
                     </div>
@@ -29,7 +41,15 @@
                 </a>
                 
                 <!-- Manage Courses -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 'courses/index.php'; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../courses/index.php';
+                    } else {
+                        echo 'courses/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
                         <i class="fas fa-graduation-cap text-base"></i>
                     </div>
@@ -37,7 +57,15 @@
                 </a>
                 
                 <!-- Adviser List -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../adviser_list.php' : 'adviser_list.php'; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'adviser_list.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo '../advisers/index.php';
+                    } else {
+                        echo 'advisers/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
                         <i class="fas fa-chalkboard-teacher text-base"></i>
                     </div>
@@ -107,7 +135,13 @@
                                 </span>
                             </div>
                             <div class="mt-2">
-                                <a href="pending_approvals.php" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
+                                <a href="<?php 
+                                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                                        echo '../pending_approvals.php';
+                                    } else {
+                                        echo 'pending_approvals.php';
+                                    }
+                                ?>" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
                                     <i class="fas fa-arrow-right mr-1"></i>
                                     Review pending approvals
                                 </a>
@@ -116,7 +150,13 @@
                         <?php endif; ?>
                         
                         <div class="py-1">
-                            <a href="profile.php" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                            <a href="<?php 
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                    echo '../profile.php';
+                } else {
+                    echo 'profile.php';
+                }
+            ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-blue-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-user-cog text-blue-600"></i>
                                 </div>
@@ -125,7 +165,13 @@
                                     <p class="text-xs text-gray-500">Manage your profile</p>
                                 </div>
                             </a>
-                            <a href="preferences.php" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                            <a href="<?php 
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                    echo '../preferences.php';
+                } else {
+                    echo 'preferences.php';
+                }
+            ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-purple-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-cog text-purple-600"></i>
                                 </div>
@@ -134,7 +180,13 @@
                                     <p class="text-xs text-gray-500">System settings</p>
                                 </div>
                             </a>
-                            <a href="pending_approvals.php" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                            <a href="<?php 
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                    echo '../pending_approvals.php';
+                } else {
+                    echo 'pending_approvals.php';
+                }
+            ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-yellow-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-bell text-yellow-600"></i>
                                 </div>
@@ -151,7 +203,13 @@
                                 </div>
                             </a>
                             <div class="border-t border-gray-100 my-1"></div>
-                            <a href="../auth/logout.php" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200">
+                            <a href="<?php 
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                    echo '../../auth/logout.php';
+                } else {
+                    echo '../auth/logout.php';
+                }
+            ?>" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200">
                                 <div class="bg-red-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-sign-out-alt text-red-600"></i>
                                 </div>
@@ -177,7 +235,13 @@
             <div class="flex items-center justify-between flex-shrink-0 px-4 mb-6">
                 <div class="flex items-center min-w-0 flex-1">
                     <div class="bg-white bg-opacity-20 p-2 rounded-lg mr-3 flex-shrink-0 backdrop-blur-sm">
-                        <img src="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../../assets/images/logo.png' : '../assets/images/logo.png'; ?>" alt="Logo" class="w-6 h-6 object-contain">
+                        <img src="<?php 
+                            if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                                echo '../../assets/images/logo.png';
+                            } else {
+                                echo '../assets/images/logo.png';
+                            }
+                        ?>" alt="Logo" class="w-6 h-6 object-contain">
                     </div>
                     <div class="min-w-0 flex-1">
                         <h1 class="text-lg font-bold text-white truncate">JZMSAT</h1>
@@ -192,7 +256,13 @@
             <!-- Mobile Navigation -->
             <nav class="mt-3 flex-1 px-2 space-y-1">
                 <!-- Dashboard -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../dashboard.php' : 'dashboard.php'; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../dashboard.php';
+                    } else {
+                        echo 'dashboard.php';
+                    }
+                ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
                         <i class="fas fa-tachometer-alt text-base"></i>
                     </div>
@@ -200,7 +270,15 @@
                 </a>
                 
                 <!-- Manage Courses -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 'courses/index.php'; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo '../courses/index.php';
+                    } else {
+                        echo 'courses/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
                         <i class="fas fa-graduation-cap text-base"></i>
                     </div>
@@ -208,7 +286,15 @@
                 </a>
                 
                 <!-- Adviser List -->
-                <a href="<?php echo (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? '../adviser_list.php' : 'adviser_list.php'; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'adviser_list.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                <a href="<?php 
+                    if (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
+                        echo 'index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) {
+                        echo '../advisers/index.php';
+                    } else {
+                        echo 'advisers/index.php';
+                    }
+                ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
                         <i class="fas fa-chalkboard-teacher text-base"></i>
                     </div>

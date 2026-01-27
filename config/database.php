@@ -99,7 +99,23 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_courses);
         
+        // Create advisers table
+        $sql_advisers = "CREATE TABLE IF NOT EXISTS advisers (
+            adviser_id INT AUTO_INCREMENT PRIMARY KEY,
+            adviser_name VARCHAR(200) NOT NULL,
+            email VARCHAR(150) UNIQUE,
+            phone VARCHAR(20),
+            department VARCHAR(100),
+            specialization VARCHAR(200),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        
+        $pdo->exec($sql_advisers);
+        
         // Don't insert sample courses - let users add them manually
+        // Don't insert sample advisers - let users add them manually
         
         // Insert default admin user if not exists
         $admin_check = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
@@ -200,6 +216,26 @@ function fixDatabase() {
                 $conn->exec($sql_courses);
                 
                 // Don't insert sample courses - let users add them manually
+            }
+            
+            // Check if advisers table exists
+            $stmt = $conn->query("SHOW TABLES LIKE 'advisers'");
+            $advisersTableExists = $stmt->fetch();
+            
+            if (!$advisersTableExists) {
+                // Create advisers table
+                $sql_advisers = "CREATE TABLE advisers (
+                    adviser_id INT AUTO_INCREMENT PRIMARY KEY,
+                    adviser_name VARCHAR(200) NOT NULL,
+                    email VARCHAR(150) UNIQUE,
+                    phone VARCHAR(20),
+                    department VARCHAR(100),
+                    specialization VARCHAR(200),
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )";
+                $conn->exec($sql_advisers);
             }
         }
         

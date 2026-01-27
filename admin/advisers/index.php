@@ -7,18 +7,18 @@ require_once '../../includes/auth_middleware.php';
 requireAdmin();
 
 // Set page title
-$page_title = 'Manage Courses';
+$page_title = 'Manage Advisers';
 
 // Set breadcrumb
 $breadcrumb_items = [
-    ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap']
+    ['title' => 'Manage Advisers', 'icon' => 'fas fa-chalkboard-teacher']
 ];
 
 // Initialize variables to prevent undefined warnings
-$total_courses_count = 0;
-$courses = [];
+$total_advisers_count = 0;
+$advisers = [];
 $total_pages = 0;
-$total_courses = 0;
+$total_advisers = 0;
 $search = '';
 
 // Handle delete operation
@@ -27,15 +27,15 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+        $stmt = $conn->prepare("DELETE FROM advisers WHERE adviser_id = ?");
         $stmt->execute([$_GET['delete']]);
-        $success_message = 'Course deleted successfully!';
+        $success_message = 'Adviser deleted successfully!';
     } catch (PDOException $e) {
-        $error_message = 'Cannot delete course: ' . $e->getMessage();
+        $error_message = 'Cannot delete adviser: ' . $e->getMessage();
     }
 }
 
-// Get courses with pagination
+// Get advisers with pagination
 try {
     $database = new Database();
     $conn = $database->getConnection();
@@ -51,13 +51,16 @@ try {
     $params = [];
     
     if (!empty($search)) {
-        $search_condition = "WHERE course_name LIKE :search";
+        $search_condition = "WHERE adviser_name LIKE :search OR email LIKE :search2 OR department LIKE :search3 OR specialization LIKE :search4";
         $search_param = "%$search%";
         $params[':search'] = $search_param;
+        $params[':search2'] = $search_param;
+        $params[':search3'] = $search_param;
+        $params[':search4'] = $search_param;
     }
     
     // Get total count
-    $count_sql = "SELECT COUNT(*) as total FROM courses $search_condition";
+    $count_sql = "SELECT COUNT(*) as total FROM advisers $search_condition";
     $stmt = $conn->prepare($count_sql);
     
     foreach ($params as $key => $value) {
@@ -65,11 +68,11 @@ try {
     }
     
     $stmt->execute();
-    $total_courses = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    $total_pages = ceil($total_courses / $per_page);
+    $total_advisers = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_pages = ceil($total_advisers / $per_page);
     
-    // Get courses
-    $sql = "SELECT * FROM courses $search_condition ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+    // Get advisers
+    $sql = "SELECT * FROM advisers $search_condition ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
     $stmt = $conn->prepare($sql);
     
     // Bind search parameters if they exist
@@ -82,19 +85,19 @@ try {
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     
     $stmt->execute();
-    $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get statistics
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM courses");
-    $total_courses_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM advisers");
+    $total_advisers_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
     // Set default values in case of error
-    $total_courses_count = 0;
-    $courses = [];
+    $total_advisers_count = 0;
+    $advisers = [];
     $total_pages = 0;
-    $total_courses = 0;
+    $total_advisers = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -102,7 +105,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Courses - Student Registration System</title>
+    <title>Manage Advisers - Student Registration System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -146,13 +149,13 @@ try {
                         <div class="mb-8 mt-6">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                                 <div>
-                                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Course Management</h1>
-                                    <p class="text-lg text-gray-600 mt-2">Organize and manage your educational course offerings</p>
+                                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Adviser Management</h1>
+                                    <p class="text-lg text-gray-600 mt-2">Manage your educational advisers and mentors</p>
                                 </div>
                                 <div class="flex items-center space-x-4">
                                     <a href="add.php" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                         <i class="fas fa-plus mr-2"></i>
-                                        Add New Course
+                                        Add New Adviser
                                     </a>
                                 </div>
                             </div>
@@ -193,20 +196,20 @@ try {
                                         <div class="flex items-center space-x-6">
                                             <div class="flex-shrink-0">
                                                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
-                                                    <i class="fas fa-graduation-cap text-white text-3xl"></i>
+                                                    <i class="fas fa-chalkboard-teacher text-white text-3xl"></i>
                                                 </div>
                                             </div>
                                             <div class="text-center">
-                                                <dt class="text-lg font-medium text-gray-600 mb-1">Total Courses</dt>
-                                                <dd class="text-4xl font-bold text-gray-900 tracking-tight"><?php echo $total_courses_count; ?></dd>
-                                                <p class="text-sm text-gray-500 mt-1">Active course offerings</p>
+                                                <dt class="text-lg font-medium text-gray-600 mb-1">Total Advisers</dt>
+                                                <dd class="text-4xl font-bold text-gray-900 tracking-tight"><?php echo $total_advisers_count; ?></dd>
+                                                <p class="text-sm text-gray-500 mt-1">Active educational advisers</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>         
-               <!-- Courses Table -->
+                        </div>    
+                    <!-- Advisers Table -->
                         <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                             <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -214,7 +217,7 @@ try {
                                         <div class="bg-blue-100 rounded-xl p-2">
                                             <i class="fas fa-list text-blue-600"></i>
                                         </div>
-                                        <h3 class="text-xl font-bold text-gray-900">Course Directory</h3>
+                                        <h3 class="text-xl font-bold text-gray-900">Adviser Directory</h3>
                                     </div>
                                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                                         <!-- Search Bar -->
@@ -223,7 +226,7 @@ try {
                                                 <i class="fas fa-search text-gray-400"></i>
                                             </div>
                                             <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                                                   placeholder="Search courses..." 
+                                                   placeholder="Search advisers..." 
                                                    class="block w-full sm:w-80 pl-12 pr-4 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-all duration-200">
                                             <?php if (!empty($search)): ?>
                                                 <a href="index.php" class="absolute inset-y-0 right-0 pr-4 flex items-center">
@@ -235,19 +238,19 @@ try {
                                 </div>
                             </div>
                             
-                            <?php if (empty($courses)): ?>
+                            <?php if (empty($advisers)): ?>
                                 <div class="text-center py-16">
                                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
-                                        <i class="fas fa-graduation-cap text-blue-600 text-3xl"></i>
+                                        <i class="fas fa-chalkboard-teacher text-blue-600 text-3xl"></i>
                                     </div>
-                                    <h3 class="text-2xl font-bold text-gray-900 mb-3">No courses found</h3>
+                                    <h3 class="text-2xl font-bold text-gray-900 mb-3">No advisers found</h3>
                                     <p class="text-lg text-gray-600 mb-8 px-4 max-w-md mx-auto">
-                                        <?php echo !empty($search) ? 'No courses match your search criteria. Try adjusting your search terms.' : 'Ready to get started? Create your first course and begin building your educational offerings.'; ?>
+                                        <?php echo !empty($search) ? 'No advisers match your search criteria. Try adjusting your search terms.' : 'Ready to get started? Add your first adviser to begin building your educational team.'; ?>
                                     </p>
                                     <?php if (empty($search)): ?>
                                         <a href="add.php" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-plus mr-3"></i>
-                                            Create Your First Course
+                                            Add Your First Adviser
                                         </a>
                                     <?php endif; ?>
                                 </div>
@@ -257,46 +260,69 @@ try {
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                                             <tr>
-                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Course Name</th>
+                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Adviser</th>
+                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Department</th>
+                                                <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Specialization</th>
                                                 <th class="px-8 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Created</th>
                                                 <th class="px-8 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
-                                            <?php foreach ($courses as $course): ?>
+                                            <?php foreach ($advisers as $adviser): ?>
                                                 <tr class="hover:bg-blue-50 transition-all duration-200 border-b border-gray-100">
                                                     <td class="px-8 py-6">
                                                         <div class="flex items-center space-x-3">
                                                             <div class="bg-blue-100 rounded-lg p-2">
-                                                                <i class="fas fa-book text-blue-600"></i>
+                                                                <i class="fas fa-user-tie text-blue-600"></i>
                                                             </div>
                                                             <div>
                                                                 <div class="text-lg font-semibold text-gray-900">
-                                                                    <?php echo htmlspecialchars($course['course_name']); ?>
+                                                                    <?php echo htmlspecialchars($adviser['adviser_name']); ?>
                                                                 </div>
-                                                                <div class="text-sm text-gray-500">Course ID: #<?php echo $course['course_id']; ?></div>
+                                                                <?php if ($adviser['email']): ?>
+                                                                    <div class="text-sm text-gray-500">
+                                                                        <i class="fas fa-envelope mr-1"></i>
+                                                                        <?php echo htmlspecialchars($adviser['email']); ?>
+                                                                    </div>
+                                                                <?php endif; ?>
+                                                                <?php if ($adviser['phone']): ?>
+                                                                    <div class="text-sm text-gray-500">
+                                                                        <i class="fas fa-phone mr-1"></i>
+                                                                        <?php echo htmlspecialchars($adviser['phone']); ?>
+                                                                    </div>
+                                                                <?php endif; ?>
                                                             </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-8 py-6">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo $adviser['department'] ? htmlspecialchars($adviser['department']) : '-'; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-8 py-6">
+                                                        <div class="text-sm text-gray-900">
+                                                            <?php echo $adviser['specialization'] ? htmlspecialchars($adviser['specialization']) : '-'; ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-8 py-6">
                                                         <div class="flex items-center space-x-2">
                                                             <i class="fas fa-calendar-alt text-gray-400"></i>
                                                             <span class="text-sm font-medium text-gray-900">
-                                                                <?php echo date('M j, Y', strtotime($course['created_at'])); ?>
+                                                                <?php echo date('M j, Y', strtotime($adviser['created_at'])); ?>
                                                             </span>
                                                         </div>
                                                         <div class="text-xs text-gray-500 mt-1">
-                                                            <?php echo date('g:i A', strtotime($course['created_at'])); ?>
+                                                            <?php echo date('g:i A', strtotime($adviser['created_at'])); ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-8 py-6">
                                                         <div class="flex items-center justify-center space-x-3">
-                                                            <a href="edit.php?id=<?php echo $course['course_id']; ?>" 
+                                                            <a href="edit.php?id=<?php echo $adviser['adviser_id']; ?>" 
                                                                class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105 shadow-sm">
                                                                 <i class="fas fa-edit mr-2"></i>Edit
                                                             </a>
                                                             
-                                                            <button onclick="confirmDelete('<?php echo htmlspecialchars($course['course_name']); ?>', <?php echo $course['course_id']; ?>)"
+                                                            <button onclick="confirmDelete('<?php echo htmlspecialchars($adviser['adviser_name']); ?>', <?php echo $adviser['adviser_id']; ?>)"
                                                                class="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-semibold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 transform hover:scale-105 shadow-sm">
                                                                 <i class="fas fa-trash mr-2"></i>Delete
                                                             </button>
@@ -310,35 +336,56 @@ try {
 
                                 <!-- Mobile Card View -->
                                 <div class="md:hidden">
-                                    <?php foreach ($courses as $course): ?>
+                                    <?php foreach ($advisers as $adviser): ?>
                                         <div class="border-b border-gray-200 p-6 hover:bg-blue-50 transition-all duration-200">
                                             <div class="flex items-start justify-between mb-4">
                                                 <div class="flex items-center space-x-3 flex-1">
                                                     <div class="bg-blue-100 rounded-lg p-2">
-                                                        <i class="fas fa-book text-blue-600"></i>
+                                                        <i class="fas fa-user-tie text-blue-600"></i>
                                                     </div>
                                                     <div class="flex-1">
                                                         <h4 class="text-lg font-semibold text-gray-900">
-                                                            <?php echo htmlspecialchars($course['course_name']); ?>
+                                                            <?php echo htmlspecialchars($adviser['adviser_name']); ?>
                                                         </h4>
-                                                        <p class="text-sm text-gray-500">
-                                                            Course ID: #<?php echo $course['course_id']; ?>
-                                                        </p>
+                                                        <?php if ($adviser['email']): ?>
+                                                            <p class="text-sm text-gray-500">
+                                                                <i class="fas fa-envelope mr-1"></i>
+                                                                <?php echo htmlspecialchars($adviser['email']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                        <?php if ($adviser['phone']): ?>
+                                                            <p class="text-sm text-gray-500">
+                                                                <i class="fas fa-phone mr-1"></i>
+                                                                <?php echo htmlspecialchars($adviser['phone']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                        <?php if ($adviser['department']): ?>
+                                                            <p class="text-sm text-gray-600 mt-1">
+                                                                <i class="fas fa-building mr-1"></i>
+                                                                <?php echo htmlspecialchars($adviser['department']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                        <?php if ($adviser['specialization']): ?>
+                                                            <p class="text-sm text-gray-600">
+                                                                <i class="fas fa-star mr-1"></i>
+                                                                <?php echo htmlspecialchars($adviser['specialization']); ?>
+                                                            </p>
+                                                        <?php endif; ?>
                                                         <div class="flex items-center space-x-2 mt-2">
                                                             <i class="fas fa-calendar-alt text-gray-400 text-xs"></i>
                                                             <span class="text-sm text-gray-600">
-                                                                Created: <?php echo date('M j, Y', strtotime($course['created_at'])); ?>
+                                                                Created: <?php echo date('M j, Y', strtotime($adviser['created_at'])); ?>
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="flex items-center space-x-3">
-                                                <a href="edit.php?id=<?php echo $course['course_id']; ?>" 
+                                                <a href="edit.php?id=<?php echo $adviser['adviser_id']; ?>" 
                                                    class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
-                                                    <i class="fas fa-edit mr-2"></i>Edit Course
+                                                    <i class="fas fa-edit mr-2"></i>Edit Adviser
                                                 </a>
-                                                <button onclick="confirmDelete('<?php echo htmlspecialchars($course['course_name']); ?>', <?php echo $course['course_id']; ?>)"
+                                                <button onclick="confirmDelete('<?php echo htmlspecialchars($adviser['adviser_name']); ?>', <?php echo $adviser['adviser_id']; ?>)"
                                                    class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-red-300 text-sm font-semibold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 transform hover:scale-105">
                                                     <i class="fas fa-trash mr-2"></i>Delete
                                                 </button>
@@ -353,7 +400,7 @@ try {
                                 <div class="px-6 py-5 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                                         <div class="text-sm font-medium text-gray-700">
-                                            Showing <span class="font-bold text-gray-900"><?php echo $offset + 1; ?></span> to <span class="font-bold text-gray-900"><?php echo min($offset + $per_page, $total_courses); ?></span> of <span class="font-bold text-gray-900"><?php echo $total_courses; ?></span> courses
+                                            Showing <span class="font-bold text-gray-900"><?php echo $offset + 1; ?></span> to <span class="font-bold text-gray-900"><?php echo min($offset + $per_page, $total_advisers); ?></span> of <span class="font-bold text-gray-900"><?php echo $total_advisers; ?></span> advisers
                                         </div>
                                         
                                         <div class="flex items-center space-x-2">
@@ -395,13 +442,14 @@ try {
         </div>
     </div>
     
-    <?php include '../components/admin-scripts.php'; ?>
-</body>
-</html>    <script
->
-        function confirmDelete(courseName, courseId) {
-            if (confirm(`Are you sure you want to delete the course "${courseName}"?\n\nThis action cannot be undone and will permanently remove the course from the system.`)) {
-                window.location.href = `?delete=${courseId}`;
+    <script>
+        function confirmDelete(adviserName, adviserId) {
+            if (confirm(`Are you sure you want to delete the adviser "${adviserName}"?\n\nThis action cannot be undone and will permanently remove the adviser from the system.`)) {
+                window.location.href = `?delete=${adviserId}`;
             }
         }
     </script>
+    
+    <?php include '../components/admin-scripts.php'; ?>
+</body>
+</html>
