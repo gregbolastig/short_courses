@@ -71,7 +71,7 @@ try {
     $conn = $database->getConnection();
     
     // Get students with filters
-    $sql = "SELECT id, first_name, middle_name, last_name, email, sex, province, city, contact_number, created_at 
+    $sql = "SELECT id, first_name, middle_name, last_name, email, uli, sex, province, city, contact_number, created_at 
             FROM students $where_clause ORDER BY created_at DESC";
     
     $stmt = $conn->prepare($sql);
@@ -178,6 +178,7 @@ include '../includes/header.php';
                             <th>ID</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>ULI</th>
                             <th>Sex</th>
                             <th>Province</th>
                             <th>City</th>
@@ -197,6 +198,7 @@ include '../includes/header.php';
                                     ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($student['email']); ?></td>
+                                <td><?php echo htmlspecialchars($student['uli']); ?></td>
                                 <td><?php echo htmlspecialchars($student['sex']); ?></td>
                                 <td><?php echo htmlspecialchars($student['province']); ?></td>
                                 <td><?php echo htmlspecialchars($student['city']); ?></td>

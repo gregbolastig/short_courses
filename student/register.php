@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate required fields
     $required_fields = [
         'first_name', 'last_name', 'birthday', 'sex', 'civil_status',
-        'country_code', 'contact_number', 'province', 'city', 'barangay', 'place_of_birth',
+        'country_code', 'contact_number', 'province', 'city', 'barangay', 'birth_province', 'birth_city',
         'guardian_last_name', 'guardian_first_name', 'parent_country_code', 'parent_contact', 'email', 'uli', 'last_school',
         'school_province', 'school_city', 'verification_input'
     ];
@@ -36,11 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid email format';
     }
     
-    // Validate ULI format
+    // Validate ULI format and convert to uppercase
     if (!empty($_POST['uli'])) {
         $uli = strtoupper(trim($_POST['uli']));
         if (!preg_match('/^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/', $uli)) {
-            $errors[] = 'Invalid ULI format. Required format: ABC-12-123-12345-123 (3 letters followed by numbers)';
+            $errors[] = 'Invalid ULI format. Please enter 3 letters followed by numbers (example: abc12123123451234). The system will automatically format it correctly.';
         }
         // Update the POST data with the formatted ULI
         $_POST['uli'] = $uli;
@@ -152,13 +152,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            
             $sql = "INSERT INTO students (
                 student_id, first_name, middle_name, last_name, extension_name, birthday, age, sex, civil_status,
-                contact_number, province, city, barangay, street_address, place_of_birth,
+                contact_number, province, city, barangay, street_address, birth_province, birth_city,
                 guardian_last_name, guardian_first_name, guardian_middle_name, guardian_extension, parent_contact, 
                 email, profile_picture, uli, last_school, school_province, school_city, 
                 verification_code, is_verified, status
             ) VALUES (
                 :student_id, :first_name, :middle_name, :last_name, :extension_name, :birthday, :age, :sex, :civil_status,
-                :contact_number, :province, :city, :barangay, :street_address, :place_of_birth,
+                :contact_number, :province, :city, :barangay, :street_address, :birth_province, :birth_city,
                 :guardian_last_name, :guardian_first_name, :guardian_middle_name, :guardian_extension, :parent_contact,
                 :email, :profile_picture, :uli, :last_school, :school_province, :school_city,
                 :verification_code, TRUE, 'pending'
@@ -184,7 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
-            $stmt->bindParam(':place_of_birth', $_POST['place_of_birth']);
+            $stmt->bindParam(':birth_province', $_POST['birth_province']);
+            $stmt->bindParam(':birth_city', $_POST['birth_city']);
             $stmt->bindParam(':guardian_last_name', $_POST['guardian_last_name']);
             $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
             $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
@@ -199,7 +200,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':verification_code', $_SESSION['verification_code']);
             
             if ($stmt->execute()) {
-                $success_message = 'Registration submitted successfully! Your Student ID is: ' . $student_id . '. Verification code used: ' . $_SESSION['verification_code'] . '. Your registration is pending admin approval.';
+                // Save ULI for success message before clearing POST data
+                $submitted_uli = $_POST['uli'];
+                $success_message = 'Registration submitted successfully! Your registration is pending admin approval.';
                 // Clear form data and verification code
                 $_POST = [];
                 unset($_SESSION['verification_code']);
@@ -285,12 +288,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="absolute inset-0 bg-black opacity-10"></div>
         <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grain\" width=\"100\" height=\"100\" patternUnits=\"userSpaceOnUse\"><circle cx=\"25\" cy=\"25\" r=\"1\" fill=\"white\" opacity=\"0.1\"/><circle cx=\"75\" cy=\"75\" r=\"1\" fill=\"white\" opacity=\"0.1\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grain)\"/></svg></div>
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between py-6">
-                <div class="text-center flex-1">
-                    <div class="flex items-center justify-center mb-2">
-                        <img src="../assets/images/Logo.jpg" alt="School Logo" class="h-20 w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mr-6">
+            <div class="flex items-center justify-center py-4 sm:py-6">
+                <div class="text-center">
+                    <div class="flex flex-col sm:flex-row items-center justify-center mb-2">
+                        <img src="../assets/images/Logo.jpg" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
                         <div>
-                            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Student Registration</h1>
+                            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight">Student Registration</h1>
                         </div>
                     </div>
                 </div>
@@ -298,29 +301,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </header>    
     <!-- Main Content -->
-    <main class="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <main class="max-w-5xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
         <!-- Progress Indicator -->
         <div class="mb-8">
-            <div class="flex items-center justify-center">
-                <div class="flex items-center space-x-4">
+            <div class="flex items-center justify-center overflow-x-auto">
+                <div class="flex items-center space-x-2 sm:space-x-4 min-w-max px-4">
                     <div class="flex items-center">
-                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">1</div>
-                        <span class="ml-2 text-sm font-medium text-gray-700">Personal</span>
+                        <div class="bg-primary-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">1</div>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-700 hidden sm:inline">Personal</span>
+                        <span class="ml-1 text-xs font-medium text-gray-700 sm:hidden">Info</span>
                     </div>
-                    <div class="w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">2</div>
-                        <span class="ml-2 text-sm font-medium text-gray-500">Address</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">2</div>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Address</span>
+                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Addr</span>
                     </div>
-                    <div class="w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">3</div>
-                        <span class="ml-2 text-sm font-medium text-gray-500">Education</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">3</div>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Education</span>
+                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Edu</span>
                     </div>
-                    <div class="w-16 h-1 bg-gray-200 rounded"></div>
+                    <div class="w-8 sm:w-16 h-1 bg-gray-200 rounded"></div>
                     <div class="flex items-center">
-                        <div class="bg-gray-300 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">4</div>
-                        <span class="ml-2 text-sm font-medium text-gray-500">Review</span>
+                        <div class="bg-gray-300 text-gray-600 rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-xs sm:text-sm font-semibold">4</div>
+                        <span class="ml-1 sm:ml-2 text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Review</span>
+                        <span class="ml-1 text-xs font-medium text-gray-500 sm:hidden">Done</span>
                     </div>
                 </div>
             </div>
@@ -388,16 +395,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
             
-            <form method="POST" enctype="multipart/form-data" class="p-8" id="registrationForm">
+            <form method="POST" enctype="multipart/form-data" class="p-4 sm:p-6 lg:p-8" id="registrationForm">
                 <!-- Personal Information Section -->
-                <div class="mb-10">
-                    <div class="flex items-center mb-6">
-                        <div class="bg-primary-500 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-bold mr-4">
+                <div class="mb-8 sm:mb-10">
+                    <div class="flex items-center mb-4 sm:mb-6">
+                        <div class="bg-primary-500 text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-bold mr-3 sm:mr-4">
                             <i class="fas fa-user"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-900">Personal Information</h3>
-                            <p class="text-gray-600 text-sm">Tell us about yourself</p>
+                            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Personal Information</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm">Tell us about yourself</p>
                         </div>
                     </div>
                     
@@ -501,10 +508,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="contact_number" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <select id="country_code" name="country_code" 
-                                    class="w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
-                                <option value="">Loading...</option>
+                                    class="w-full sm:w-24 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
+                                <option value="">Code</option>
                             </select>
                             <input type="tel" id="contact_number" name="contact_number" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
@@ -584,14 +591,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="place_of_birth" class="block text-sm font-semibold text-gray-700 mb-2">
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                             <i class="fas fa-baby text-primary-500 mr-2"></i>Place of Birth *
-                        </label>
-                        <input type="text" id="place_of_birth" name="place_of_birth" required 
-                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
-                               placeholder="Enter your place of birth"
-                               value="<?php echo htmlspecialchars($_POST['place_of_birth'] ?? ''); ?>">
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label for="birth_province" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-map text-primary-500 mr-2"></i>Province *
+                                </label>
+                                <select id="birth_province" name="birth_province" required 
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                    <option value="">Select province</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="birth_city" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-city text-primary-500 mr-2"></i>City/Municipality *
+                                </label>
+                                <select id="birth_city" name="birth_city" required 
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                    <option value="">Select city/municipality</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -659,10 +682,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="parent_contact" class="block text-sm font-semibold text-gray-700 mb-2">
                             <i class="fas fa-phone text-primary-500 mr-2"></i>Contact Number *
                         </label>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
                             <select id="parent_country_code" name="parent_country_code" 
-                                    class="w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
-                                <option value="">Loading...</option>
+                                    class="w-full sm:w-24 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
+                                <option value="">Code</option>
                             </select>
                             <input type="tel" id="parent_contact" name="parent_contact" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
@@ -752,12 +775,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" id="uli" name="uli" required 
                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 font-mono tracking-wider"
                                    placeholder="ABC-12-123-12345-123"
-                                   maxlength="19"
+                                   maxlength="25"
                                    title="Format: ABC-12-123-12345-123 (3 letters, then numbers separated by dashes)"
                                    value="<?php echo htmlspecialchars($_POST['uli'] ?? ''); ?>">
                             <p class="text-xs text-gray-500 mt-2 flex items-center">
                                 <i class="fas fa-info-circle mr-1"></i>
-                                Format: 3 letters, then numbers (ABC-12-123-12345-123)
+                                Format: 3 letters, then numbers (abc-12-123-12345-123). You can type in lowercase - it will automatically convert to uppercase and format with dashes.
                             </p>
                         </div>
                     </div> 
@@ -817,10 +840,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- Submit Section -->
-                <div class="border-t border-gray-200 pt-8">
+                <div class="border-t border-gray-200 pt-6 sm:pt-8">
                     <div class="flex justify-center">
                         <button type="submit" 
-                                class="inline-flex items-center px-8 py-3 bg-primary-500 text-white font-bold rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                class="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-3 bg-primary-500 text-white font-bold rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                             <i class="fas fa-paper-plane mr-2"></i>
                             Submit Registration
                         </button>
@@ -832,14 +855,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <!-- Confirmation Modal -->
     <div id="confirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 hidden">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-96 shadow-lg rounded-md bg-white">
+        <div class="relative top-10 sm:top-20 mx-auto p-4 sm:p-5 border w-11/12 sm:w-96 max-w-md shadow-lg rounded-md bg-white">
             <div class="mt-3 text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                <div class="mx-auto flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-yellow-100 mb-4">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-lg sm:text-xl"></i>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Confirm Registration</h3>
-                <div class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500 mb-4">
+                <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-2">Confirm Registration</h3>
+                <div class="mt-2 px-4 sm:px-7 py-3">
+                    <p class="text-xs sm:text-sm text-gray-500 mb-4">
                         Are you sure all the information you provided is correct? Once submitted, your registration will be sent for admin approval.
                     </p>
                     <div class="bg-gray-50 rounded-lg p-3 mb-4">
@@ -849,14 +872,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </p>
                     </div>
                 </div>
-                <div class="flex items-center justify-center space-x-4 pt-4">
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 pt-4">
                     <button id="cancelSubmit" type="button" 
-                            class="inline-flex items-center px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200">
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200">
                         <i class="fas fa-times mr-2"></i>
                         Cancel
                     </button>
                     <button id="confirmSubmit" type="button" 
-                            class="inline-flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200">
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-4 sm:px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition duration-200">
                         <i class="fas fa-check mr-2"></i>
                         Yes, Submit
                     </button>
@@ -905,9 +928,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Load provinces
         async function loadProvinces(selectId) {
             try {
+                console.log(`Loading provinces for ${selectId}`);
                 showLoading(selectId);
                 const response = await fetch(`${PSGC_API_BASE}/provinces/`);
                 const provinces = await response.json();
+                console.log(`Loaded ${provinces.length} provinces for ${selectId}:`, provinces.slice(0, 3));
                 
                 populateSelect(selectId, provinces, 'Select province');
                 hideLoading(selectId);
@@ -922,9 +947,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Load cities/municipalities
         async function loadCities(provinceCode, selectId) {
             try {
+                console.log(`Loading cities for province ${provinceCode} into ${selectId}`);
                 showLoading(selectId);
                 const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
                 const cities = await response.json();
+                console.log(`Loaded ${cities.length} cities for ${selectId}:`, cities);
                 
                 populateSelect(selectId, cities, 'Select city/municipality');
                 hideLoading(selectId);
@@ -959,18 +986,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const response = await fetch(`${COUNTRY_API_BASE}/all?fields=name,idd,flag`);
                 const countries = await response.json();
                 
-                // Sort countries by name
-                countries.sort((a, b) => a.name.common.localeCompare(b.name.common));
+                // Sort countries by country code for easier finding
+                countries.sort((a, b) => {
+                    const codeA = a.idd && a.idd.root ? a.idd.root + (a.idd.suffixes[0] || '') : '';
+                    const codeB = b.idd && b.idd.root ? b.idd.root + (b.idd.suffixes[0] || '') : '';
+                    return codeA.localeCompare(codeB);
+                });
                 
                 const select = document.getElementById(selectId);
-                select.innerHTML = '<option value="">Select country</option>';
+                select.innerHTML = '<option value="">Code</option>';
                 
                 countries.forEach(country => {
                     if (country.idd && country.idd.root && country.idd.suffixes) {
                         const countryCode = country.idd.root + (country.idd.suffixes[0] || '');
                         const option = document.createElement('option');
                         option.value = countryCode;
-                        option.textContent = `${country.flag} ${country.name.common} (${countryCode})`;
+                        // Show just flag and country code for mobile-friendly display
+                        option.textContent = `${country.flag} ${countryCode}`;
+                        option.title = `${country.name.common} (${countryCode})`; // Tooltip shows full name
                         
                         // Set Philippines as default
                         if (country.name.common === 'Philippines') {
@@ -988,59 +1021,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // ULI formatting function
+        // ULI formatting function - maintains ABC-12-123-12345-123 format with automatic uppercase
         function formatULI(input) {
-            // Remove all non-alphanumeric characters except dashes
-            let value = input.value.replace(/[^A-Za-z0-9-]/g, '');
+            let value = input.value.toUpperCase(); // Convert to uppercase automatically
             
-            // Remove existing dashes to reformat properly
-            value = value.replace(/-/g, '');
+            // Remove all non-alphanumeric characters to get clean input
+            let cleanValue = value.replace(/[^A-Z0-9]/g, '');
             
-            // Convert to uppercase
-            value = value.toUpperCase();
+            // Limit to 16 characters total (3 letters + 13 numbers)
+            if (cleanValue.length > 16) {
+                cleanValue = cleanValue.substring(0, 16);
+            }
             
-            // Apply formatting: ABC-12-123-12345-123
+            // Build formatted string
             let formatted = '';
             
-            if (value.length > 0) {
-                // First 3 characters (letters only)
-                formatted += value.substring(0, 3).replace(/[^A-Z]/g, '');
+            // First 3 characters (letters only)
+            if (cleanValue.length > 0) {
+                let letters = cleanValue.substring(0, 3);
+                // Ensure first 3 are letters, if not, don't format yet
+                if (letters.length > 0) {
+                    formatted += letters;
+                }
             }
             
-            if (value.length > 3) {
-                formatted += '-' + value.substring(3, 5).replace(/[^0-9]/g, '');
+            // Add dash and next 2 digits
+            if (cleanValue.length > 3) {
+                formatted += '-' + cleanValue.substring(3, 5);
             }
             
-            if (value.length > 5) {
-                formatted += '-' + value.substring(5, 8).replace(/[^0-9]/g, '');
+            // Add dash and next 3 digits  
+            if (cleanValue.length > 5) {
+                formatted += '-' + cleanValue.substring(5, 8);
             }
             
-            if (value.length > 8) {
-                formatted += '-' + value.substring(8, 13).replace(/[^0-9]/g, '');
+            // Add dash and next 5 digits
+            if (cleanValue.length > 8) {
+                formatted += '-' + cleanValue.substring(8, 13);
             }
             
-            if (value.length > 13) {
-                formatted += '-' + value.substring(13, 16).replace(/[^0-9]/g, '');
+            // Add dash and last 3 digits
+            if (cleanValue.length > 13) {
+                formatted += '-' + cleanValue.substring(13, 16);
             }
             
+            // Update input value
             input.value = formatted;
             
-            // Validate format
-            const isValid = /^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/.test(formatted);
-            
-            if (formatted.length > 0 && !isValid && formatted.length === 19) {
-                input.classList.add('border-red-500', 'ring-red-500');
-                input.classList.remove('border-gray-200', 'border-green-500');
-            } else if (isValid) {
-                input.classList.add('border-green-500');
-                input.classList.remove('border-red-500', 'ring-red-500', 'border-gray-200');
+            // Visual feedback
+            if (cleanValue.length === 16) {
+                // Check if format is correct (3 letters + 13 numbers)
+                const letters = cleanValue.substring(0, 3);
+                const numbers = cleanValue.substring(3);
+                const hasValidLetters = /^[A-Z]{3}$/.test(letters);
+                const hasValidNumbers = /^\d{13}$/.test(numbers);
                 
-                // Remove any error message
-                const errorMsg = input.parentNode.querySelector('.uli-error');
-                if (errorMsg) {
-                    errorMsg.remove();
+                if (hasValidLetters && hasValidNumbers) {
+                    input.classList.add('border-green-500');
+                    input.classList.remove('border-red-500', 'ring-red-500', 'border-gray-200');
+                    
+                    // Remove any error message
+                    const errorMsg = input.parentNode.querySelector('.uli-error');
+                    if (errorMsg) {
+                        errorMsg.remove();
+                    }
+                } else {
+                    input.classList.add('border-red-500', 'ring-red-500');
+                    input.classList.remove('border-green-500', 'border-gray-200');
                 }
             } else {
+                // Partial input - neutral styling
                 input.classList.remove('border-red-500', 'ring-red-500', 'border-green-500');
                 input.classList.add('border-gray-200');
                 
@@ -1202,15 +1252,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         uliField.parentNode.appendChild(errorMsg);
                     }
                 } else {
+                    // Check if ULI has at least 3 letters and 13 numbers (regardless of dash positioning)
+                    const cleanULI = uliField.value.replace(/[^A-Za-z0-9]/g, '');
+                    const letters = cleanULI.match(/[A-Za-z]/g) || [];
+                    const numbers = cleanULI.match(/[0-9]/g) || [];
+                    
+                    const hasValidContent = letters.length >= 3 && numbers.length >= 13 && cleanULI.length === 16;
                     const uliPattern = /^[A-Z]{3}-\d{2}-\d{3}-\d{5}-\d{3}$/;
                     const isValidFormat = uliPattern.test(uliField.value);
-                    console.log('ULI pattern test:', isValidFormat, 'Pattern:', uliPattern, 'Value:', uliField.value); // Debug log
                     
-                    if (!isValidFormat) {
+                    console.log('ULI content check - Letters:', letters.length, 'Numbers:', numbers.length, 'Total:', cleanULI.length);
+                    console.log('ULI pattern test:', isValidFormat, 'Has valid content:', hasValidContent);
+                    
+                    // Accept if either perfectly formatted OR has valid content
+                    if (!hasValidContent) {
                         uliField.classList.add('border-red-500', 'ring-red-500');
                         uliField.classList.remove('border-gray-200', 'border-green-500');
                         isValid = false;
-                        console.log('ULI validation failed: invalid format');
+                        console.log('ULI validation failed: invalid content');
                         
                         // Show format error message
                         let errorMsg = uliField.parentNode.querySelector('.uli-error');
@@ -1223,6 +1282,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Please use format: ABC-12-123-12345-123';
                         }
                     } else {
+                        // Valid content - format it properly before submission
+                        if (!isValidFormat && hasValidContent) {
+                            // Auto-format the ULI properly
+                            const letters_part = cleanULI.substring(0, 3);
+                            const numbers_part = cleanULI.substring(3);
+                            const formatted = `${letters_part}-${numbers_part.substring(0,2)}-${numbers_part.substring(2,5)}-${numbers_part.substring(5,10)}-${numbers_part.substring(10,13)}`;
+                            uliField.value = formatted;
+                            console.log('Auto-formatted ULI to:', formatted);
+                        }
+                        
                         uliField.classList.remove('border-red-500', 'ring-red-500');
                         uliField.classList.add('border-green-500');
                         console.log('ULI validation passed');
@@ -1339,8 +1408,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Save form data on input changes
             setupFormPersistence();
             
-            // Load provinces for address and school
+            // Load provinces for address, birth place, and school
             loadProvinces('province');
+            loadProvinces('birth_province');
             loadProvinces('school_province');
             
             // Load country codes for phone numbers
@@ -1371,54 +1441,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
             
-            // ULI formatting
+            // ULI formatting with automatic uppercase conversion
             const uliInput = document.getElementById('uli');
             if (uliInput) {
+                // Single input handler that does both formatting and uppercase conversion
                 uliInput.addEventListener('input', function() {
+                    // Store cursor position
+                    const cursorPos = this.selectionStart;
+                    const oldLength = this.value.length;
+                    
+                    // Format the ULI (this already converts to uppercase)
                     formatULI(this);
+                    
+                    // Adjust cursor position if needed
+                    const newLength = this.value.length;
+                    const lengthDiff = newLength - oldLength;
+                    this.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
                 });
                 
+                // Format on paste
                 uliInput.addEventListener('paste', function(e) {
-                    // Allow paste but format it
                     setTimeout(() => {
                         formatULI(this);
                     }, 10);
                 });
                 
-                // Prevent non-alphanumeric characters on keypress (except dashes)
+                // Allow all alphanumeric characters (both upper and lowercase)
                 uliInput.addEventListener('keypress', function(e) {
-                    const char = String.fromCharCode(e.which);
-                    const currentValue = this.value.replace(/[^A-Za-z0-9]/g, ''); // Remove dashes for counting
-                    
-                    // Allow backspace, delete, tab, escape, enter, and dash
-                    if ([8, 9, 27, 13, 46, 45].indexOf(e.keyCode) !== -1 ||
+                    // Allow control keys (backspace, delete, tab, escape, enter)
+                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
                         // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                        (e.keyCode === 65 && e.ctrlKey === true) ||
-                        (e.keyCode === 67 && e.ctrlKey === true) ||
-                        (e.keyCode === 86 && e.ctrlKey === true) ||
-                        (e.keyCode === 88 && e.ctrlKey === true)) {
+                        (e.ctrlKey === true)) {
                         return;
                     }
                     
-                    // Allow dash character
-                    if (char === '-') {
-                        return;
-                    }
+                    const char = String.fromCharCode(e.which);
                     
-                    // First 3 characters must be letters
-                    if (currentValue.length < 3) {
-                        if (!/[A-Za-z]/.test(char)) {
-                            e.preventDefault();
-                        }
-                    } else {
-                        // After first 3, only numbers allowed
-                        if (!/[0-9]/.test(char)) {
-                            e.preventDefault();
-                        }
-                    }
-                    
-                    // Limit total length (excluding dashes)
-                    if (currentValue.length >= 16) {
+                    // Allow both uppercase and lowercase letters, and numbers
+                    if (!/[A-Za-z0-9]/.test(char)) {
                         e.preventDefault();
                     }
                 });
@@ -1469,6 +1529,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if (provinceCode) {
                         loadCities(provinceCode, 'school_city');
+                    }
+                });
+            }
+            
+            // Birth province change handler
+            const birthProvinceSelect = document.getElementById('birth_province');
+            if (birthProvinceSelect) {
+                birthProvinceSelect.addEventListener('change', function() {
+                    console.log('Birth province changed:', this.value);
+                    const selectedOption = this.options[this.selectedIndex];
+                    const provinceCode = selectedOption.dataset.code;
+                    console.log('Province code:', provinceCode);
+                    
+                    // Clear birth city dropdown
+                    document.getElementById('birth_city').innerHTML = '<option value="">Select city/municipality</option>';
+                    
+                    if (provinceCode) {
+                        console.log('Loading cities for birth province:', provinceCode);
+                        loadCities(provinceCode, 'birth_city');
                     }
                 });
             }

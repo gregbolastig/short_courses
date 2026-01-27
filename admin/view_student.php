@@ -111,7 +111,7 @@ include '../includes/header.php';
                         <div><strong>City/Municipality:</strong> <?php echo htmlspecialchars($student['city']); ?></div>
                         <div><strong>Barangay:</strong> <?php echo htmlspecialchars($student['barangay']); ?></div>
                         <div><strong>Street/Subdivision:</strong> <?php echo htmlspecialchars($student['street_address'] ?: 'N/A'); ?></div>
-                        <div><strong>Place of Birth:</strong> <?php echo htmlspecialchars($student['place_of_birth']); ?></div>
+                        <div><strong>Place of Birth:</strong> <?php echo htmlspecialchars($student['birth_province'] . ', ' . $student['birth_city']); ?></div>
                     </div>
                 </div>
                 

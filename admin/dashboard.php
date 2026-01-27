@@ -55,7 +55,7 @@ try {
     $recent_registrations = $stmt->fetch(PDO::FETCH_ASSOC)['recent'];
     
     // Get recent students
-    $stmt = $conn->query("SELECT id, student_id, first_name, last_name, email, status, created_at FROM students ORDER BY created_at DESC LIMIT 10");
+    $stmt = $conn->query("SELECT id, uli, first_name, last_name, email, status, created_at FROM students ORDER BY created_at DESC LIMIT 10");
     $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
@@ -647,7 +647,7 @@ try {
                                         <thead class="bg-gray-50">
                                             <tr>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
@@ -664,7 +664,7 @@ try {
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
-                                                            <?php echo htmlspecialchars($student['student_id']); ?>
+                                                            <?php echo htmlspecialchars($student['uli']); ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">

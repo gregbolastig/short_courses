@@ -144,6 +144,15 @@ function fixDatabase() {
                 $conn->exec("ALTER TABLE students DROP COLUMN parent_name");
             }
             
+            // Check and add birth province and city columns
+            $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'birth_province'");
+            $birthProvinceExists = $stmt->fetch();
+            
+            if (!$birthProvinceExists) {
+                $conn->exec("ALTER TABLE students ADD COLUMN birth_province VARCHAR(100) NOT NULL DEFAULT '' AFTER place_of_birth");
+                $conn->exec("ALTER TABLE students ADD COLUMN birth_city VARCHAR(100) NOT NULL DEFAULT '' AFTER birth_province");
+            }
+            
             // Check and add extension name column for student
             $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'extension_name'");
             $extensionExists = $stmt->fetch();

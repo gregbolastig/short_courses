@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate required fields
     $required_fields = [
         'first_name', 'last_name', 'birthday', 'sex', 'civil_status',
-        'contact_number', 'province', 'city', 'barangay', 'place_of_birth',
+        'contact_number', 'province', 'city', 'barangay', 'birth_province', 'birth_city',
         'parent_name', 'parent_contact', 'email', 'uli', 'last_school',
         'school_province', 'school_city'
     ];
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 first_name = :first_name, middle_name = :middle_name, last_name = :last_name,
                 birthday = :birthday, age = :age, sex = :sex, civil_status = :civil_status,
                 contact_number = :contact_number, province = :province, city = :city,
-                barangay = :barangay, street_address = :street_address, place_of_birth = :place_of_birth,
+                barangay = :barangay, street_address = :street_address, birth_province = :birth_province, birth_city = :birth_city,
                 parent_name = :parent_name, parent_contact = :parent_contact, email = :email,
                 profile_picture = :profile_picture, uli = :uli, last_school = :last_school,
                 school_province = :school_province, school_city = :school_city
@@ -118,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
-            $stmt->bindParam(':place_of_birth', $_POST['place_of_birth']);
+            $stmt->bindParam(':birth_province', $_POST['birth_province']);
+            $stmt->bindParam(':birth_city', $_POST['birth_city']);
             $stmt->bindParam(':parent_name', $_POST['parent_name']);
             $stmt->bindParam(':parent_contact', $_POST['parent_contact']);
             $stmt->bindParam(':email', $_POST['email']);
@@ -295,10 +296,20 @@ include '../includes/header.php';
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="place_of_birth">Place of Birth *</label>
-                    <input type="text" id="place_of_birth" name="place_of_birth" required 
-                           value="<?php echo htmlspecialchars($student['place_of_birth']); ?>">
+                <div class="form-section">
+                    <h4>Place of Birth</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="birth_province">Province *</label>
+                            <input type="text" id="birth_province" name="birth_province" required 
+                                   value="<?php echo htmlspecialchars($student['birth_province']); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="birth_city">City/Municipality *</label>
+                            <input type="text" id="birth_city" name="birth_city" required 
+                                   value="<?php echo htmlspecialchars($student['birth_city']); ?>">
+                        </div>
+                    </div>
                 </div>
             </div>
             

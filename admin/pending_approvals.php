@@ -190,6 +190,7 @@ try {
                                             </h4>
                                             <div class="mt-1 text-sm text-gray-500 space-y-1">
                                                 <p><span class="font-medium">Student ID:</span> <?php echo htmlspecialchars($student['student_id']); ?></p>
+                                                <p><span class="font-medium">ULI:</span> <?php echo htmlspecialchars($student['uli']); ?></p>
                                                 <p><span class="font-medium">Email:</span> <?php echo htmlspecialchars($student['email']); ?></p>
                                                 <p><span class="font-medium">Contact:</span> <?php echo htmlspecialchars($student['contact_number']); ?></p>
                                                 <p><span class="font-medium">Address:</span> <?php echo htmlspecialchars($student['barangay'] . ', ' . $student['city'] . ', ' . $student['province']); ?></p>
