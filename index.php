@@ -140,9 +140,8 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
 }
 
 // Set page variables for header component
-$page_title = 'JZGMSAT Student Portal';
-$page_subtitle = 'Student Registration System';
-$page_description = 'Search your records or register as a new student';
+// Using consistent title across all pages
+$show_logo = true;
 
 // Include header component
 include 'student/components/header.php';
@@ -159,136 +158,10 @@ include 'student/components/header.php';
         include 'student/components/alerts.php'; 
         ?>
         <?php if ($student_profile): ?>
-            <!-- Student Profile Display -->
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-                <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-8">
-                    <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
-                        <div class="flex-shrink-0">
-                            <?php if (!empty($student_profile['profile_picture']) && file_exists($student_profile['profile_picture'])): ?>
-                                <img src="<?php echo htmlspecialchars($student_profile['profile_picture']); ?>" 
-                                     alt="Profile Picture" 
-                                     class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg">
-                            <?php else: ?>
-                                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white bg-opacity-20 border-4 border-white shadow-lg flex items-center justify-center">
-                                    <span class="text-2xl md:text-3xl font-bold text-white">
-                                        <?php echo strtoupper(substr($student_profile['first_name'], 0, 1) . substr($student_profile['last_name'], 0, 1)); ?>
-                                    </span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <div class="text-center md:text-left text-white flex-1">
-                            <h2 class="text-2xl md:text-3xl font-bold mb-2">
-                                <?php echo htmlspecialchars(trim($student_profile['first_name'] . ' ' . ($student_profile['middle_name'] ? $student_profile['middle_name'] . ' ' : '') . $student_profile['last_name'])); ?>
-                                <?php if ($student_profile['extension_name']): ?>
-                                    <?php echo htmlspecialchars($student_profile['extension_name']); ?>
-                                <?php endif; ?>
-                            </h2>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-green-100 mb-4">
-                                <div class="flex items-center justify-center md:justify-start">
-                                    <i class="fas fa-id-card mr-2"></i>
-                                    <span>ULI: <?php echo htmlspecialchars($student_profile['uli']); ?></span>
-                                </div>
-                                <div class="flex items-center justify-center md:justify-start">
-                                    <i class="fas fa-envelope mr-2"></i>
-                                    <span><?php echo htmlspecialchars($student_profile['email']); ?></span>
-                                </div>
-                                <div class="flex items-center justify-center md:justify-start">
-                                    <i class="fas fa-phone mr-2"></i>
-                                    <span><?php echo htmlspecialchars($student_profile['contact_number']); ?></span>
-                                </div>
-                                <div class="flex items-center justify-center md:justify-start">
-                                    <i class="fas fa-calendar mr-2"></i>
-                                    <span>Registered: <?php echo date('M j, Y', strtotime($student_profile['created_at'])); ?></span>
-                                </div>
-                            </div>
-                            
-                            <!-- Status Badge -->
-                            <div>
-                                <?php
-                                $status_class = '';
-                                $status_icon = '';
-                                $status_text = '';
-                                switch ($student_profile['status']) {
-                                    case 'approved':
-                                        $status_class = 'bg-green-100 text-green-800 border-green-200';
-                                        $status_icon = 'fas fa-check-circle';
-                                        $status_text = 'Approved - You can now attend classes';
-                                        break;
-                                    case 'rejected':
-                                        $status_class = 'bg-red-100 text-red-800 border-red-200';
-                                        $status_icon = 'fas fa-times-circle';
-                                        $status_text = 'Application Rejected - Please contact admin';
-                                        break;
-                                    default:
-                                        $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                        $status_icon = 'fas fa-clock';
-                                        $status_text = 'Pending Approval - Please wait for admin review';
-                                }
-                                ?>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border <?php echo $status_class; ?>">
-                                    <i class="<?php echo $status_icon; ?> mr-2"></i>
-                                    <?php echo $status_text; ?>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Course Information -->
-                <?php if ($student_profile['status'] === 'approved' && ($student_profile['course'] || $student_profile['nc_level'])): ?>
-                    <div class="px-6 py-6 bg-gray-50 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                            <i class="fas fa-book text-red-800 mr-2"></i>Your Approved Course
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <?php if ($student_profile['course']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Course</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['course']); ?></p>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['nc_level']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">NC Level</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['nc_level']); ?></p>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['training_start']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Training Start</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo date('M j, Y', strtotime($student_profile['training_start'])); ?></p>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['training_end']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Training End</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo date('M j, Y', strtotime($student_profile['training_end'])); ?></p>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        
-                        <?php if ($student_profile['adviser']): ?>
-                            <div class="mt-4 bg-white p-4 rounded-lg border border-gray-200">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Assigned Adviser</label>
-                                <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['adviser']); ?></p>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-                
-                <div class="px-6 py-4 bg-white border-t border-gray-200">
-                    <div class="flex justify-center">
-                        <a href="index.php" class="inline-flex items-center px-6 py-3 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
-                            <i class="fas fa-search mr-2"></i>Search Again
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <!-- Redirect to profile page -->
+            <script>
+                window.location.href = 'student/profile/profile.php?student_id=<?php echo $student_profile['id']; ?>';
+            </script>
             
         <?php elseif (!empty($search_results)): ?>
             <!-- Multiple Search Results -->
@@ -319,7 +192,7 @@ include 'student/components/header.php';
                                         </div>
                                     </div>
                                 </div>
-                                <a href="?student_id=<?php echo $student['id']; ?>" 
+                                <a href="student/profile/profile.php?student_id=<?php echo $student['id']; ?>" 
                                    class="inline-flex items-center px-4 py-2 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
                                     <i class="fas fa-eye mr-2"></i>View Profile
                                 </a>

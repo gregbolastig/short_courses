@@ -220,11 +220,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 // Set page variables for header component
-$page_title = 'Student Registration';
+// Using consistent title across all pages
 $show_logo = true;
 
 // Include header component
-include 'components/register-header.php';
+include 'components/header.php';
 ?>
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
@@ -237,7 +237,7 @@ include 'components/register-header.php';
         ?>
         
         <?php include 'components/alerts.php'; ?>
- Registration Form -->
+        <!-- Registration Form -->
         <div class="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
             <!-- Form Header -->
             <div class="bg-gradient-to-r from-primary-500 to-primary-700 px-8 py-6">

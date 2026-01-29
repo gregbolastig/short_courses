@@ -4,9 +4,8 @@
  * Reusable header for student pages
  */
 
-// Default values if not set
+// Default values if not set - using consistent title
 $page_title = $page_title ?? 'JZGMSAT Student Portal';
-$page_subtitle = $page_subtitle ?? 'Student Registration System';
 $show_logo = $show_logo ?? true;
 $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-500 to-primary-700';
 ?>
@@ -92,7 +91,11 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
                 <div class="text-center">
                     <div class="flex flex-col sm:flex-row items-center justify-center mb-2">
                         <?php if ($show_logo): ?>
-                        <img src="assets/images/Logo.png" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
+                        <?php 
+                        // Determine the correct path based on the current directory
+                        $logo_path = file_exists('assets/images/Logo.png') ? 'assets/images/Logo.png' : '../assets/images/Logo.png';
+                        ?>
+                        <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
                         <?php endif; ?>
                         <div>
                             <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>
