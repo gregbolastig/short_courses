@@ -7,6 +7,18 @@ $success_message = '';
 $search_results = [];
 $student_profile = null;
 $search_performed = false;
+$show_registrar_modal = false;
+
+// Initialize search attempt counter
+if (!isset($_SESSION['search_attempts'])) {
+    $_SESSION['search_attempts'] = 0;
+}
+
+// Handle reset attempts request
+if (isset($_POST['reset_attempts'])) {
+    $_SESSION['search_attempts'] = 0;
+    exit('OK');
+}
 
 // Handle different actions
 $action = $_GET['action'] ?? 'home';
@@ -29,7 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $search_performed = true;
                 
                 if (!$student_profile) {
+                    $_SESSION['search_attempts']++;
                     $errors[] = 'No student record found with ULI: ' . htmlspecialchars($uli);
+                    
+                    // Show modal only after 5 attempts
+                    if ($_SESSION['search_attempts'] >= 5) {
+                        $show_registrar_modal = true;
+                    }
+                } else {
+                    // Reset attempts on successful search
+                    $_SESSION['search_attempts'] = 0;
                 }
             } else {
                 $errors[] = 'Please enter a valid ULI';
@@ -77,8 +98,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (count($search_results) === 1) {
                         $student_profile = $search_results[0];
                         $search_results = [];
+                        // Reset attempts on successful search
+                        $_SESSION['search_attempts'] = 0;
                     } elseif (count($search_results) === 0) {
+                        $_SESSION['search_attempts']++;
                         $errors[] = 'No student record found matching all the provided information. Please verify your details and try again.';
+                        
+                        // Show modal only after 5 attempts
+                        if ($_SESSION['search_attempts'] >= 5) {
+                            $show_registrar_modal = true;
+                        }
+                    } else {
+                        // Reset attempts on successful search (multiple results)
+                        $_SESSION['search_attempts'] = 0;
                     }
                 }
             }
@@ -325,6 +357,23 @@ include 'student/components/header.php';
                         <p class="text-gray-600">Search for your existing student record</p>
                     </div>
                     
+                    <!-- Important Notice -->
+                    <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h4 class="text-sm font-semibold text-yellow-800 mb-2">Important Notice</h4>
+                                <div class="text-xs text-yellow-700 space-y-1">
+                                    <p>• Make sure you have your correct ULI or personal details before searching</p>
+                                    <p>• If you don't know your ULI or are unsure about your details, please visit the registrar's office</p>
+                                    <p>• Contact the registrar if you need assistance finding your records</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Search Tabs -->
                     <div class="mb-6">
                         <div class="flex border-b border-gray-200">
@@ -346,9 +395,15 @@ include 'student/components/header.php';
                                     <i class="fas fa-id-card text-red-800 mr-2"></i>Enter your ULI (Unique Learner Identifier)
                                 </label>
                                 <input type="text" id="uli" name="uli" required 
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200"
-                                       placeholder="e.g., ULI123456789"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200 font-mono tracking-wider"
+                                       placeholder="ABC-12-123-12345-123"
+                                       maxlength="25"
+                                       title="Format: ABC-12-123-12345-123 (3 letters, then numbers separated by dashes)"
                                        value="<?php echo htmlspecialchars($_POST['uli'] ?? ''); ?>">
+                                <p class="text-xs text-gray-500 mt-2 flex items-center">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Format: 3 letters, then numbers (ABC-12-123-12345-123). You can type in lowercase - it will automatically convert to uppercase and format with dashes.
+                                </p>
                             </div>
                             <button type="submit" 
                                     class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
@@ -471,6 +526,106 @@ include 'student/components/header.php';
             
         <?php endif; ?>
     </main>
+    
+    <!-- Professional Search Tips Modal -->
+    <div id="registrarModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4 <?php echo $show_registrar_modal ? '' : 'hidden'; ?>">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto transform transition-all duration-300 ease-out">
+            <!-- Header Section -->
+            <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-2xl px-8 py-6 text-white relative overflow-hidden">
+                <div class="absolute inset-0 bg-black opacity-10"></div>
+                <div class="relative flex items-center">
+                    <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-search text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-1">Search Assistance</h3>
+                        <p class="text-red-100 text-sm opacity-90">Tips to help you find your student record</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Section -->
+            <div class="px-8 py-6">
+                <div class="mb-6">
+                    <p class="text-gray-700 text-sm leading-relaxed mb-6">
+                        We're here to help you locate your student record. Please review these search tips to ensure accurate results:
+                    </p>
+                    
+                    <!-- ULI Search Tips -->
+                    <div class="mb-5">
+                        <div class="flex items-center mb-3">
+                            <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-id-card text-red-600 text-sm"></i>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 text-sm">ULI Search Guidelines</h4>
+                        </div>
+                        <div class="ml-11 space-y-2">
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-red-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Check your enrollment documents or certificates for the exact ULI</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-red-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Ensure format is correct: <span class="font-mono bg-gray-100 px-1 rounded">ABC-12-123-12345-123</span></p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-red-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Type exactly as shown on your official documents</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Personal Details Tips -->
+                    <div class="mb-5">
+                        <div class="flex items-center mb-3">
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-user text-blue-600 text-sm"></i>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 text-sm">Personal Details Guidelines</h4>
+                        </div>
+                        <div class="ml-11 space-y-2">
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Use exact spelling as when you registered</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Double-check your date of birth format</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-xs text-gray-600">Verify place of birth matches your official records</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Additional Help -->
+                    <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+                        <div class="flex items-start">
+                            <div class="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                                <i class="fas fa-info-circle text-amber-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-amber-800 mb-1">Need Additional Assistance?</p>
+                                <p class="text-xs text-amber-700">Visit the registrar's office with your ID and any school documents for personalized help.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer Section -->
+            <div class="bg-gray-50 rounded-b-2xl px-8 py-4 border-t border-gray-100">
+                <div class="flex justify-center">
+                    <button onclick="closeRegistrarModal()" type="button" 
+                            class="inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-xl hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i class="fas fa-check mr-2"></i>
+                        Understood
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <?php 
     $include_search_js = true; // Enable search JavaScript

@@ -27,6 +27,75 @@
         // Philippine Address API Configuration
         const PSGC_API_BASE = 'https://psgc.gitlab.io/api';
         
+        // ULI formatting function - maintains ABC-12-123-12345-123 format with automatic uppercase
+        function formatULI(input) {
+            let value = input.value.toUpperCase(); // Convert to uppercase automatically
+            
+            // Remove all non-alphanumeric characters to get clean input
+            let cleanValue = value.replace(/[^A-Z0-9]/g, '');
+            
+            // Limit to 16 characters total (3 letters + 13 numbers)
+            if (cleanValue.length > 16) {
+                cleanValue = cleanValue.substring(0, 16);
+            }
+            
+            // Build formatted string
+            let formatted = '';
+            
+            // First 3 characters (letters only)
+            if (cleanValue.length > 0) {
+                let letters = cleanValue.substring(0, 3);
+                // Ensure first 3 are letters, if not, don't format yet
+                if (letters.length > 0) {
+                    formatted += letters;
+                }
+            }
+            
+            // Add dash and next 2 digits
+            if (cleanValue.length > 3) {
+                formatted += '-' + cleanValue.substring(3, 5);
+            }
+            
+            // Add dash and next 3 digits  
+            if (cleanValue.length > 5) {
+                formatted += '-' + cleanValue.substring(5, 8);
+            }
+            
+            // Add dash and next 5 digits
+            if (cleanValue.length > 8) {
+                formatted += '-' + cleanValue.substring(8, 13);
+            }
+            
+            // Add dash and last 3 digits
+            if (cleanValue.length > 13) {
+                formatted += '-' + cleanValue.substring(13, 16);
+            }
+            
+            // Update input value
+            input.value = formatted;
+            
+            // Visual feedback
+            if (cleanValue.length === 16) {
+                // Check if format is correct (3 letters + 13 numbers)
+                const letters = cleanValue.substring(0, 3);
+                const numbers = cleanValue.substring(3);
+                const hasValidLetters = /^[A-Z]{3}$/.test(letters);
+                const hasValidNumbers = /^\d{13}$/.test(numbers);
+                
+                if (hasValidLetters && hasValidNumbers) {
+                    input.classList.add('border-green-500');
+                    input.classList.remove('border-red-500', 'ring-red-500', 'border-gray-300');
+                } else {
+                    input.classList.add('border-red-500', 'ring-red-500');
+                    input.classList.remove('border-green-500', 'border-gray-300');
+                }
+            } else {
+                // Partial input - neutral styling
+                input.classList.remove('border-red-500', 'ring-red-500', 'border-green-500');
+                input.classList.add('border-gray-300');
+            }
+        }
+        
         // Load provinces for search form
         async function loadSearchProvinces() {
             try {
@@ -122,6 +191,54 @@
                 showSearchTab('uli');
             <?php endif; ?>
             
+            // Show modal if needed
+            <?php if ($show_registrar_modal): ?>
+                document.getElementById('registrarModal').classList.remove('hidden');
+            <?php endif; ?>
+            
+            // Set up ULI formatting for search form
+            const uliInput = document.getElementById('uli');
+            if (uliInput) {
+                // Single input handler that does both formatting and uppercase conversion
+                uliInput.addEventListener('input', function() {
+                    // Store cursor position
+                    const cursorPos = this.selectionStart;
+                    const oldLength = this.value.length;
+                    
+                    // Format the ULI (this already converts to uppercase)
+                    formatULI(this);
+                    
+                    // Adjust cursor position if needed
+                    const newLength = this.value.length;
+                    const lengthDiff = newLength - oldLength;
+                    this.setSelectionRange(cursorPos + lengthDiff, cursorPos + lengthDiff);
+                });
+                
+                // Format on paste
+                uliInput.addEventListener('paste', function(e) {
+                    setTimeout(() => {
+                        formatULI(this);
+                    }, 10);
+                });
+                
+                // Allow all alphanumeric characters (both upper and lowercase)
+                uliInput.addEventListener('keypress', function(e) {
+                    // Allow control keys (backspace, delete, tab, escape, enter)
+                    if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                        // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                        (e.ctrlKey === true)) {
+                        return;
+                    }
+                    
+                    const char = String.fromCharCode(e.which);
+                    
+                    // Allow both uppercase and lowercase letters, and numbers
+                    if (!/[A-Za-z0-9]/.test(char)) {
+                        e.preventDefault();
+                    }
+                });
+            }
+            
             // Set up province change handler for search form
             const birthProvinceSelect = document.getElementById('birth_province');
             if (birthProvinceSelect) {
@@ -146,6 +263,27 @@
             if (birthdayField) {
                 const today = new Date().toISOString().split('T')[0];
                 birthdayField.setAttribute('max', today);
+            }
+        });
+        
+        // Modal functions
+        function closeRegistrarModal() {
+            document.getElementById('registrarModal').classList.add('hidden');
+        }
+        
+        // Close modals when clicking outside
+        document.addEventListener('click', function(e) {
+            const registrarModal = document.getElementById('registrarModal');
+            
+            if (e.target === registrarModal) {
+                closeRegistrarModal();
+            }
+        });
+        
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeRegistrarModal();
             }
         });
     </script>
