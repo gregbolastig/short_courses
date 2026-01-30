@@ -175,9 +175,9 @@ try {
                                     $status_class = '';
                                     $status_icon = '';
                                     switch ($student['status']) {
-                                        case 'approved':
+                                        case 'completed':
                                             $status_class = 'bg-green-100 text-green-800 border-green-200';
-                                            $status_icon = 'fas fa-check-circle';
+                                            $status_icon = 'fas fa-graduation-cap';
                                             break;
                                         case 'rejected':
                                             $status_class = 'bg-red-100 text-red-800 border-red-200';
@@ -354,8 +354,8 @@ try {
                     </div>
                 </div>
 
-                <!-- Course Information (if approved) -->
-                <?php if ($student['status'] === 'approved' && ($student['course'] || $student['nc_level'] || $student['adviser'])): ?>
+                <!-- Course Information (if completed) -->
+                <?php if ($student['status'] === 'completed' && ($student['course'] || $student['nc_level'] || $student['adviser'])): ?>
                     <div class="mt-6 md:mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex items-center mb-4">
                             <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
@@ -409,6 +409,7 @@ try {
                        class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                         <i class="fas fa-edit mr-2"></i>Edit Student
                     </a>
+                    
                     <a href="index.php" 
                        class="inline-flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Students List

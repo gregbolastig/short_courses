@@ -50,6 +50,24 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
         
         if (!$student_profile) {
             $errors[] = 'Student record not found';
+        } else {
+            // Create course record from student's assigned course (if any)
+            $student_courses = [];
+            
+            // Only show course if student has been assigned one (completed status)
+            if ($student_profile['status'] === 'completed' && !empty($student_profile['course'])) {
+                $student_courses[] = [
+                    'id' => 1,
+                    'course_name' => $student_profile['course'],
+                    'nc_level' => $student_profile['nc_level'] ?: 'Not specified',
+                    'training_start' => $student_profile['training_start'],
+                    'training_end' => $student_profile['training_end'],
+                    'adviser' => $student_profile['adviser'],
+                    'status' => 'completed',
+                    'completion_date' => $student_profile['training_end'],
+                    'certificate_number' => 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT)
+                ];
+            }
         }
     } catch (PDOException $e) {
         $errors[] = 'Database error: ' . $e->getMessage();
@@ -104,6 +122,46 @@ include '../components/header.php';
                                 <?php endif; ?>
                             </h2>
                             
+                            <!-- Registration Status Badge -->
+                            <div class="mb-4">
+                                <?php
+                                $status_class = '';
+                                $status_icon = '';
+                                $status_text = '';
+                                $status_description = '';
+                                switch ($student_profile['status']) {
+                                    case 'completed':
+                                        $status_class = 'bg-green-500 border-green-400';
+                                        $status_icon = 'fas fa-graduation-cap';
+                                        $status_text = 'Course Completed';
+                                        $status_description = 'You have successfully completed your assigned course';
+                                        break;
+                                    case 'rejected':
+                                        $status_class = 'bg-red-500 border-red-400';
+                                        $status_icon = 'fas fa-times-circle';
+                                        $status_text = 'Registration Rejected';
+                                        $status_description = 'Your registration was rejected. Please contact the registrar for more information';
+                                        break;
+                                    default:
+                                        $status_class = 'bg-yellow-500 border-yellow-400';
+                                        $status_icon = 'fas fa-clock';
+                                        $status_text = 'Registration Pending';
+                                        $status_description = 'Your registration is pending course assignment by admin';
+                                }
+                                ?>
+                                <div class="inline-flex items-center px-4 py-2 rounded-full border-2 <?php echo $status_class; ?> text-white font-semibold text-sm">
+                                    <i class="<?php echo $status_icon; ?> mr-2"></i>
+                                    <?php echo $status_text; ?>
+                                </div>
+                                <p class="text-red-100 text-sm mt-2"><?php echo $status_description; ?></p>
+                                <?php if ($student_profile['approved_at'] && $student_profile['status'] === 'approved'): ?>
+                                    <p class="text-red-100 text-xs mt-1">
+                                        <i class="fas fa-calendar-check mr-1"></i>
+                                        Approved on <?php echo date('M j, Y g:i A', strtotime($student_profile['approved_at'])); ?>
+                                    </p>
+                                <?php endif; ?>
+                            </div>
+                            
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-red-100 mb-4">
                                 <div class="flex items-center justify-center md:justify-start">
                                     <i class="fas fa-id-card mr-2"></i>
@@ -122,81 +180,170 @@ include '../components/header.php';
                                     <span>Registered: <?php echo date('M j, Y', strtotime($student_profile['created_at'])); ?></span>
                                 </div>
                             </div>
-                            
-                            <!-- Status Badge -->
-                            <div>
-                                <?php
-                                $status_class = '';
-                                $status_icon = '';
-                                $status_text = '';
-                                switch ($student_profile['status']) {
-                                    case 'approved':
-                                        $status_class = 'bg-green-100 text-green-800 border-green-200';
-                                        $status_icon = 'fas fa-check-circle';
-                                        $status_text = 'Approved - You can now attend classes';
-                                        break;
-                                    case 'rejected':
-                                        $status_class = 'bg-red-100 text-red-800 border-red-200';
-                                        $status_icon = 'fas fa-times-circle';
-                                        $status_text = 'Application Rejected - Please contact admin';
-                                        break;
-                                    default:
-                                        $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                        $status_icon = 'fas fa-clock';
-                                        $status_text = 'Pending Approval - Please wait for admin review';
-                                }
-                                ?>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border <?php echo $status_class; ?>">
-                                    <i class="<?php echo $status_icon; ?> mr-2"></i>
-                                    <?php echo $status_text; ?>
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Course Information -->
-                <?php if ($student_profile['status'] === 'approved' && ($student_profile['course'] || $student_profile['nc_level'])): ?>
+                <!-- Courses Table -->
+                <?php if (!empty($student_courses)): ?>
                     <div class="px-6 py-6 bg-gray-50 border-t border-gray-200">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                            <i class="fas fa-book text-red-800 mr-2"></i>Your Approved Course
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <?php if ($student_profile['course']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Course</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['course']); ?></p>
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <i class="fas fa-graduation-cap text-red-800 mr-2"></i>Course History
+                            </h3>
+                            <span class="text-sm text-gray-600">
+                                Total Courses: <span class="font-semibold text-red-800"><?php echo count($student_courses); ?></span>
+                            </span>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                <thead class="bg-red-800 text-white">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Course Name</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">NC Level</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Training Period</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Adviser</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Certificate</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <?php foreach ($student_courses as $index => $course): ?>
+                                        <tr class="<?php echo $index % 2 === 0 ? 'bg-white' : 'bg-gray-50'; ?> hover:bg-red-50 transition-colors duration-200">
+                                            <td class="px-4 py-4">
+                                                <div class="flex items-center">
+                                                    <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                                        <i class="fas fa-book text-red-600 text-sm"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($course['course_name']); ?></p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    <?php echo htmlspecialchars($course['nc_level']); ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="text-sm text-gray-900">
+                                                    <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                        <p class="font-medium"><?php echo date('M j, Y', strtotime($course['training_start'])); ?></p>
+                                                        <p class="text-gray-500">to <?php echo date('M j, Y', strtotime($course['training_end'])); ?></p>
+                                                    <?php else: ?>
+                                                        <p class="text-gray-500">Not scheduled</p>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <div class="text-sm text-gray-900">
+                                                    <?php if ($course['adviser']): ?>
+                                                        <p class="font-medium"><?php echo htmlspecialchars($course['adviser']); ?></p>
+                                                    <?php else: ?>
+                                                        <p class="text-gray-500">Not assigned</p>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <?php
+                                                $status_class = '';
+                                                $status_icon = '';
+                                                $status_text = '';
+                                                switch ($course['status']) {
+                                                    case 'completed':
+                                                        $status_class = 'bg-green-100 text-green-800';
+                                                        $status_icon = 'fas fa-check-circle';
+                                                        $status_text = 'Completed';
+                                                        break;
+                                                    case 'approved':
+                                                        $status_class = 'bg-blue-100 text-blue-800';
+                                                        $status_icon = 'fas fa-play-circle';
+                                                        $status_text = 'In Progress';
+                                                        break;
+                                                    case 'rejected':
+                                                        $status_class = 'bg-red-100 text-red-800';
+                                                        $status_icon = 'fas fa-times-circle';
+                                                        $status_text = 'Rejected';
+                                                        break;
+                                                    default:
+                                                        $status_class = 'bg-yellow-100 text-yellow-800';
+                                                        $status_icon = 'fas fa-clock';
+                                                        $status_text = 'Pending';
+                                                }
+                                                ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
+                                                    <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                    <?php echo $status_text; ?>
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <?php if ($course['status'] === 'completed' && $course['certificate_number']): ?>
+                                                    <div class="text-sm">
+                                                        <p class="font-medium text-green-600"><?php echo htmlspecialchars($course['certificate_number']); ?></p>
+                                                        <p class="text-gray-500">Issued: <?php echo date('M j, Y', strtotime($course['completion_date'])); ?></p>
+                                                    </div>
+                                                <?php elseif ($course['status'] === 'approved'): ?>
+                                                    <span class="text-xs text-gray-500">In progress</span>
+                                                <?php else: ?>
+                                                    <span class="text-xs text-gray-400">Not available</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Course Statistics -->
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <?php
+                            $completed_courses = array_filter($student_courses, function($course) { return $course['status'] === 'completed'; });
+                            $in_progress_courses = array_filter($student_courses, function($course) { return $course['status'] === 'approved'; });
+                            $pending_courses = array_filter($student_courses, function($course) { return $course['status'] === 'pending'; });
+                            ?>
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                                <div class="text-2xl font-bold text-green-600"><?php echo count($completed_courses); ?></div>
+                                <div class="text-sm text-gray-600">Completed</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                                <div class="text-2xl font-bold text-blue-600"><?php echo count($in_progress_courses); ?></div>
+                                <div class="text-sm text-gray-600">In Progress</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                                <div class="text-2xl font-bold text-yellow-600"><?php echo count($pending_courses); ?></div>
+                                <div class="text-sm text-gray-600">Pending</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                                <div class="text-2xl font-bold text-red-800"><?php echo count($student_courses); ?></div>
+                                <div class="text-sm text-gray-600">Total Courses</div>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="px-6 py-6 bg-gray-50 border-t border-gray-200">
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-graduation-cap text-gray-400 text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">No Courses Yet</h3>
+                            <?php if ($student_profile['status'] === 'completed'): ?>
+                                <p class="text-gray-600 mb-4">Your course information is displayed above.</p>
+                                <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-lg">
+                                    <i class="fas fa-graduation-cap mr-2"></i>Course Completed
                                 </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['nc_level']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">NC Level</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['nc_level']); ?></p>
+                            <?php elseif ($student_profile['status'] === 'pending'): ?>
+                                <p class="text-gray-600 mb-4">Course assignment will be available once admin reviews your registration.</p>
+                                <div class="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-lg">
+                                    <i class="fas fa-clock mr-2"></i>Waiting for Course Assignment
                                 </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['training_start']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Training Start</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo date('M j, Y', strtotime($student_profile['training_start'])); ?></p>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if ($student_profile['training_end']): ?>
-                                <div class="bg-white p-4 rounded-lg border border-gray-200">
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Training End</label>
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo date('M j, Y', strtotime($student_profile['training_end'])); ?></p>
+                            <?php else: ?>
+                                <p class="text-gray-600 mb-4">Course enrollment is not available.</p>
+                                <div class="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 text-sm font-medium rounded-lg">
+                                    <i class="fas fa-times mr-2"></i>Registration Rejected
                                 </div>
                             <?php endif; ?>
                         </div>
-                        
-                        <?php if ($student_profile['adviser']): ?>
-                            <div class="mt-4 bg-white p-4 rounded-lg border border-gray-200">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Assigned Adviser</label>
-                                <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['adviser']); ?></p>
-                            </div>
-                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
                 
@@ -320,9 +467,19 @@ include '../components/header.php';
                         <button onclick="toggleEditMode()" id="editBtn" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
                             <i class="fas fa-edit mr-2"></i>Edit Profile
                         </button>
-                        <a href="#" class="inline-flex items-center px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
-                            <i class="fas fa-plus mr-2"></i>New Course
-                        </a>
+                        <?php if ($student_profile['status'] === 'completed'): ?>
+                            <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 text-sm font-medium rounded-lg" title="Course completed">
+                                <i class="fas fa-graduation-cap mr-2"></i>Course Completed
+                            </div>
+                        <?php elseif ($student_profile['status'] === 'pending'): ?>
+                            <div class="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-lg cursor-not-allowed" title="Waiting for course assignment">
+                                <i class="fas fa-clock mr-2"></i>Pending Assignment
+                            </div>
+                        <?php else: ?>
+                            <div class="inline-flex items-center px-6 py-3 bg-red-100 text-red-800 text-sm font-medium rounded-lg cursor-not-allowed" title="Registration rejected">
+                                <i class="fas fa-times mr-2"></i>Registration Rejected
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

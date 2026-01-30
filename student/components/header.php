@@ -92,8 +92,17 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
                     <div class="flex flex-col sm:flex-row items-center justify-center mb-2">
                         <?php if ($show_logo): ?>
                         <?php 
-                        // Determine the correct path based on the current directory
-                        $logo_path = file_exists('assets/images/Logo.png') ? 'assets/images/Logo.png' : '../assets/images/Logo.png';
+                        // Determine the correct path based on the current directory depth
+                        if (file_exists('assets/images/Logo.png')) {
+                            // Root level (index.php)
+                            $logo_path = 'assets/images/Logo.png';
+                        } elseif (file_exists('../assets/images/Logo.png')) {
+                            // One level deep (student/register.php)
+                            $logo_path = '../assets/images/Logo.png';
+                        } else {
+                            // Two levels deep (student/profile/profile.php)
+                            $logo_path = '../../assets/images/Logo.png';
+                        }
                         ?>
                         <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
                         <?php endif; ?>

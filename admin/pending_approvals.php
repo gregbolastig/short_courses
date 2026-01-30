@@ -27,6 +27,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             
             if ($stmt->execute()) {
                 $success_message = 'Student registration ' . $status . ' successfully.';
+                
+                // Log the approval action
+                if ($status === 'approved') {
+                    $success_message .= ' The student\'s course completion has been recorded.';
+                } elseif ($status === 'rejected') {
+                    $success_message .= ' The student has been notified of the rejection.';
+                }
             } else {
                 $error_message = 'Failed to update student status.';
             }
@@ -211,13 +218,12 @@ try {
                                             View Details
                                         </a>
                                         <div class="flex space-x-2">
-                                            <a href="?action=approve&id=<?php echo $student['id']; ?>" 
-                                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                               onclick="return confirm('Are you sure you want to approve this student registration?')">
+                                            <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                                 </svg>
-                                                Approve
+                                                Review & Approve
                                             </a>
                                             <a href="?action=reject&id=<?php echo $student['id']; ?>" 
                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

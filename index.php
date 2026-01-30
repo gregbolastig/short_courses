@@ -189,6 +189,33 @@ include 'student/components/header.php';
                                             <p><i class="fas fa-id-card mr-1"></i>ULI: <?php echo htmlspecialchars($student['uli']); ?></p>
                                             <p><i class="fas fa-envelope mr-1"></i><?php echo htmlspecialchars($student['email']); ?></p>
                                             <p><i class="fas fa-calendar mr-1"></i>Registered: <?php echo date('M j, Y', strtotime($student['created_at'])); ?></p>
+                                            <div class="flex items-center mt-2">
+                                                <?php
+                                                $status_class = '';
+                                                $status_icon = '';
+                                                $status_text = '';
+                                                switch ($student['status']) {
+                                                    case 'completed':
+                                                        $status_class = 'bg-green-100 text-green-800';
+                                                        $status_icon = 'fas fa-graduation-cap';
+                                                        $status_text = 'Completed';
+                                                        break;
+                                                    case 'rejected':
+                                                        $status_class = 'bg-red-100 text-red-800';
+                                                        $status_icon = 'fas fa-times-circle';
+                                                        $status_text = 'Rejected';
+                                                        break;
+                                                    default:
+                                                        $status_class = 'bg-yellow-100 text-yellow-800';
+                                                        $status_icon = 'fas fa-clock';
+                                                        $status_text = 'Pending';
+                                                }
+                                                ?>
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $status_class; ?>">
+                                                    <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                    <?php echo $status_text; ?>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
