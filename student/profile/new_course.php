@@ -20,19 +20,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($student) {
-            // Insert new course application into course_applications table
-            $stmt = $conn->prepare("INSERT INTO course_applications 
-                (student_id, student_uli, course_name, status, applied_at) 
-                VALUES (:student_id, :student_uli, :course_name, 'pending', NOW())");
-            
+            // Check if student has any pending course applications
+            $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
             $stmt->bindParam(':student_id', $student['id']);
-            $stmt->bindParam(':student_uli', $student['uli']);
-            $stmt->bindParam(':course_name', $_POST['course']);
+            $stmt->execute();
+            $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
             
-            if ($stmt->execute()) {
-                $success_message = 'Course application submitted successfully! Your application is now pending admin review.';
+            // Check if student has any active/approved courses that are not completed
+            $has_active_course = false;
+            if (!empty($student['course']) && in_array($student['status'], ['pending', 'approved'])) {
+                $has_active_course = true;
+            }
+            
+            if ($pending_count > 0) {
+                $errors[] = 'You already have a pending course application. Please wait for admin review before applying for another course.';
+            } elseif ($has_active_course) {
+                $errors[] = 'You have an active course enrollment. Please complete your current course before applying for a new one.';
             } else {
-                $errors[] = 'Failed to submit course application. Please try again.';
+                // Insert new course application into course_applications table
+                $stmt = $conn->prepare("INSERT INTO course_applications 
+                    (student_id, student_uli, course_name, status, applied_at) 
+                    VALUES (:student_id, :student_uli, :course_name, 'pending', NOW())");
+                
+                $stmt->bindParam(':student_id', $student['id']);
+                $stmt->bindParam(':student_uli', $student['uli']);
+                $stmt->bindParam(':course_name', $_POST['course']);
+                
+                if ($stmt->execute()) {
+                    $success_message = 'Course application submitted successfully! Your application is now pending admin review.';
+                } else {
+                    $errors[] = 'Failed to submit course application. Please try again.';
+                }
             }
         } else {
             $errors[] = 'Student record not found.';
@@ -154,7 +172,6 @@ include '../components/header.php';
                             <ul class="text-sm text-blue-700 space-y-1">
                                 <li>• Your application will be reviewed by admin</li>
                                 <li>• Admin will assign NC Level and training schedule</li>
-                                <li>• You will be notified once your application is approved</li>
                                 <li>• You can apply for multiple courses</li>
                             </ul>
                         </div>
@@ -214,7 +231,7 @@ include '../components/header.php';
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                         <p class="text-xs text-blue-700 flex items-center justify-center">
                             <i class="fas fa-info-circle mr-2"></i>
-                            Your application will be reviewed by admin and you will be notified of the decision.
+                            Your application will be reviewed by admin.
                         </p>
                     </div>
                 </div>

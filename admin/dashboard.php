@@ -132,13 +132,25 @@ try {
     $stmt = $conn->query("SELECT COUNT(*) as pending_applications FROM course_applications WHERE status = 'pending'");
     $pending_applications = $stmt->fetch(PDO::FETCH_ASSOC)['pending_applications'];
     
-    // Get recent course applications
+    // Pagination for course applications
+    $app_page = isset($_GET['app_page']) ? max(1, intval($_GET['app_page'])) : 1;
+    $app_per_page = 10; // Show 10 applications per page
+    $app_offset = ($app_page - 1) * $app_per_page;
+    
+    // Get total count for pagination
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'pending'");
+    $total_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_app_pages = ceil($total_applications_count / $app_per_page);
+    
+    // Get recent course applications with pagination
     $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.email 
                            FROM course_applications ca 
                            JOIN students s ON ca.student_id = s.id 
                            WHERE ca.status = 'pending' 
                            ORDER BY ca.applied_at DESC 
-                           LIMIT 5");
+                           LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $app_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $app_offset, PDO::PARAM_INT);
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -155,6 +167,7 @@ try {
     $advisers = [];
     $pending_applications = 0;
     $recent_applications = [];
+    $total_app_pages = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -397,7 +410,7 @@ try {
                         </div>
 
                         <!-- Course Applications Section -->
-                        <?php if (!empty($recent_applications)): ?>
+                        <?php if ($pending_applications > 0): ?>
                         <div id="course-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
@@ -405,7 +418,14 @@ try {
                                         <i class="fas fa-file-alt text-gray-500 mr-2"></i>
                                         Pending Course Applications
                                     </h3>
-                                    <div class="flex items-center space-x-4">
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                        <!-- Search Bar -->
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-search text-gray-400"></i>
+                                            </div>
+                                            <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                        </div>
                                         <span class="text-sm text-gray-600">
                                             <?php echo $pending_applications; ?> pending applications
                                         </span>
@@ -413,8 +433,72 @@ try {
                                 </div>
                             </div>
                             
-                            <!-- Desktop Table View -->
-                            <div class="overflow-x-auto">
+                            <?php if (empty($recent_applications)): ?>
+                                <div class="text-center py-8 md:py-12">
+                                    <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
+                                        <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No pending applications</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">All course applications have been reviewed.</p>
+                                </div>
+                            <?php else: ?>
+                                <!-- Mobile Card View -->
+                                <div class="block md:hidden">
+                                    <div class="divide-y divide-gray-200">
+                                        <?php foreach ($recent_applications as $application): ?>
+                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center space-x-3 mb-2">
+                                                            <div class="bg-orange-600 rounded-full p-2">
+                                                                <i class="fas fa-graduation-cap text-white text-xs"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="text-sm font-medium text-gray-900 truncate">
+                                                                    <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
+                                                                </p>
+                                                                <p class="text-xs text-gray-500 truncate">
+                                                                    <?php echo htmlspecialchars($application['email']); ?>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="space-y-1">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Course:</span>
+                                                                <span class="text-xs text-gray-900 font-medium">
+                                                                    <?php echo htmlspecialchars($application['course_name']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">ULI:</span>
+                                                                <span class="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                                    <?php echo htmlspecialchars($application['student_uli']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Applied:</span>
+                                                                <span class="text-xs text-gray-500">
+                                                                    <?php echo date('M j, Y', strtotime($application['applied_at'])); ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
+                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                               class="text-blue-600 hover:text-blue-900 flex items-center text-xs">
+                                                                <i class="fas fa-eye mr-1"></i>Review
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                
+                                <!-- Desktop Table View -->
+                                <div class="hidden md:block overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
@@ -458,14 +542,10 @@ try {
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div class="flex items-center space-x-3">
-                                                        <button onclick="alert('Course approval modal coming soon!')" 
-                                                           class="text-green-600 hover:text-green-900 flex items-center">
-                                                            <i class="fas fa-check mr-1"></i>Approve
-                                                        </button>
-                                                        <button onclick="alert('Course rejection coming soon!')" 
-                                                           class="text-red-600 hover:text-red-900 flex items-center">
-                                                            <i class="fas fa-times mr-1"></i>Reject
-                                                        </button>
+                                                        <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                           class="text-blue-600 hover:text-blue-900 flex items-center">
+                                                            <i class="fas fa-eye mr-1"></i>Review
+                                                        </a>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -474,20 +554,80 @@ try {
                                 </table>
                             </div>
                             
-                            <?php if ($pending_applications > 5): ?>
-                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50 text-center">
-                                    <p class="text-sm text-gray-600 mb-2">
-                                        Showing 5 of <?php echo $pending_applications; ?> pending applications
-                                    </p>
-                                    <a href="course_applications.php" class="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors duration-200">
-                                        <i class="fas fa-list mr-2"></i>View All Applications
-                                    </a>
+                            <?php endif; ?>
+                            
+                            <!-- Pagination -->
+                            <?php if ($total_app_pages > 1): ?>
+                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div class="text-sm text-gray-700">
+                                            Showing <?php echo $app_offset + 1; ?> to <?php echo min($app_offset + $app_per_page, $total_applications_count); ?> of <?php echo $total_applications_count; ?> applications
+                                        </div>
+                                        
+                                        <div class="flex items-center space-x-2">
+                                            <!-- Previous Button -->
+                                            <?php if ($app_page > 1): ?>
+                                                <a href="?app_page=<?php echo $app_page - 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                            
+                                            <!-- Page Numbers -->
+                                            <div class="hidden sm:flex items-center space-x-1">
+                                                <?php
+                                                $start_page = max(1, $app_page - 2);
+                                                $end_page = min($total_app_pages, $app_page + 2);
+                                                
+                                                if ($start_page > 1): ?>
+                                                    <a href="?app_page=1" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">1</a>
+                                                    <?php if ($start_page > 2): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                                
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                    <?php if ($i == $app_page): ?>
+                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-orange-500 rounded text-sm font-medium text-white bg-orange-600 shadow-md"><?php echo $i; ?></span>
+                                                    <?php else: ?>
+                                                        <a href="?app_page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
+                                                    <?php endif; ?>
+                                                <?php endfor; ?>
+                                                
+                                                <?php if ($end_page < $total_app_pages): ?>
+                                                    <?php if ($end_page < $total_app_pages - 1): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                    <a href="?app_page=<?php echo $total_app_pages; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $total_app_pages; ?></a>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <!-- Mobile Page Info -->
+                                            <div class="sm:hidden text-sm text-gray-700">
+                                                Page <?php echo $app_page; ?> of <?php echo $total_app_pages; ?>
+                                            </div>
+                                            
+                                            <!-- Next Button -->
+                                            <?php if ($app_page < $total_app_pages): ?>
+                                                <a href="?app_page=<?php echo $app_page + 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
 
-                        <!-- Recent Students Table -->
+                        <!-- Recent Students
                         <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
@@ -684,14 +824,12 @@ try {
                                         <div class="flex items-center space-x-2">
                                             <!-- Previous Button -->
                                             <?php if ($page > 1): ?>
-                                                <a href="?page=<?php echo $page - 1; ?>" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                                                    <i class="fas fa-chevron-left mr-1"></i>
-                                                    Previous
+                                                <a href="?page=<?php echo $page - 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-left"></i>
                                                 </a>
                                             <?php else: ?>
-                                                <span class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                                    <i class="fas fa-chevron-left mr-1"></i>
-                                                    Previous
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-left"></i>
                                                 </span>
                                             <?php endif; ?>
                                             
@@ -731,14 +869,12 @@ try {
                                             
                                             <!-- Next Button -->
                                             <?php if ($page < $total_pages): ?>
-                                                <a href="?page=<?php echo $page + 1; ?>" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                                                    Next
-                                                    <i class="fas fa-chevron-right ml-1"></i>
+                                                <a href="?page=<?php echo $page + 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-right"></i>
                                                 </a>
                                             <?php else: ?>
-                                                <span class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                                    Next
-                                                    <i class="fas fa-chevron-right ml-1"></i>
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-right"></i>
                                                 </span>
                                             <?php endif; ?>
                                         </div>

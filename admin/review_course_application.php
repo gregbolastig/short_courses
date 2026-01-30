@@ -1,0 +1,581 @@
+<?php
+session_start();
+require_once '../config/database.php';
+require_once '../includes/auth_middleware.php';
+
+// Require admin authentication
+requireAdmin();
+
+$success_message = '';
+$error_message = '';
+$application = null;
+$student = null;
+$student_courses = [];
+$available_courses = [];
+$advisers = [];
+
+// Get application ID from URL
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header('Location: dashboard.php');
+    exit;
+}
+
+$application_id = $_GET['id'];
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    
+    if ($action === 'approve') {
+        // Validate required fields for approval
+        $required_fields = ['nc_level', 'adviser', 'training_start', 'training_end'];
+        $missing_fields = [];
+        
+        foreach ($required_fields as $field) {
+            if (empty($_POST[$field])) {
+                $missing_fields[] = ucfirst(str_replace('_', ' ', $field));
+            }
+        }
+        
+        if (!empty($missing_fields)) {
+            $error_message = 'Please fill in all required fields: ' . implode(', ', $missing_fields);
+        } else {
+            try {
+                $database = new Database();
+                $conn = $database->getConnection();
+                
+                // Update course application with approval and details
+                $stmt = $conn->prepare("UPDATE course_applications SET 
+                    status = 'approved',
+                    nc_level = :nc_level,
+                    adviser = :adviser,
+                    training_start = :training_start,
+                    training_end = :training_end,
+                    reviewed_by = :admin_id,
+                    reviewed_at = NOW(),
+                    notes = :notes
+                    WHERE application_id = :id");
+                
+                $stmt->bindParam(':nc_level', $_POST['nc_level']);
+                $stmt->bindParam(':adviser', $_POST['adviser']);
+                $stmt->bindParam(':training_start', $_POST['training_start']);
+                $stmt->bindParam(':training_end', $_POST['training_end']);
+                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                $stmt->bindParam(':notes', $_POST['notes']);
+                $stmt->bindParam(':id', $application_id);
+                
+                if ($stmt->execute()) {
+                    $success_message = 'Course application approved successfully!';
+                    // Redirect after 2 seconds
+                    header("refresh:2;url=dashboard.php");
+                } else {
+                    $error_message = 'Failed to approve course application.';
+                }
+            } catch (PDOException $e) {
+                $error_message = 'Database error: ' . $e->getMessage();
+            }
+        }
+    } elseif ($action === 'reject') {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare("UPDATE course_applications SET 
+                status = 'rejected',
+                reviewed_by = :admin_id,
+                reviewed_at = NOW(),
+                notes = :notes
+                WHERE application_id = :id");
+            
+            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            $stmt->bindParam(':notes', $_POST['notes']);
+            $stmt->bindParam(':id', $application_id);
+            
+            if ($stmt->execute()) {
+                $success_message = 'Course application rejected.';
+                // Redirect after 2 seconds
+                header("refresh:2;url=dashboard.php");
+            } else {
+                $error_message = 'Failed to reject course application.';
+            }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
+
+// Get application details
+try {
+    $database = new Database();
+    $conn = $database->getConnection();
+    
+    // Get application with student details
+    $stmt = $conn->prepare("SELECT ca.*, s.* 
+                           FROM course_applications ca 
+                           JOIN students s ON ca.student_id = s.id 
+                           WHERE ca.application_id = :id AND ca.status = 'pending'");
+    $stmt->bindParam(':id', $application_id);
+    $stmt->execute();
+    $application = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$application) {
+        header('Location: dashboard.php');
+        exit;
+    }
+    
+    $student = $application; // Student data is included in the application
+    
+    // Get student's course history (existing courses)
+    if (!empty($student['course'])) {
+        $student_courses[] = [
+            'course_name' => $student['course'],
+            'nc_level' => $student['nc_level'] ?: 'Not specified',
+            'training_start' => $student['training_start'],
+            'training_end' => $student['training_end'],
+            'adviser' => $student['adviser'],
+            'status' => $student['status'],
+            'approved_at' => $student['approved_at']
+        ];
+    }
+    
+    // Get other course applications for this student
+    $stmt = $conn->prepare("SELECT ca.*, c.course_name as course_display_name 
+                           FROM course_applications ca 
+                           LEFT JOIN courses c ON ca.course_name = c.course_name
+                           WHERE ca.student_id = :student_id AND ca.application_id != :current_id
+                           ORDER BY ca.applied_at DESC");
+    $stmt->bindParam(':student_id', $student['id']);
+    $stmt->bindParam(':current_id', $application_id);
+    $stmt->execute();
+    $other_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get available courses
+    $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
+    $available_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get available advisers
+    $stmt = $conn->query("SELECT * FROM advisers WHERE is_active = TRUE ORDER BY adviser_name");
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    $error_message = 'Database error: ' . $e->getMessage();
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Course Application - Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <?php include 'components/sidebar.php'; ?>
+    
+    <!-- Main Content -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <?php include 'components/header.php'; ?>
+        
+        <!-- Page Content -->
+        <main class="p-4 md:p-6 lg:p-8">
+            <!-- Breadcrumb -->
+            <nav class="flex mb-6" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
+                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li aria-current="page">
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <span class="text-sm font-medium text-gray-500">Review Course Application</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Page Header -->
+            <div class="mb-6 md:mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Review Course Application</h1>
+                <p class="text-gray-600">Review student profile and course application details</p>
+            </div>
+
+            <!-- Alert Messages -->
+            <?php if ($error_message): ?>
+                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($success_message): ?>
+                <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <?php echo htmlspecialchars($success_message); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($application): ?>
+                <!-- Student Profile Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-shrink-0">
+                                <?php 
+                                // Handle profile picture path resolution for admin view
+                                $profile_picture_url = '';
+                                $file_exists = false;
+                                
+                                if (!empty($student['profile_picture'])) {
+                                    $stored_path = $student['profile_picture'];
+                                    
+                                    // Handle both old format (../uploads/profiles/file.jpg) and new format (uploads/profiles/file.jpg)
+                                    if (strpos($stored_path, '../') === 0) {
+                                        // Old format: use as is
+                                        $profile_picture_url = $stored_path;
+                                    } else {
+                                        // New format: add ../
+                                        $profile_picture_url = '../' . $stored_path;
+                                    }
+                                    
+                                    $file_exists = file_exists($profile_picture_url);
+                                }
+                                ?>
+                                
+                                <?php if (!empty($student['profile_picture']) && $file_exists): ?>
+                                    <img src="<?php echo htmlspecialchars($profile_picture_url); ?>" 
+                                         alt="Profile Picture" 
+                                         class="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg">
+                                <?php else: ?>
+                                    <div class="w-16 h-16 rounded-full bg-white bg-opacity-20 border-4 border-white shadow-lg flex items-center justify-center">
+                                        <span class="text-xl font-bold text-white">
+                                            <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="text-white">
+                                <h2 class="text-xl font-bold mb-1">
+                                    <?php echo htmlspecialchars(trim($student['first_name'] . ' ' . ($student['middle_name'] ? $student['middle_name'] . ' ' : '') . $student['last_name'])); ?>
+                                    <?php if ($student['extension_name']): ?>
+                                        <?php echo htmlspecialchars($student['extension_name']); ?>
+                                    <?php endif; ?>
+                                </h2>
+                                <div class="text-blue-100 text-sm space-y-1">
+                                    <p><i class="fas fa-id-card mr-2"></i>ULI: <?php echo htmlspecialchars($student['uli']); ?></p>
+                                    <p><i class="fas fa-envelope mr-2"></i><?php echo htmlspecialchars($student['email']); ?></p>
+                                    <p><i class="fas fa-calendar mr-2"></i>Registered: <?php echo date('M j, Y', strtotime($student['created_at'])); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Student Details -->
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Personal Information</h4>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    <p><span class="font-medium">Age:</span> <?php echo $student['age']; ?> years old</p>
+                                    <p><span class="font-medium">Sex:</span> <?php echo htmlspecialchars($student['sex']); ?></p>
+                                    <p><span class="font-medium">Civil Status:</span> <?php echo htmlspecialchars($student['civil_status']); ?></p>
+                                    <p><span class="font-medium">Contact:</span> <?php echo htmlspecialchars($student['contact_number']); ?></p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Address</h4>
+                                <div class="text-sm text-gray-600">
+                                    <p><?php echo htmlspecialchars($student['barangay'] . ', ' . $student['city'] . ', ' . $student['province']); ?></p>
+                                    <?php if ($student['street_address']): ?>
+                                        <p><?php echo htmlspecialchars($student['street_address']); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Education</h4>
+                                <div class="text-sm text-gray-600">
+                                    <p><span class="font-medium">Last School:</span></p>
+                                    <p><?php echo htmlspecialchars($student['last_school']); ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Course Application -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-file-alt text-orange-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Current Application</h3>
+                            <p class="text-gray-600 text-sm">Course application submitted for review</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="font-semibold text-orange-800 text-lg"><?php echo htmlspecialchars($application['course_name']); ?></h4>
+                                <p class="text-orange-600 text-sm">Applied on <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?></p>
+                            </div>
+                            <div class="text-right">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                                    <i class="fas fa-clock mr-1"></i>Pending Review
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course History -->
+                <?php if (!empty($student_courses) || !empty($other_applications)): ?>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-history text-green-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Course History</h3>
+                            <p class="text-gray-600 text-sm">Previous and other course enrollments</p>
+                        </div>
+                    </div>
+
+                    <?php if (!empty($student_courses)): ?>
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 mb-3">Current Enrolled Course</h4>
+                            <?php foreach ($student_courses as $course): ?>
+                                <div class="border border-gray-200 rounded-lg p-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h5 class="font-medium text-gray-900"><?php echo htmlspecialchars($course['course_name']); ?></h5>
+                                            <p class="text-sm text-gray-600">NC Level: <?php echo htmlspecialchars($course['nc_level']); ?></p>
+                                            <?php if ($course['adviser']): ?>
+                                                <p class="text-sm text-gray-600">Adviser: <?php echo htmlspecialchars($course['adviser']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="text-right">
+                                            <?php
+                                            $status_class = '';
+                                            switch ($course['status']) {
+                                                case 'completed':
+                                                    $status_class = 'bg-green-100 text-green-800';
+                                                    break;
+                                                case 'approved':
+                                                    $status_class = 'bg-blue-100 text-blue-800';
+                                                    break;
+                                                default:
+                                                    $status_class = 'bg-yellow-100 text-yellow-800';
+                                            }
+                                            ?>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
+                                                <?php echo ucfirst($course['status']); ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($other_applications)): ?>
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-3">Other Course Applications</h4>
+                            <div class="space-y-3">
+                                <?php foreach ($other_applications as $app): ?>
+                                    <div class="border border-gray-200 rounded-lg p-4">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h5 class="font-medium text-gray-900"><?php echo htmlspecialchars($app['course_name']); ?></h5>
+                                                <p class="text-sm text-gray-600">Applied: <?php echo date('M j, Y', strtotime($app['applied_at'])); ?></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <?php
+                                                $app_status_class = '';
+                                                switch ($app['status']) {
+                                                    case 'approved':
+                                                        $app_status_class = 'bg-green-100 text-green-800';
+                                                        break;
+                                                    case 'rejected':
+                                                        $app_status_class = 'bg-red-100 text-red-800';
+                                                        break;
+                                                    default:
+                                                        $app_status_class = 'bg-yellow-100 text-yellow-800';
+                                                }
+                                                ?>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $app_status_class; ?>">
+                                                    <?php echo ucfirst($app['status']); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <!-- Review Form -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center mb-6">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-clipboard-check text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Review & Decision</h3>
+                            <p class="text-gray-600 text-sm">Approve or reject this course application</p>
+                        </div>
+                    </div>
+
+                    <!-- Approval Form -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Approve Section -->
+                        <div class="border border-green-200 rounded-lg p-6 bg-green-50">
+                            <h4 class="text-lg font-semibold text-green-800 mb-4">
+                                <i class="fas fa-check-circle mr-2"></i>Approve Application
+                            </h4>
+                            
+                            <form method="POST" class="space-y-4">
+                                <input type="hidden" name="action" value="approve">
+                                
+                                <div>
+                                    <label for="nc_level" class="block text-sm font-medium text-gray-700 mb-2">NC Level *</label>
+                                    <select id="nc_level" name="nc_level" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                        <option value="">Select NC Level</option>
+                                        <option value="NC I">NC I</option>
+                                        <option value="NC II">NC II</option>
+                                        <option value="NC III">NC III</option>
+                                        <option value="NC IV">NC IV</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="adviser" class="block text-sm font-medium text-gray-700 mb-2">Assigned Adviser *</label>
+                                    <select id="adviser" name="adviser" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                        <option value="">Select an adviser</option>
+                                        <?php foreach ($advisers as $adviser): ?>
+                                            <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                                <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                                <?php if ($adviser['specialization']): ?>
+                                                    - <?php echo htmlspecialchars($adviser['specialization']); ?>
+                                                <?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="training_start" class="block text-sm font-medium text-gray-700 mb-2">Training Start *</label>
+                                        <input type="date" id="training_start" name="training_start" required 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    </div>
+
+                                    <div>
+                                        <label for="training_end" class="block text-sm font-medium text-gray-700 mb-2">Training End *</label>
+                                        <input type="date" id="training_end" name="training_end" required 
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="approve_notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                                    <textarea id="approve_notes" name="notes" rows="3" 
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                              placeholder="Add any notes about the approval..."></textarea>
+                                </div>
+
+                                <button type="submit" 
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                    <i class="fas fa-check mr-2"></i>Approve Application
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Reject Section -->
+                        <div class="border border-red-200 rounded-lg p-6 bg-red-50">
+                            <h4 class="text-lg font-semibold text-red-800 mb-4">
+                                <i class="fas fa-times-circle mr-2"></i>Reject Application
+                            </h4>
+                            
+                            <form method="POST" class="space-y-4">
+                                <input type="hidden" name="action" value="reject">
+                                
+                                <div>
+                                    <label for="reject_notes" class="block text-sm font-medium text-gray-700 mb-2">Reason for Rejection *</label>
+                                    <textarea id="reject_notes" name="notes" rows="4" required
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                              placeholder="Please provide a reason for rejecting this application..."></textarea>
+                                </div>
+
+                                <button type="submit" 
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                        onclick="return confirm('Are you sure you want to reject this application?')">
+                                    <i class="fas fa-times mr-2"></i>Reject Application
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Back Button -->
+                    <div class="mt-8 text-center">
+                        <a href="dashboard.php" 
+                           class="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </main>
+    </div>
+
+    <script>
+        // Set minimum date for training start to today
+        document.getElementById('training_start').min = new Date().toISOString().split('T')[0];
+        
+        // Update training end minimum date when start date changes
+        document.getElementById('training_start').addEventListener('change', function() {
+            const startDate = this.value;
+            const endDateInput = document.getElementById('training_end');
+            endDateInput.min = startDate;
+            
+            // Clear end date if it's before the new start date
+            if (endDateInput.value && endDateInput.value < startDate) {
+                endDateInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>
