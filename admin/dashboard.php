@@ -1,0 +1,934 @@
+<?php
+session_start();
+require_once '../config/database.php';
+require_once '../includes/auth_middleware.php';
+
+// Require admin authentication
+requireAdmin();
+
+// Set page title
+$page_title = 'Dashboard';
+
+// Handle approval/rejection actions
+if (isset($_POST['action']) && isset($_POST['student_id'])) {
+    $action = $_POST['action'];
+    $student_id = $_POST['student_id'];
+    
+    if ($action === 'approve') {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            // Get form data
+            $course = $_POST['course'];
+            $nc_level = $_POST['nc_level'];
+            $training_start = $_POST['training_start'];
+            $training_end = $_POST['training_end'];
+            $adviser = $_POST['adviser'];
+            
+            // Update student with approval details
+            $stmt = $conn->prepare("UPDATE students SET 
+                status = 'approved', 
+                approved_by = :admin_id, 
+                approved_at = NOW(),
+                course = :course,
+                nc_level = :nc_level,
+                training_start = :training_start,
+                training_end = :training_end,
+                adviser = :adviser
+                WHERE id = :id");
+            
+            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            $stmt->bindParam(':course', $course);
+            $stmt->bindParam(':nc_level', $nc_level);
+            $stmt->bindParam(':training_start', $training_start);
+            $stmt->bindParam(':training_end', $training_end);
+            $stmt->bindParam(':adviser', $adviser);
+            $stmt->bindParam(':id', $student_id);
+            
+            if ($stmt->execute()) {
+                $success_message = 'Student registration approved successfully with course details.';
+            } else {
+                $error_message = 'Failed to approve student registration.';
+            }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
+
+// Handle simple rejection actions (from GET request)
+if (isset($_GET['action']) && isset($_GET['id'])) {
+    $action = $_GET['action'];
+    $student_id = $_GET['id'];
+    
+    if ($action === 'reject') {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            $stmt->bindParam(':id', $student_id);
+            
+            if ($stmt->execute()) {
+                $success_message = 'Student registration rejected successfully.';
+            } else {
+                $error_message = 'Failed to reject student registration.';
+            }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
+
+// Get statistics
+try {
+    $database = new Database();
+    $conn = $database->getConnection();
+    
+    // Total students
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // Pending approvals
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    
+    // Approved students
+    $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'");
+    $approved_students = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
+    
+    // Recent registrations (last 7 days)
+    $stmt = $conn->query("SELECT COUNT(*) as recent FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $recent_registrations = $stmt->fetch(PDO::FETCH_ASSOC)['recent'];
+    
+    // Pagination for recent students
+    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+    $per_page = 10; // Show 10 students per page
+    $offset = ($page - 1) * $per_page;
+    
+    // Get total count for pagination
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_pages = ceil($total_students_count / $per_page);
+    
+    // Get recent students with pagination
+    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, status, created_at FROM students ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get active courses for approval modal
+    $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+    $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get advisers for approval modal
+    $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get pending course applications
+    $stmt = $conn->query("SELECT COUNT(*) as pending_applications FROM course_applications WHERE status = 'pending'");
+    $pending_applications = $stmt->fetch(PDO::FETCH_ASSOC)['pending_applications'];
+    
+    // Get recent course applications
+    $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.email 
+                           FROM course_applications ca 
+                           JOIN students s ON ca.student_id = s.id 
+                           WHERE ca.status = 'pending' 
+                           ORDER BY ca.applied_at DESC 
+                           LIMIT 5");
+    $stmt->execute();
+    $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    $error_message = "Database error: " . $e->getMessage();
+    // Set default values in case of error
+    $recent_students = [];
+    $total_students = 0;
+    $pending_approvals = 0;
+    $approved_students = 0;
+    $recent_registrations = 0;
+    $total_pages = 0;
+    $active_courses = [];
+    $advisers = [];
+    $pending_applications = 0;
+    $recent_applications = [];
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Student Registration System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#1e3a8a',
+                            600: '#1e40af',
+                            700: '#1d4ed8',
+                            800: '#1e3a8a',
+                            900: '#1e293b'
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            500: '#334155',
+                            600: '#475569',
+                            700: '#64748b'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.3s ease-out'
+                    }
+                }
+            }
+        }
+    </script>
+    <?php include 'components/admin-styles.php'; ?>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="min-h-screen bg-gray-50">
+        <?php include 'components/sidebar.php'; ?>
+        
+        <!-- Main content wrapper -->
+        <div id="main-content" class="min-h-screen transition-all duration-300 ease-in-out ml-0 md:ml-64">
+            <?php include 'components/header.php'; ?>
+            
+            <!-- Main content area -->
+            <main class="overflow-y-auto focus:outline-none">
+                <div class="py-4 md:py-6">
+                    <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+                        <!-- Alerts -->
+                        <?php if (isset($error_message)): ?>
+                            <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-exclamation-triangle text-red-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($success_message)): ?>
+                            <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-check-circle text-green-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Statistics Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-blue-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-users text-blue-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Total Students</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-gray-900 animate-pulse"><?php echo $total_students; ?></dd>
+                                                <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                    <i class="fas fa-arrow-up mr-1"></i>
+                                                    +12% from last month
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-blue-50 px-4 md:px-6 py-3">
+                                    <a href="students/index.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
+                                        View all students
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-yellow-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-clock text-yellow-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Pending Approvals</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-yellow-600 animate-pulse"><?php echo $pending_approvals; ?></dd>
+                                                <?php if ($pending_approvals > 0): ?>
+                                                    <dd class="text-xs text-red-600 flex items-center mt-1 animate-attention-pulse">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                        Requires attention
+                                                    </dd>
+                                                <?php else: ?>
+                                                    <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        All caught up!
+                                                    </dd>
+                                                <?php endif; ?>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-yellow-50 px-4 md:px-6 py-3">
+                                    <a href="pending_approvals.php" class="text-sm text-yellow-700 hover:text-yellow-800 font-medium flex items-center transition-colors duration-200">
+                                        Review pending
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-green-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-check-circle text-green-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Approved Students</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-green-600 animate-pulse"><?php echo $approved_students; ?></dd>
+                                                <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                    <i class="fas fa-check mr-1"></i>
+                                                    <?php echo $approved_students > 0 ? round(($approved_students / max($total_students, 1)) * 100) : 0; ?>% approval rate
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-green-50 px-4 md:px-6 py-3">
+                                    <a href="students/index.php?status=approved" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
+                                        View approved
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-purple-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-chart-line text-purple-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Recent (7 days)</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-purple-600 animate-pulse"><?php echo $recent_registrations; ?></dd>
+                                                <dd class="text-xs text-purple-600 flex items-center mt-1">
+                                                    <i class="fas fa-trending-up mr-1"></i>
+                                                    This week's activity
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-purple-50 px-4 md:px-6 py-3">
+                                    <a href="students/index.php?filter=recent" class="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center transition-colors duration-200">
+                                        View recent
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-orange-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-file-alt text-orange-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Course Applications</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-orange-600 animate-pulse"><?php echo $pending_applications; ?></dd>
+                                                <?php if ($pending_applications > 0): ?>
+                                                    <dd class="text-xs text-red-600 flex items-center mt-1 animate-attention-pulse">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                        Needs review
+                                                    </dd>
+                                                <?php else: ?>
+                                                    <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        All reviewed!
+                                                    </dd>
+                                                <?php endif; ?>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-orange-50 px-4 md:px-6 py-3">
+                                    <a href="#course-applications" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
+                                        Review applications
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Course Applications Section -->
+                        <?php if (!empty($recent_applications)): ?>
+                        <div id="course-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
+                            <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">
+                                        <i class="fas fa-file-alt text-gray-500 mr-2"></i>
+                                        Pending Course Applications
+                                    </h3>
+                                    <div class="flex items-center space-x-4">
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo $pending_applications; ?> pending applications
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Desktop Table View -->
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <?php foreach ($recent_applications as $application): ?>
+                                            <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center">
+                                                        <div class="bg-orange-100 rounded-full p-2 mr-3">
+                                                            <i class="fas fa-graduation-cap text-orange-600 text-sm"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-sm font-medium text-gray-900">
+                                                                <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
+                                                            </div>
+                                                            <div class="text-sm text-gray-500">
+                                                                <?php echo htmlspecialchars($application['email']); ?>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                        <?php echo htmlspecialchars($application['student_uli']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($application['course_name']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div class="flex items-center space-x-3">
+                                                        <button onclick="alert('Course approval modal coming soon!')" 
+                                                           class="text-green-600 hover:text-green-900 flex items-center">
+                                                            <i class="fas fa-check mr-1"></i>Approve
+                                                        </button>
+                                                        <button onclick="alert('Course rejection coming soon!')" 
+                                                           class="text-red-600 hover:text-red-900 flex items-center">
+                                                            <i class="fas fa-times mr-1"></i>Reject
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <?php if ($pending_applications > 5): ?>
+                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50 text-center">
+                                    <p class="text-sm text-gray-600 mb-2">
+                                        Showing 5 of <?php echo $pending_applications; ?> pending applications
+                                    </p>
+                                    <a href="course_applications.php" class="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors duration-200">
+                                        <i class="fas fa-list mr-2"></i>View All Applications
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Recent Students Table -->
+                        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+                            <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">
+                                        <i class="fas fa-history text-gray-500 mr-2"></i>
+                                        Recent Student Registrations
+                                    </h3>
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                        <!-- Search Bar -->
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-search text-gray-400"></i>
+                                            </div>
+                                            <input type="text" id="studentSearch" placeholder="Search students..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                        </div>
+                                        <a href="students/index.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center justify-center sm:justify-start">
+                                            View all
+                                            <i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <?php if (empty($recent_students)): ?>
+                                <div class="text-center py-8 md:py-12">
+                                    <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
+                                        <i class="fas fa-users text-gray-400 text-xl md:text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No students registered yet</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">Get started by having students register through the student portal.</p>
+                                    <a href="../student/register.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700">
+                                        <i class="fas fa-external-link-alt mr-2"></i>
+                                        Go to Student Portal
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <!-- Mobile Card View -->
+                                <div class="block md:hidden">
+                                    <div class="divide-y divide-gray-200">
+                                        <?php foreach ($recent_students as $student): ?>
+                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center space-x-3 mb-2">
+                                                            <div class="bg-blue-600 rounded-full p-2">
+                                                                <i class="fas fa-user text-white text-xs"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="text-sm font-medium text-gray-900 truncate">
+                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                                </p>
+                                                                <p class="text-xs text-gray-500 truncate">
+                                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="space-y-1">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">ULI:</span>
+                                                                <span class="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                                    <?php echo htmlspecialchars($student['uli']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Status:</span>
+                                                                <?php
+                                                                $status_classes = [
+                                                                    'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                    'approved' => 'bg-green-100 text-green-800 border-green-200',
+                                                                    'rejected' => 'bg-red-100 text-red-800 border-red-200'
+                                                                ];
+                                                                $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                                                                ?>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                                                    <?php echo ucfirst($student['status']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Registered:</span>
+                                                                <span class="text-xs text-gray-500">
+                                                                    <?php echo date('M j, Y', strtotime($student['created_at'])); ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
+                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                               class="text-primary-600 hover:text-primary-900 flex items-center text-xs">
+                                                                <i class="fas fa-eye mr-1"></i>View
+                                                            </a>
+                                                            
+                                                            <?php if ($student['status'] === 'pending'): ?>
+                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
+                                                                   class="text-green-600 hover:text-green-900 flex items-center text-xs">
+                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                </button>
+                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                   class="text-red-600 hover:text-red-900 flex items-center text-xs"
+                                                                   onclick="return confirm('Are you sure you want to reject this student?')">
+                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                </a>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                
+                                <!-- Desktop Table View -->
+                                <div class="hidden md:block overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <?php foreach ($recent_students as $student): ?>
+                                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                            <?php echo htmlspecialchars($student['uli']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm text-gray-500">
+                                                            <?php echo htmlspecialchars($student['email']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <?php
+                                                        $status_classes = [
+                                                            'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                            'approved' => 'bg-green-100 text-green-800 border-green-200',
+                                                            'rejected' => 'bg-red-100 text-red-800 border-red-200'
+                                                        ];
+                                                        $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                                                        ?>
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                                            <?php echo ucfirst($student['status']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        <?php echo date('M j, Y g:i A', strtotime($student['created_at'])); ?>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div class="flex items-center space-x-3">
+                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                               class="text-primary-600 hover:text-primary-900 flex items-center">
+                                                                <i class="fas fa-eye mr-1"></i>View
+                                                            </a>
+                                                            
+                                                            <?php if ($student['status'] === 'pending'): ?>
+                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
+                                                                   class="text-green-600 hover:text-green-900 flex items-center">
+                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                </button>
+                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                   class="text-red-600 hover:text-red-900 flex items-center"
+                                                                   onclick="return confirm('Are you sure you want to reject this student?')">
+                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                </a>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <!-- Pagination -->
+                            <?php if ($total_pages > 1): ?>
+                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div class="text-sm text-gray-700">
+                                            Showing <?php echo $offset + 1; ?> to <?php echo min($offset + $per_page, $total_students_count); ?> of <?php echo $total_students_count; ?> students
+                                        </div>
+                                        
+                                        <div class="flex items-center space-x-2">
+                                            <!-- Previous Button -->
+                                            <?php if ($page > 1): ?>
+                                                <a href="?page=<?php echo $page - 1; ?>" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-left mr-1"></i>
+                                                    Previous
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-left mr-1"></i>
+                                                    Previous
+                                                </span>
+                                            <?php endif; ?>
+                                            
+                                            <!-- Page Numbers -->
+                                            <div class="hidden sm:flex items-center space-x-1">
+                                                <?php
+                                                $start_page = max(1, $page - 2);
+                                                $end_page = min($total_pages, $page + 2);
+                                                
+                                                if ($start_page > 1): ?>
+                                                    <a href="?page=1" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">1</a>
+                                                    <?php if ($start_page > 2): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                                
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                    <?php if ($i == $page): ?>
+                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-500 rounded text-sm font-medium text-white bg-blue-600 shadow-md"><?php echo $i; ?></span>
+                                                    <?php else: ?>
+                                                        <a href="?page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
+                                                    <?php endif; ?>
+                                                <?php endfor; ?>
+                                                
+                                                <?php if ($end_page < $total_pages): ?>
+                                                    <?php if ($end_page < $total_pages - 1): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                    <a href="?page=<?php echo $total_pages; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $total_pages; ?></a>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <!-- Mobile Page Info -->
+                                            <div class="sm:hidden text-sm text-gray-700">
+                                                Page <?php echo $page; ?> of <?php echo $total_pages; ?>
+                                            </div>
+                                            
+                                            <!-- Next Button -->
+                                            <?php if ($page < $total_pages): ?>
+                                                <a href="?page=<?php echo $page + 1; ?>" class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    Next
+                                                    <i class="fas fa-chevron-right ml-1"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    Next
+                                                    <i class="fas fa-chevron-right ml-1"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                            <div class="bg-white shadow-lg rounded-xl p-4 md:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                                <div class="flex items-center mb-4">
+                                    <div class="bg-blue-100 rounded-lg p-2 md:p-3 mr-3 md:mr-4">
+                                        <i class="fas fa-users text-blue-600 text-lg md:text-xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">Student Management</h3>
+                                </div>
+                                <p class="text-sm md:text-base text-gray-600 mb-4">Manage all student records, approvals, and registrations.</p>
+                                <div class="space-y-2">
+                                    <a href="students/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>View All Students
+                                    </a>
+                                    <a href="pending_approvals.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Pending Approvals (<?php echo $pending_approvals; ?>)
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white shadow-lg rounded-xl p-4 md:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                                <div class="flex items-center mb-4">
+                                    <div class="bg-green-100 rounded-lg p-2 md:p-3 mr-3 md:mr-4">
+                                        <i class="fas fa-chalkboard-teacher text-green-600 text-lg md:text-xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">Adviser Management</h3>
+                                </div>
+                                <p class="text-sm md:text-base text-gray-600 mb-4">Manage academic advisers and their assignments.</p>
+                                <div class="space-y-2">
+                                    <a href="advisers/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>View Adviser List
+                                    </a>
+                                    <a href="advisers/add.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Add New Adviser
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white shadow-lg rounded-xl p-4 md:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+                                <div class="flex items-center mb-4">
+                                    <div class="bg-purple-100 rounded-lg p-2 md:p-3 mr-3 md:mr-4">
+                                        <i class="fas fa-tags text-purple-600 text-lg md:text-xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">Category Management</h3>
+                                </div>
+                                <p class="text-sm md:text-base text-gray-600 mb-4">Organize and manage student categories and classifications.</p>
+                                <div class="space-y-2">
+                                    <a href="categories.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Manage Categories
+                                    </a>
+                                    <a href="add_category.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Add New Category
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Approval Modal -->
+    <div id="approvalModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay with blur effect -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeApprovalModal()"></div>
+            
+            <!-- Modal panel with enhanced design -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100">
+                <form id="approvalForm" method="POST" action="">
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="student_id" id="modalStudentId">
+                    
+                    <!-- Header Section -->
+                    <div class="text-center mb-6">
+                        <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 mb-4 shadow-lg">
+                            <div class="h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-inner">
+                                <i class="fas fa-user-check text-white text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2" id="modal-title">
+                            Approve Student Registration
+                        </h3>
+                        <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
+                    </div>
+
+                    <!-- Student Info Section -->
+                    <div class="text-center mb-6">
+                        <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+                            <div class="flex items-center justify-center space-x-3 mb-2">
+                                <div class="bg-blue-100 rounded-lg p-2">
+                                    <i class="fas fa-user-graduate text-blue-600"></i>
+                                </div>
+                                <span class="font-semibold text-gray-900 text-lg" id="modalStudentName"></span>
+                            </div>
+                            <p class="text-sm text-gray-600">Complete the course assignment details below</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Fields -->
+                    <div class="space-y-6 mb-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Course Dropdown -->
+                            <div>
+                                <label for="course" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-book text-gray-400 mr-2"></i>Course
+                                </label>
+                                <select name="course" id="course" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    <option value="">Select Course</option>
+                                    <?php foreach ($active_courses as $course): ?>
+                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                            <?php echo htmlspecialchars($course['course_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <!-- NC Level Dropdown -->
+                            <div>
+                                <label for="nc_level" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-certificate text-gray-400 mr-2"></i>NC Level
+                                </label>
+                                <select name="nc_level" id="nc_level" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    <option value="">Select NC Level</option>
+                                    <option value="NC I">NC I</option>
+                                    <option value="NC II">NC II</option>
+                                    <option value="NC III">NC III</option>
+                                    <option value="NC IV">NC IV</option>
+                                    <option value="NC V">NC V</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Training Duration -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="training_start" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>Training Start Date
+                                </label>
+                                <input type="date" name="training_start" id="training_start" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                            </div>
+                            <div>
+                                <label for="training_end" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-calendar-check text-gray-400 mr-2"></i>Training End Date
+                                </label>
+                                <input type="date" name="training_end" id="training_end" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <!-- Adviser Dropdown -->
+                        <div>
+                            <label for="adviser" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser
+                            </label>
+                            <select name="adviser" id="adviser" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                <option value="">Select Adviser</option>
+                                <?php foreach ($advisers as $adviser): ?>
+                                    <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                        <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row-reverse gap-3">
+                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
+                            <i class="fas fa-check mr-2"></i>
+                            Approve Student
+                        </button>
+                        <button type="button" onclick="closeApprovalModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <?php include 'components/admin-scripts.php'; ?>
+</body>
+</html>
