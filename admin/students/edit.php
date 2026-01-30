@@ -76,14 +76,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
             $filename = uniqid() . '.' . $file_extension;
-            $new_profile_picture_path = $upload_dir . $filename;
+            $full_upload_path = $upload_dir . $filename;
             
-            if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $new_profile_picture_path)) {
+            if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $full_upload_path)) {
                 // Delete old profile picture if exists
-                if (!empty($profile_picture_path) && file_exists($profile_picture_path)) {
-                    unlink($profile_picture_path);
+                if (!empty($profile_picture_path)) {
+                    $old_file_path = '';
+                    if (strpos($profile_picture_path, '../') === 0) {
+                        // Old format
+                        $old_file_path = '../../' . substr($profile_picture_path, 3);
+                    } else {
+                        // New format
+                        $old_file_path = '../../' . $profile_picture_path;
+                    }
+                    
+                    if (file_exists($old_file_path)) {
+                        unlink($old_file_path);
+                    }
                 }
-                $profile_picture_path = $new_profile_picture_path;
+                
+                // Store path relative to the web root for consistent access
+                $profile_picture_path = 'uploads/profiles/' . $filename;
             } else {
                 $errors[] = 'Failed to upload profile picture';
             }
@@ -455,8 +468,29 @@ try {
                 <div class="form-group profile-upload">
                     <label for="profile_picture">Profile Picture</label>
                     
-                    <?php if (!empty($student['profile_picture']) && file_exists($student['profile_picture'])): ?>
-                        <img id="current-profile" src="<?php echo htmlspecialchars($student['profile_picture']); ?>" 
+                    <?php 
+                    // Handle profile picture path resolution for admin edit view
+                    $current_profile_url = '';
+                    $file_exists = false;
+                    
+                    if (!empty($student['profile_picture'])) {
+                        $stored_path = $student['profile_picture'];
+                        
+                        // Handle both old format (../uploads/profiles/file.jpg) and new format (uploads/profiles/file.jpg)
+                        if (strpos($stored_path, '../') === 0) {
+                            // Old format: use as is
+                            $current_profile_url = $stored_path;
+                        } else {
+                            // New format: add ../
+                            $current_profile_url = '../' . $stored_path;
+                        }
+                        
+                        $file_exists = file_exists($current_profile_url);
+                    }
+                    ?>
+                    
+                    <?php if (!empty($student['profile_picture']) && $file_exists): ?>
+                        <img id="current-profile" src="<?php echo htmlspecialchars($current_profile_url); ?>" 
                              class="profile-preview" alt="Current Profile Picture">
                     <?php else: ?>
                         <div id="upload-placeholder" class="upload-placeholder">

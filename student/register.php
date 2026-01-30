@@ -122,11 +122,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
             $filename = uniqid() . '.' . $file_extension;
-            $profile_picture_path = $upload_dir . $filename;
+            $full_upload_path = $upload_dir . $filename;
             
-            if (!move_uploaded_file($_FILES['profile_picture']['tmp_name'], $profile_picture_path)) {
+            if (!move_uploaded_file($_FILES['profile_picture']['tmp_name'], $full_upload_path)) {
                 $errors[] = 'Failed to upload profile picture';
                 $profile_picture_path = '';
+            } else {
+                // Store path relative to the web root for consistent access
+                $profile_picture_path = 'uploads/profiles/' . $filename;
             }
         }
     }
@@ -662,22 +665,184 @@ include 'components/header.php';
                    
                     <!-- Profile Picture Upload -->
                     <div class="form-group mb-8">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">
                             <i class="fas fa-camera text-primary-500 mr-2"></i>Profile Picture
                         </label>
-                        <div class="flex items-center space-x-6">
-                            <div class="shrink-0">
-                                <img id="profile-preview" class="h-20 w-20 object-cover rounded-full border-4 border-gray-200 shadow-lg" 
-                                     src="data:image/svg+xml,%3csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100' height='100' fill='%23f3f4f6'/%3e%3ctext x='50%25' y='50%25' font-size='14' text-anchor='middle' alignment-baseline='middle' fill='%236b7280'%3ePhoto%3c/text%3e%3c/svg%3e" 
-                                     alt="Profile preview">
+                        <div class="flex flex-col lg:flex-row items-center space-y-6 lg:space-y-0 lg:space-x-8">
+                            <!-- Profile Picture Preview -->
+                            <div class="flex-shrink-0">
+                                <div class="relative group">
+                                    <div class="w-48 h-48 rounded-2xl overflow-hidden border-4 border-gray-200 shadow-lg bg-gradient-to-br from-gray-50 to-gray-100 group-hover:border-primary-300 transition-all duration-300">
+                                        <img id="profile-preview" class="w-full h-full object-cover" 
+                                             src="data:image/svg+xml,%3csvg width='192' height='192' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='192' height='192' fill='%23f9fafb'/%3e%3cg transform='translate(96,96)'%3e%3ccircle cx='0' cy='-20' r='25' fill='%23d1d5db'/%3e%3cpath d='M-35,20 Q-35,0 -15,0 L15,0 Q35,0 35,20 L35,40 L-35,40 Z' fill='%23d1d5db'/%3e%3c/g%3e%3ctext x='50%25' y='85%25' font-size='12' text-anchor='middle' fill='%236b7280'%3eProfile Photo%3c/text%3e%3c/svg%3e" 
+                                             alt="Profile preview">
+                                    </div>
+                                    
+                                    <!-- Photo quality indicator -->
+                                    <div id="photo-quality" class="absolute -bottom-2 -right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium hidden">
+                                        <i class="fas fa-check mr-1"></i>Ready
+                                    </div>
+                                    
+                                    <!-- Hover overlay -->
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-2xl flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100">
+                                        <div class="text-white text-center">
+                                            <i class="fas fa-camera text-2xl mb-2"></i>
+                                            <p class="text-sm font-medium">Update Photo</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex-1">
-                                <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png"
-                                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 transition duration-200">
-                                <p class="text-xs text-gray-500 mt-2 flex items-center">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    Maximum file size: 2MB. Accepted formats: JPG, JPEG, PNG
-                                </p>
+                            
+                            <!-- Upload Options -->
+                            <div class="flex-1 w-full max-w-md">
+                                <div class="space-y-4">
+                                    <!-- Action Buttons -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <button type="button" id="camera-btn" 
+                                                class="group relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                            <div class="flex items-center justify-center">
+                                                <i class="fas fa-camera mr-3 text-lg"></i>
+                                                <span>Take Photo</span>
+                                            </div>
+                                            <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+                                        </button>
+                                        
+                                        <button type="button" id="file-btn" 
+                                                class="group relative overflow-hidden bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-gray-600 hover:to-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                            <div class="flex items-center justify-center">
+                                                <i class="fas fa-upload mr-3 text-lg"></i>
+                                                <span>Upload File</span>
+                                            </div>
+                                            <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- File Input -->
+                                    <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png" class="hidden">
+                                    
+                                    <!-- Requirements -->
+                                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                        <div class="flex items-start">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <h4 class="text-sm font-semibold text-blue-900 mb-2">Photo Requirements:</h4>
+                                                <ul class="text-xs text-blue-700 space-y-1">
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Square format (1:1 ratio)</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Maximum size: 2MB</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Formats: JPG, JPEG, PNG</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Clear face visibility</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Camera Modal -->
+                    <div id="camera-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden camera-modal-backdrop">
+                        <div class="flex items-center justify-center min-h-screen p-4">
+                            <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden camera-modal-enter">
+                                <!-- Modal Header -->
+                                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="bg-white bg-opacity-20 p-2 rounded-lg mr-3">
+                                                <i class="fas fa-camera text-white text-lg"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-xl font-bold text-white">Capture Profile Photo</h3>
+                                                <p class="text-blue-100 text-sm">Position your face within the square frame</p>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="close-camera" class="text-white hover:text-blue-200 transition-colors duration-200 p-2 rounded-lg hover:bg-white hover:bg-opacity-10">
+                                            <i class="fas fa-times text-xl"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Camera Preview -->
+                                <div class="p-6 bg-gray-50">
+                                    <div class="relative bg-black rounded-xl overflow-hidden shadow-inner">
+                                        <video id="camera-video" class="w-full h-96 object-cover" autoplay playsinline muted></video>
+                                        
+                                        <!-- Square Crop Guide -->
+                                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div class="relative">
+                                                <!-- Main square guide -->
+                                                <div class="w-80 h-80 border-4 border-white rounded-2xl shadow-lg relative camera-guide-square">
+                                                    <!-- Corner indicators -->
+                                                    <div class="absolute -top-2 -left-2 w-6 h-6 border-t-4 border-l-4 border-blue-400 rounded-tl-lg"></div>
+                                                    <div class="absolute -top-2 -right-2 w-6 h-6 border-t-4 border-r-4 border-blue-400 rounded-tr-lg"></div>
+                                                    <div class="absolute -bottom-2 -left-2 w-6 h-6 border-b-4 border-l-4 border-blue-400 rounded-bl-lg"></div>
+                                                    <div class="absolute -bottom-2 -right-2 w-6 h-6 border-b-4 border-r-4 border-blue-400 rounded-br-lg"></div>
+                                                    
+                                                    <!-- Center crosshair -->
+                                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                                        <div class="w-8 h-0.5 bg-white opacity-60"></div>
+                                                        <div class="w-0.5 h-8 bg-white opacity-60 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Instruction overlay -->
+                                                <div class="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-70 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap">
+                                                    <i class="fas fa-user-circle mr-2"></i>
+                                                    Center your face in the frame
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Camera status indicator -->
+                                        <div class="absolute top-4 left-4 flex items-center bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium camera-live-indicator">
+                                            <div class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                                            LIVE
+                                        </div>
+                                        
+                                        <!-- Photo quality indicator -->
+                                        <div class="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg text-xs">
+                                            640×640 • High Quality
+                                        </div>
+                                        
+                                        <canvas id="camera-canvas" class="hidden"></canvas>
+                                    </div>
+                                    
+                                    <!-- Camera Tips -->
+                                    <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div class="flex items-start">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-lightbulb text-blue-500 text-lg"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <h4 class="text-sm font-semibold text-blue-900 mb-2">Tips for a great photo:</h4>
+                                                <ul class="text-xs text-blue-700 space-y-1">
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Ensure good lighting on your face</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Look directly at the camera</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Keep your face centered in the square</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Remove glasses if they cause glare</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modal Footer -->
+                                <div class="bg-white px-6 py-4 border-t border-gray-200">
+                                    <div class="flex justify-center space-x-4">
+                                        <button type="button" id="capture-btn" 
+                                                class="inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 shadow-lg hover:shadow-xl camera-button-hover">
+                                            <i class="fas fa-camera mr-3"></i>
+                                            Capture Photo
+                                        </button>
+                                        <button type="button" id="cancel-camera" 
+                                                class="inline-flex items-center justify-center px-8 py-3 bg-gray-500 text-white font-semibold rounded-xl hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 camera-button-hover">
+                                            <i class="fas fa-times mr-3"></i>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1044,6 +1209,7 @@ include 'components/header.php';
         function previewProfilePicture(input) {
             const file = input.files[0];
             const preview = document.getElementById('profile-preview');
+            const qualityIndicator = document.getElementById('photo-quality');
             
             if (file) {
                 // Validate file type
@@ -1064,10 +1230,164 @@ include 'components/header.php';
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     preview.src = e.target.result;
-                    preview.classList.add('ring-4', 'ring-primary-200');
+                    preview.parentElement.classList.add('border-green-300', 'profile-border-success');
+                    preview.parentElement.classList.remove('border-gray-200');
+                    
+                    // Show quality indicator with animation
+                    if (qualityIndicator) {
+                        qualityIndicator.classList.remove('hidden');
+                        qualityIndicator.classList.add('photo-quality-badge');
+                    }
+                    
+                    // Show success notification
+                    showNotification('Profile picture updated successfully! Ready for submission.', 'success');
                 };
                 reader.readAsDataURL(file);
             }
+        }
+        
+        // Camera functionality
+        let cameraStream = null;
+        
+        function setupCameraFunctionality() {
+            const cameraBtn = document.getElementById('camera-btn');
+            const fileBtn = document.getElementById('file-btn');
+            const cameraModal = document.getElementById('camera-modal');
+            const closeCameraBtn = document.getElementById('close-camera');
+            const cancelCameraBtn = document.getElementById('cancel-camera');
+            const captureBtn = document.getElementById('capture-btn');
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('camera-canvas');
+            const profileInput = document.getElementById('profile_picture');
+            
+            // Camera button click
+            if (cameraBtn) {
+                cameraBtn.addEventListener('click', async function() {
+                    try {
+                        // Request camera access
+                        cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                width: { ideal: 640 },
+                                height: { ideal: 640 },
+                                facingMode: 'user' // Front camera
+                            } 
+                        });
+                        
+                        video.srcObject = cameraStream;
+                        cameraModal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                    } catch (error) {
+                        console.error('Error accessing camera:', error);
+                        alert('Unable to access camera. Please check your permissions or use the file upload option.');
+                    }
+                });
+            }
+            
+            // File button click
+            if (fileBtn) {
+                fileBtn.addEventListener('click', function() {
+                    profileInput.click();
+                });
+            }
+            
+            // Close camera modal
+            function closeCameraModal() {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                    cameraStream = null;
+                }
+                cameraModal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+            
+            if (closeCameraBtn) {
+                closeCameraBtn.addEventListener('click', closeCameraModal);
+            }
+            
+            if (cancelCameraBtn) {
+                cancelCameraBtn.addEventListener('click', closeCameraModal);
+            }
+            
+            // Capture photo
+            if (captureBtn) {
+                captureBtn.addEventListener('click', function() {
+                    // Add loading state
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Processing...';
+                    this.disabled = true;
+                    this.classList.add('capture-loading');
+                    
+                    setTimeout(() => {
+                        const context = canvas.getContext('2d');
+                        
+                        // Set canvas size to square (640x640)
+                        canvas.width = 640;
+                        canvas.height = 640;
+                        
+                        // Calculate crop area to make it square
+                        const videoWidth = video.videoWidth;
+                        const videoHeight = video.videoHeight;
+                        const size = Math.min(videoWidth, videoHeight);
+                        const x = (videoWidth - size) / 2;
+                        const y = (videoHeight - size) / 2;
+                        
+                        // Draw cropped square image
+                        context.drawImage(video, x, y, size, size, 0, 0, 640, 640);
+                        
+                        // Convert to blob and create file
+                        canvas.toBlob(function(blob) {
+                            // Create a File object from the blob
+                            const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+                            
+                            // Create a new FileList-like object
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            profileInput.files = dataTransfer.files;
+                            
+                            // Update preview
+                            const preview = document.getElementById('profile-preview');
+                            const qualityIndicator = document.getElementById('photo-quality');
+                            
+                            preview.src = canvas.toDataURL('image/jpeg', 0.8);
+                            preview.parentElement.classList.add('border-green-300', 'profile-border-success');
+                            preview.parentElement.classList.remove('border-gray-200');
+                            
+                            // Show quality indicator with animation
+                            if (qualityIndicator) {
+                                qualityIndicator.classList.remove('hidden');
+                                qualityIndicator.classList.add('photo-quality-badge');
+                            }
+                            
+                            // Close modal
+                            closeCameraModal();
+                            
+                            // Show success message
+                            showNotification('📸 Photo captured successfully! High quality square image ready for upload.', 'success');
+                            
+                            // Reset button
+                            captureBtn.innerHTML = originalText;
+                            captureBtn.disabled = false;
+                            captureBtn.classList.remove('capture-loading');
+                        }, 'image/jpeg', 0.8);
+                    }, 800); // Slightly longer delay for better UX
+                });
+            }
+            
+            // Close modal when clicking outside
+            if (cameraModal) {
+                cameraModal.addEventListener('click', function(e) {
+                    if (e.target === cameraModal) {
+                        closeCameraModal();
+                    }
+                });
+            }
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !cameraModal.classList.contains('hidden')) {
+                    closeCameraModal();
+                }
+            });
         }        
 
         // Form validation
@@ -1250,16 +1570,30 @@ include 'components/header.php';
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-            const icon = type === 'success' ? 'fa-check' : type === 'error' ? 'fa-times' : 'fa-info';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
             
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-up`;
-            notification.innerHTML = `<i class="fas ${icon} mr-2"></i>${message}`;
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-xl shadow-2xl z-50 notification-slide-in max-w-sm`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${icon} mr-3 text-lg"></i>
+                    <div>
+                        <p class="font-semibold text-sm">${message}</p>
+                        <p class="text-xs opacity-90 mt-1">Auto-dismiss in 4 seconds</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
             
             document.body.appendChild(notification);
             
             // Remove notification after 4 seconds
             setTimeout(() => {
-                notification.remove();
+                if (notification.parentElement) {
+                    notification.style.animation = 'slideOutRight 0.3s ease-in forwards';
+                    setTimeout(() => notification.remove(), 300);
+                }
             }, 4000);
         }
         
@@ -1315,6 +1649,9 @@ include 'components/header.php';
                     previewProfilePicture(this);
                 });
             }
+            
+            // Camera functionality
+            setupCameraFunctionality();
             
             // ULI formatting with automatic uppercase conversion
             const uliInput = document.getElementById('uli');

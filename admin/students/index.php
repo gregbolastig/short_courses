@@ -30,8 +30,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
         
         if ($stmt->execute()) {
             // Delete profile picture file if exists
-            if ($student && !empty($student['profile_picture']) && file_exists($student['profile_picture'])) {
-                unlink($student['profile_picture']);
+            if ($student && !empty($student['profile_picture'])) {
+                $file_path = '';
+                if (strpos($student['profile_picture'], '../') === 0) {
+                    // Old format: use as is
+                    $file_path = $student['profile_picture'];
+                } else {
+                    // New format: add ../
+                    $file_path = '../' . $student['profile_picture'];
+                }
+                
+                if (file_exists($file_path)) {
+                    unlink($file_path);
+                }
             }
             $success_message = 'Student deleted successfully.';
         } else {

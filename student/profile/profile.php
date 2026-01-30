@@ -37,14 +37,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Handle student ID from URL parameter
-if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
+// Handle student lookup from URL parameter (supports both ID and ULI)
+if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_GET['uli']) && !empty($_GET['uli']))) {
     try {
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
-        $stmt->bindParam(':id', $_GET['student_id']);
+        // Determine lookup method
+        if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
+            $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+            $stmt->bindParam(':id', $_GET['student_id']);
+        } else {
+            $stmt = $conn->prepare("SELECT * FROM students WHERE uli = :uli");
+            $stmt->bindParam(':uli', $_GET['uli']);
+        }
+        
         $stmt->execute();
         $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -54,8 +61,36 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
             // Create course record from student's assigned course (if any)
             $student_courses = [];
             
-            // Only show course if student has been assigned one (completed status)
-            if ($student_profile['status'] === 'completed' && !empty($student_profile['course'])) {
+            // Show course if student has been approved or completed (has course assigned)
+            if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
+                // Determine course status based on student status and training dates
+                $course_status = 'pending';
+                $completion_date = null;
+                $certificate_number = null;
+                
+                if ($student_profile['status'] === 'completed') {
+                    // If student status is completed, course is always completed regardless of dates
+                    $course_status = 'completed';
+                    $completion_date = $student_profile['training_end'];
+                    $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT);
+                } elseif ($student_profile['status'] === 'approved') {
+                    // Only for approved students, check training dates
+                    $today = date('Y-m-d');
+                    if (!empty($student_profile['training_start']) && !empty($student_profile['training_end'])) {
+                        if ($today < $student_profile['training_start']) {
+                            $course_status = 'pending'; // Training hasn't started yet
+                        } elseif ($today >= $student_profile['training_start'] && $today <= $student_profile['training_end']) {
+                            $course_status = 'in_progress'; // Currently in training
+                        } else {
+                            $course_status = 'completed'; // Training period ended
+                            $completion_date = $student_profile['training_end'];
+                            $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT);
+                        }
+                    } else {
+                        $course_status = 'approved'; // Approved but no training dates set
+                    }
+                }
+                
                 $student_courses[] = [
                     'id' => 1,
                     'course_name' => $student_profile['course'],
@@ -63,9 +98,10 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
                     'training_start' => $student_profile['training_start'],
                     'training_end' => $student_profile['training_end'],
                     'adviser' => $student_profile['adviser'],
-                    'status' => 'completed',
-                    'completion_date' => $student_profile['training_end'],
-                    'certificate_number' => 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT)
+                    'status' => $course_status,
+                    'completion_date' => $completion_date,
+                    'certificate_number' => $certificate_number,
+                    'approved_at' => $student_profile['approved_at']
                 ];
             }
         }
@@ -73,7 +109,7 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
         $errors[] = 'Database error: ' . $e->getMessage();
     }
 } else {
-    $errors[] = 'Invalid student ID';
+    $errors[] = 'Please provide either student ID or ULI';
 }
 
 // Set page variables for header component
@@ -98,18 +134,86 @@ include '../components/header.php';
         <?php if ($student_profile): ?>
             <!-- Student Profile Display -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-8">
-                <div class="bg-gradient-to-r from-red-600 to-red-700 px-6 py-8">
+                <div class="bg-gradient-to-r from-red-800 to-red-900 px-6 py-8">
                     <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
                         <div class="flex-shrink-0">
-                            <?php if (!empty($student_profile['profile_picture']) && file_exists('../../' . $student_profile['profile_picture'])): ?>
-                                <img src="../../<?php echo htmlspecialchars($student_profile['profile_picture']); ?>" 
-                                     alt="Profile Picture" 
-                                     class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg">
+                            <?php 
+                            // Handle profile picture path resolution
+                            $profile_picture_url = '';
+                            $file_exists = false;
+                            
+                            if (!empty($student_profile['profile_picture'])) {
+                                $stored_path = $student_profile['profile_picture'];
+                                
+                                // Handle both old format (../uploads/profiles/file.jpg) and new format (uploads/profiles/file.jpg)
+                                if (strpos($stored_path, '../') === 0) {
+                                    // Old format: remove ../ and add ../../
+                                    $clean_path = str_replace('../', '', $stored_path);
+                                    $profile_picture_url = '../../' . $clean_path;
+                                } else {
+                                    // New format: just add ../../
+                                    $profile_picture_url = '../../' . $stored_path;
+                                }
+                                
+                                $file_exists = file_exists($profile_picture_url);
+                            }
+                            ?>
+                            
+                            <?php if (!empty($student_profile['profile_picture']) && $file_exists): ?>
+                                <div class="relative group">
+                                    <img src="<?php echo htmlspecialchars($profile_picture_url); ?>" 
+                                         alt="Profile Picture" 
+                                         class="w-32 h-32 md:w-40 md:h-40 rounded-2xl object-cover border-4 border-white shadow-2xl ring-4 ring-white ring-opacity-50"
+                                         onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';">
+                                    <!-- Professional badge -->
+                                    <div class="absolute -bottom-2 -right-2 bg-green-500 text-white p-2 rounded-full shadow-lg">
+                                        <i class="fas fa-check text-sm"></i>
+                                    </div>
+                                </div>
+                                <!-- Fallback for broken images -->
+                                <div class="relative group" style="display: none;">
+                                    <div class="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-white to-gray-100 border-4 border-white shadow-2xl ring-4 ring-white ring-opacity-50 flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-2">
+                                                <span class="text-xl md:text-2xl font-bold text-red-800">
+                                                    <?php echo strtoupper(substr($student_profile['first_name'], 0, 1) . substr($student_profile['last_name'], 0, 1)); ?>
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-gray-500 font-medium">Photo Error</p>
+                                        </div>
+                                    </div>
+                                    <!-- Error indicator -->
+                                    <div class="absolute -bottom-2 -right-2 bg-red-800 text-white p-2 rounded-full shadow-lg">
+                                        <i class="fas fa-exclamation-triangle text-sm"></i>
+                                    </div>
+                                </div>
                             <?php else: ?>
-                                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white bg-opacity-20 border-4 border-white shadow-lg flex items-center justify-center">
-                                    <span class="text-2xl md:text-3xl font-bold text-white">
-                                        <?php echo strtoupper(substr($student_profile['first_name'], 0, 1) . substr($student_profile['last_name'], 0, 1)); ?>
-                                    </span>
+                                <div class="relative group">
+                                    <div class="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-white to-gray-100 border-4 border-white shadow-2xl ring-4 ring-white ring-opacity-50 flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-2">
+                                                <span class="text-xl md:text-2xl font-bold text-red-800">
+                                                    <?php echo strtoupper(substr($student_profile['first_name'], 0, 1) . substr($student_profile['last_name'], 0, 1)); ?>
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-gray-500 font-medium">No Photo</p>
+                                        </div>
+                                    </div>
+                                    <!-- Missing photo indicator -->
+                                    <div class="absolute -bottom-2 -right-2 bg-gray-400 text-white p-2 rounded-full shadow-lg">
+                                        <i class="fas fa-camera text-sm"></i>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <?php if (isset($_GET['debug']) && $_GET['debug'] == '1'): ?>
+                                <!-- Debug information (only shown when ?debug=1 is in URL) -->
+                                <div class="mt-2 text-xs text-white bg-black bg-opacity-50 p-2 rounded">
+                                    <strong>Debug Info:</strong><br>
+                                    Stored Path: <?php echo htmlspecialchars($student_profile['profile_picture'] ?? 'NULL'); ?><br>
+                                    Resolved URL: <?php echo htmlspecialchars($profile_picture_url ?? 'NULL'); ?><br>
+                                    File Exists: <?php echo $file_exists ? 'YES' : 'NO'; ?><br>
+                                    Full Path: <?php echo htmlspecialchars(realpath($profile_picture_url ?? '') ?: 'Not found'); ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -122,47 +226,9 @@ include '../components/header.php';
                                 <?php endif; ?>
                             </h2>
                             
-                            <!-- Registration Status Badge -->
-                            <div class="mb-4">
-                                <?php
-                                $status_class = '';
-                                $status_icon = '';
-                                $status_text = '';
-                                $status_description = '';
-                                switch ($student_profile['status']) {
-                                    case 'completed':
-                                        $status_class = 'bg-green-500 border-green-400';
-                                        $status_icon = 'fas fa-graduation-cap';
-                                        $status_text = 'Course Completed';
-                                        $status_description = 'You have successfully completed your assigned course';
-                                        break;
-                                    case 'rejected':
-                                        $status_class = 'bg-red-500 border-red-400';
-                                        $status_icon = 'fas fa-times-circle';
-                                        $status_text = 'Registration Rejected';
-                                        $status_description = 'Your registration was rejected. Please contact the registrar for more information';
-                                        break;
-                                    default:
-                                        $status_class = 'bg-yellow-500 border-yellow-400';
-                                        $status_icon = 'fas fa-clock';
-                                        $status_text = 'Registration Pending';
-                                        $status_description = 'Your registration is pending course assignment by admin';
-                                }
-                                ?>
-                                <div class="inline-flex items-center px-4 py-2 rounded-full border-2 <?php echo $status_class; ?> text-white font-semibold text-sm">
-                                    <i class="<?php echo $status_icon; ?> mr-2"></i>
-                                    <?php echo $status_text; ?>
-                                </div>
-                                <p class="text-red-100 text-sm mt-2"><?php echo $status_description; ?></p>
-                                <?php if ($student_profile['approved_at'] && $student_profile['status'] === 'approved'): ?>
-                                    <p class="text-red-100 text-xs mt-1">
-                                        <i class="fas fa-calendar-check mr-1"></i>
-                                        Approved on <?php echo date('M j, Y g:i A', strtotime($student_profile['approved_at'])); ?>
-                                    </p>
-                                <?php endif; ?>
-                            </div>
+
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-red-100 mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-red-50 mb-4">
                                 <div class="flex items-center justify-center md:justify-start">
                                     <i class="fas fa-id-card mr-2"></i>
                                     <span>ULI: <?php echo htmlspecialchars($student_profile['uli']); ?></span>
@@ -191,9 +257,15 @@ include '../components/header.php';
                             <h3 class="text-lg font-semibold text-gray-900">
                                 <i class="fas fa-graduation-cap text-red-800 mr-2"></i>Course History
                             </h3>
-                            <span class="text-sm text-gray-600">
-                                Total Courses: <span class="font-semibold text-red-800"><?php echo count($student_courses); ?></span>
-                            </span>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-gray-600">
+                                    Total Courses: <span class="font-semibold text-red-800"><?php echo count($student_courses); ?></span>
+                                </span>
+                                <a href="new_course.php?uli=<?php echo urlencode($student_profile['uli']); ?>" 
+                                   class="inline-flex items-center px-4 py-2 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
+                                    <i class="fas fa-plus mr-2"></i>New Course
+                                </a>
+                            </div>
                         </div>
                         
                         <div class="overflow-x-auto">
@@ -213,8 +285,8 @@ include '../components/header.php';
                                         <tr class="<?php echo $index % 2 === 0 ? 'bg-white' : 'bg-gray-50'; ?> hover:bg-red-50 transition-colors duration-200">
                                             <td class="px-4 py-4">
                                                 <div class="flex items-center">
-                                                    <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                                        <i class="fas fa-book text-red-600 text-sm"></i>
+                                                    <div class="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center mr-3">
+                                                        <i class="fas fa-book text-red-800 text-sm"></i>
                                                     </div>
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($course['course_name']); ?></p>
@@ -256,10 +328,20 @@ include '../components/header.php';
                                                         $status_icon = 'fas fa-check-circle';
                                                         $status_text = 'Completed';
                                                         break;
-                                                    case 'approved':
+                                                    case 'in_progress':
                                                         $status_class = 'bg-blue-100 text-blue-800';
                                                         $status_icon = 'fas fa-play-circle';
                                                         $status_text = 'In Progress';
+                                                        break;
+                                                    case 'approved':
+                                                        $status_class = 'bg-purple-100 text-purple-800';
+                                                        $status_icon = 'fas fa-thumbs-up';
+                                                        $status_text = 'Approved';
+                                                        break;
+                                                    case 'pending':
+                                                        $status_class = 'bg-yellow-100 text-yellow-800';
+                                                        $status_icon = 'fas fa-clock';
+                                                        $status_text = 'Pending Start';
                                                         break;
                                                     case 'rejected':
                                                         $status_class = 'bg-red-100 text-red-800';
@@ -267,9 +349,9 @@ include '../components/header.php';
                                                         $status_text = 'Rejected';
                                                         break;
                                                     default:
-                                                        $status_class = 'bg-yellow-100 text-yellow-800';
-                                                        $status_icon = 'fas fa-clock';
-                                                        $status_text = 'Pending';
+                                                        $status_class = 'bg-gray-100 text-gray-800';
+                                                        $status_icon = 'fas fa-question-circle';
+                                                        $status_text = 'Unknown';
                                                 }
                                                 ?>
                                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
@@ -332,14 +414,16 @@ include '../components/header.php';
                                 <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-lg">
                                     <i class="fas fa-graduation-cap mr-2"></i>Course Completed
                                 </div>
+                            <?php elseif ($student_profile['status'] === 'approved'): ?>
+                                <!-- No status message for approved students -->
                             <?php elseif ($student_profile['status'] === 'pending'): ?>
                                 <p class="text-gray-600 mb-4">Course assignment will be available once admin reviews your registration.</p>
                                 <div class="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-lg">
-                                    <i class="fas fa-clock mr-2"></i>Waiting for Course Assignment
+                                    Waiting for Course Assignment
                                 </div>
                             <?php else: ?>
                                 <p class="text-gray-600 mb-4">Course enrollment is not available.</p>
-                                <div class="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 text-sm font-medium rounded-lg">
+                                <div class="inline-flex items-center px-4 py-2 bg-red-50 text-red-800 text-sm font-medium rounded-lg">
                                     <i class="fas fa-times mr-2"></i>Registration Rejected
                                 </div>
                             <?php endif; ?>
@@ -353,13 +437,18 @@ include '../components/header.php';
                         <h3 class="text-lg font-semibold text-gray-900">
                             <i class="fas fa-info-circle text-red-800 mr-2"></i>Personal Information
                         </h3>
-                        <div id="editControls" class="hidden space-x-2">
-                            <button onclick="saveChanges()" class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
-                                <i class="fas fa-save mr-1"></i>Save
+                        <div class="flex items-center space-x-2">
+                            <button onclick="toggleEditMode()" id="editBtn" class="inline-flex items-center px-4 py-2 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
+                                <i class="fas fa-edit mr-2"></i>Edit Profile
                             </button>
-                            <button onclick="cancelEdit()" class="inline-flex items-center px-4 py-2 bg-gray-500 text-white text-xs font-medium rounded-lg hover:bg-gray-600 transition-colors duration-200">
-                                <i class="fas fa-times mr-1"></i>Cancel
-                            </button>
+                            <div id="editControls" class="hidden space-x-2">
+                                <button onclick="saveChanges()" class="inline-flex items-center px-4 py-2 bg-red-800 text-white text-xs font-medium rounded-lg hover:bg-red-900 transition-colors duration-200">
+                                    <i class="fas fa-save mr-1"></i>Save
+                                </button>
+                                <button onclick="cancelEdit()" class="inline-flex items-center px-4 py-2 bg-gray-500 text-white text-xs font-medium rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                                    <i class="fas fa-times mr-1"></i>Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -433,10 +522,10 @@ include '../components/header.php';
                             </div>
                             
                             <!-- Restricted fields -->
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Address</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['barangay'] . ', ' . $student_profile['city'] . ', ' . $student_profile['province']); ?></p>
-                                <p class="text-xs text-red-600 mt-1">Contact registrar to change</p>
+                                <p class="text-xs text-red-800 mt-1">Contact registrar to change</p>
                             </div>
                             
                             <div class="bg-gray-50 p-4 rounded-lg">
@@ -450,37 +539,13 @@ include '../components/header.php';
                                 </div>
                             </div>
                             
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">ULI</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['uli']); ?></p>
-                                <p class="text-xs text-red-600 mt-1">Cannot be changed</p>
+                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                         </div>
                     </form>
-                </div>
-                
-                <div class="px-6 py-4 bg-white border-t border-gray-200">
-                    <div class="flex justify-center space-x-4">
-                        <a href="../../index.php" class="inline-flex items-center px-6 py-3 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
-                            <i class="fas fa-search mr-2"></i>Search Again
-                        </a>
-                        <button onclick="toggleEditMode()" id="editBtn" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                            <i class="fas fa-edit mr-2"></i>Edit Profile
-                        </button>
-                        <?php if ($student_profile['status'] === 'completed'): ?>
-                            <div class="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 text-sm font-medium rounded-lg" title="Course completed">
-                                <i class="fas fa-graduation-cap mr-2"></i>Course Completed
-                            </div>
-                        <?php elseif ($student_profile['status'] === 'pending'): ?>
-                            <div class="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-lg cursor-not-allowed" title="Waiting for course assignment">
-                                <i class="fas fa-clock mr-2"></i>Pending Assignment
-                            </div>
-                        <?php else: ?>
-                            <div class="inline-flex items-center px-6 py-3 bg-red-100 text-red-800 text-sm font-medium rounded-lg cursor-not-allowed" title="Registration rejected">
-                                <i class="fas fa-times mr-2"></i>Registration Rejected
-                            </div>
-                        <?php endif; ?>
-                    </div>
                 </div>
             </div>
         <?php endif; ?>
@@ -502,7 +567,7 @@ include '../components/header.php';
                 editModes.forEach(el => el.classList.remove('hidden'));
                 editControls.classList.remove('hidden');
                 editBtn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel Edit';
-                editBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                editBtn.classList.remove('bg-red-800', 'hover:bg-red-900');
                 editBtn.classList.add('bg-gray-500', 'hover:bg-gray-600');
             } else {
                 // Switch to view mode
@@ -511,7 +576,7 @@ include '../components/header.php';
                 editControls.classList.add('hidden');
                 editBtn.innerHTML = '<i class="fas fa-edit mr-2"></i>Edit Profile';
                 editBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
-                editBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                editBtn.classList.add('bg-red-800', 'hover:bg-red-900');
             }
         }
         
@@ -528,4 +593,4 @@ include '../components/header.php';
         }
     </script>
     
-    <?php include '../components/footer.php'; ?>
+    <?php include '../components/footer.php'; ?> 

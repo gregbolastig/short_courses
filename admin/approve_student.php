@@ -212,8 +212,29 @@ try {
                     <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6">
                         <div class="flex items-center space-x-4">
                             <div class="flex-shrink-0">
-                                <?php if (!empty($student['profile_picture']) && file_exists('../' . $student['profile_picture'])): ?>
-                                    <img src="../<?php echo htmlspecialchars($student['profile_picture']); ?>" 
+                                <?php 
+                                // Handle profile picture path resolution for admin view
+                                $profile_picture_url = '';
+                                $file_exists = false;
+                                
+                                if (!empty($student['profile_picture'])) {
+                                    $stored_path = $student['profile_picture'];
+                                    
+                                    // Handle both old format (../uploads/profiles/file.jpg) and new format (uploads/profiles/file.jpg)
+                                    if (strpos($stored_path, '../') === 0) {
+                                        // Old format: use as is
+                                        $profile_picture_url = $stored_path;
+                                    } else {
+                                        // New format: add ../
+                                        $profile_picture_url = '../' . $stored_path;
+                                    }
+                                    
+                                    $file_exists = file_exists($profile_picture_url);
+                                }
+                                ?>
+                                
+                                <?php if (!empty($student['profile_picture']) && $file_exists): ?>
+                                    <img src="<?php echo htmlspecialchars($profile_picture_url); ?>" 
                                          alt="Profile Picture" 
                                          class="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg">
                                 <?php else: ?>

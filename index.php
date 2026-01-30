@@ -238,11 +238,7 @@ include 'student/components/header.php';
         <?php else: ?>  
           <!-- Main Search Interface -->
             
-            <!-- Welcome Section -->
-            <div class="text-center mb-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-4">Welcome to JZGMSAT Student Portal</h2>
-                <p class="text-lg text-gray-600 mb-6">Choose an option below to get started</p>
-            </div>
+            
             
             <!-- Main Options -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

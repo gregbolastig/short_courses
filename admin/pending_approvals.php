@@ -179,9 +179,30 @@ try {
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-4">
                                         <div class="flex-shrink-0">
-                                            <?php if (!empty($student['profile_picture']) && file_exists($student['profile_picture'])): ?>
+                                            <?php 
+                                            // Handle profile picture path resolution for admin view
+                                            $profile_picture_url = '';
+                                            $file_exists = false;
+                                            
+                                            if (!empty($student['profile_picture'])) {
+                                                $stored_path = $student['profile_picture'];
+                                                
+                                                // Handle both old format (../uploads/profiles/file.jpg) and new format (uploads/profiles/file.jpg)
+                                                if (strpos($stored_path, '../') === 0) {
+                                                    // Old format: remove one level of ../
+                                                    $profile_picture_url = substr($stored_path, 3);
+                                                } else {
+                                                    // New format: use as is
+                                                    $profile_picture_url = $stored_path;
+                                                }
+                                                
+                                                $file_exists = file_exists($profile_picture_url);
+                                            }
+                                            ?>
+                                            
+                                            <?php if (!empty($student['profile_picture']) && $file_exists): ?>
                                                 <img class="h-12 w-12 rounded-full object-cover" 
-                                                     src="<?php echo htmlspecialchars($student['profile_picture']); ?>" 
+                                                     src="<?php echo htmlspecialchars($profile_picture_url); ?>" 
                                                      alt="Profile">
                                             <?php else: ?>
                                                 <div class="h-12 w-12 rounded-full bg-gray-300 flex items-center justify-center">

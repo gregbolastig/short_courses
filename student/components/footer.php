@@ -8,10 +8,9 @@
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900">JZGMSAT</h3>
                 </div>
-                <p class="text-gray-600 mb-4">Student Registration System</p>
+               
                 <div class="flex justify-center space-x-6 text-sm text-gray-500">
-                    <span><i class="fas fa-phone mr-1"></i>Contact: (123) 456-7890</span>
-                    <span><i class="fas fa-envelope mr-1"></i>Email: info@jzgmsat.edu</span>
+                    
                 </div>
                 <div class="mt-4 pt-4 border-t border-gray-200">
                     <p class="text-xs text-gray-500">
