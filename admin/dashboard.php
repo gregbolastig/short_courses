@@ -128,6 +128,7 @@ try {
     $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
     $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+<<<<<<< HEAD
     // Get pending course applications
     $stmt = $conn->query("SELECT COUNT(*) as pending_applications FROM course_applications WHERE status = 'pending'");
     $pending_applications = $stmt->fetch(PDO::FETCH_ASSOC)['pending_applications'];
@@ -142,6 +143,8 @@ try {
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+=======
+>>>>>>> 719ba2fe487140cf7e0419847c8b1e1d20a1f9f9
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
     // Set default values in case of error
@@ -153,8 +156,11 @@ try {
     $total_pages = 0;
     $active_courses = [];
     $advisers = [];
+<<<<<<< HEAD
     $pending_applications = 0;
     $recent_applications = [];
+=======
+>>>>>>> 719ba2fe487140cf7e0419847c8b1e1d20a1f9f9
 }
 ?>
 <!DOCTYPE html>
@@ -240,7 +246,11 @@ try {
                         <?php endif; ?>
 
                         <!-- Statistics Cards -->
+<<<<<<< HEAD
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+=======
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+>>>>>>> 719ba2fe487140cf7e0419847c8b1e1d20a1f9f9
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -359,6 +369,7 @@ try {
                                     </a>
                                 </div>
                             </div>
+<<<<<<< HEAD
 
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
@@ -487,6 +498,10 @@ try {
                         </div>
                         <?php endif; ?>
 
+=======
+                        </div>
+
+>>>>>>> 719ba2fe487140cf7e0419847c8b1e1d20a1f9f9
                         <!-- Recent Students Table -->
                         <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">

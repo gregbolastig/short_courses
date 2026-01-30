@@ -114,6 +114,7 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_advisers);
         
+<<<<<<< HEAD
         // Create course_applications table
         $sql_course_applications = "CREATE TABLE IF NOT EXISTS course_applications (
             application_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -139,6 +140,8 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_course_applications);
         
+=======
+>>>>>>> 719ba2fe487140cf7e0419847c8b1e1d20a1f9f9
         // Don't insert sample courses - let users add them manually
         // Don't insert sample advisers - let users add them manually
         
