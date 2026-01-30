@@ -243,6 +243,36 @@ include 'student/components/header.php';
             <!-- Main Options -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 
+                <!-- New Student Registration -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                    <div class="text-center mb-6">
+                        <div class="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-user-plus text-2xl text-red-800"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">New to JZGMSAT?</h3>
+                        <p class="text-gray-600">Register as a new student to get started</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-red-800 mb-2">
+                                <i class="fas fa-check-circle mr-2"></i>What you'll get:
+                            </h4>
+                            <ul class="text-sm text-red-700 space-y-1">
+                                <li><i class="fas fa-arrow-right mr-2"></i>Your unique ULI (Unique Learner Identifier)</li>
+                                <li><i class="fas fa-arrow-right mr-2"></i>Access to course enrollment</li>
+                                <li><i class="fas fa-arrow-right mr-2"></i>Student profile and records</li>
+                                <li><i class="fas fa-arrow-right mr-2"></i>Training certificates upon completion</li>
+                            </ul>
+                        </div>
+                        
+                        <a href="student/register.php" 
+                           class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
+                            <i class="fas fa-user-plus mr-2"></i>Register as New Student
+                        </a>
+                    </div>
+                </div>
+                
                 <!-- Search for Existing Record -->
                 <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
                     <div class="text-center mb-6">
@@ -386,36 +416,6 @@ include 'student/components/header.php';
                                 <i class="fas fa-search mr-2"></i>Search by Personal Details
                             </button>
                         </form>
-                    </div>
-                </div>
-                
-                <!-- New Student Registration -->
-                <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <div class="text-center mb-6">
-                        <div class="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                            <i class="fas fa-user-plus text-2xl text-red-800"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2">New to JZGMSAT?</h3>
-                        <p class="text-gray-600">Register as a new student to get started</p>
-                    </div>
-                    
-                    <div class="space-y-4">
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                            <h4 class="font-semibold text-red-800 mb-2">
-                                <i class="fas fa-check-circle mr-2"></i>What you'll get:
-                            </h4>
-                            <ul class="text-sm text-red-700 space-y-1">
-                                <li><i class="fas fa-arrow-right mr-2"></i>Your unique ULI (Unique Learner Identifier)</li>
-                                <li><i class="fas fa-arrow-right mr-2"></i>Access to course enrollment</li>
-                                <li><i class="fas fa-arrow-right mr-2"></i>Student profile and records</li>
-                                <li><i class="fas fa-arrow-right mr-2"></i>Training certificates upon completion</li>
-                            </ul>
-                        </div>
-                        
-                        <a href="student/register.php" 
-                           class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
-                            <i class="fas fa-user-plus mr-2"></i>Register as New Student
-                        </a>
                     </div>
                 </div>
             </div>

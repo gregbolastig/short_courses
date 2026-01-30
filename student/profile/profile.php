@@ -566,17 +566,13 @@ include '../components/header.php';
                 viewModes.forEach(el => el.classList.add('hidden'));
                 editModes.forEach(el => el.classList.remove('hidden'));
                 editControls.classList.remove('hidden');
-                editBtn.innerHTML = '<i class="fas fa-times mr-2"></i>Cancel Edit';
-                editBtn.classList.remove('bg-red-800', 'hover:bg-red-900');
-                editBtn.classList.add('bg-gray-500', 'hover:bg-gray-600');
+                editBtn.style.display = 'none'; // Hide the edit button when in edit mode
             } else {
                 // Switch to view mode
                 viewModes.forEach(el => el.classList.remove('hidden'));
                 editModes.forEach(el => el.classList.add('hidden'));
                 editControls.classList.add('hidden');
-                editBtn.innerHTML = '<i class="fas fa-edit mr-2"></i>Edit Profile';
-                editBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
-                editBtn.classList.add('bg-red-800', 'hover:bg-red-900');
+                editBtn.style.display = 'inline-flex'; // Show the edit button when in view mode
             }
         }
         
@@ -588,7 +584,7 @@ include '../components/header.php';
         
         function cancelEdit() {
             if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
-                location.reload();
+                toggleEditMode(); // Switch back to view mode without reloading
             }
         }
     </script>
