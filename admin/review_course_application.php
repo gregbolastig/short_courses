@@ -167,24 +167,84 @@ try {
     
     $student = $application; // Student data is included in the application
     
-    // Get student's course history (existing courses)
+    // Get all completed courses from course_applications table
+    $stmt = $conn->prepare("SELECT ca.*, 
+                           ca.course_name,
+                           ca.nc_level,
+                           ca.training_start,
+                           ca.training_end,
+                           ca.adviser,
+                           ca.status,
+                           ca.reviewed_at as approved_at,
+                           ca.applied_at
+                           FROM course_applications ca 
+                           WHERE ca.student_id = :student_id 
+                           AND ca.status = 'completed'
+                           ORDER BY ca.reviewed_at DESC, ca.applied_at DESC");
+    $stmt->bindParam(':student_id', $student['id']);
+    $stmt->execute();
+    $completed_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get student's current course from students table (if exists and not completed)
+    // Only add if it's not already in the completed applications
+    $current_course_in_completed = false;
     if (!empty($student['course'])) {
+        // Check if this course is already in completed applications
+        foreach ($completed_applications as $comp_app) {
+            if (strtolower(trim($comp_app['course_name'])) === strtolower(trim($student['course']))) {
+                $current_course_in_completed = true;
+                break;
+            }
+        }
+        
+        // If current course is completed, it should be in completed_applications
+        // If current course is approved (not completed), add it separately
+        if ($student['status'] === 'completed' && !$current_course_in_completed) {
+            // Add completed course from students table if not in course_applications
+            $completed_applications[] = [
+                'course_name' => $student['course'],
+                'nc_level' => $student['nc_level'] ?: 'Not specified',
+                'training_start' => $student['training_start'],
+                'training_end' => $student['training_end'],
+                'adviser' => $student['adviser'],
+                'status' => 'completed',
+                'approved_at' => $student['approved_at'],
+                'applied_at' => $student['created_at']
+            ];
+        } elseif ($student['status'] === 'approved') {
+            // Current course is approved (not completed), add to student_courses
+            $student_courses[] = [
+                'course_name' => $student['course'],
+                'nc_level' => $student['nc_level'] ?: 'Not specified',
+                'training_start' => $student['training_start'],
+                'training_end' => $student['training_end'],
+                'adviser' => $student['adviser'],
+                'status' => $student['status'],
+                'approved_at' => $student['approved_at']
+            ];
+        }
+    }
+    
+    // Add all completed applications to student_courses for display
+    foreach ($completed_applications as $comp_app) {
         $student_courses[] = [
-            'course_name' => $student['course'],
-            'nc_level' => $student['nc_level'] ?: 'Not specified',
-            'training_start' => $student['training_start'],
-            'training_end' => $student['training_end'],
-            'adviser' => $student['adviser'],
-            'status' => $student['status'],
-            'approved_at' => $student['approved_at']
+            'course_name' => $comp_app['course_name'],
+            'nc_level' => $comp_app['nc_level'] ?: 'Not specified',
+            'training_start' => $comp_app['training_start'],
+            'training_end' => $comp_app['training_end'],
+            'adviser' => $comp_app['adviser'] ?: 'Not assigned',
+            'status' => 'completed',
+            'approved_at' => $comp_app['approved_at'] ?: $comp_app['applied_at']
         ];
     }
     
-    // Get other course applications for this student
+    // Get other course applications (pending, approved, rejected) excluding current application
     $stmt = $conn->prepare("SELECT ca.*, c.course_name as course_display_name 
                            FROM course_applications ca 
                            LEFT JOIN courses c ON ca.course_name = c.course_name
-                           WHERE ca.student_id = :student_id AND ca.application_id != :current_id
+                           WHERE ca.student_id = :student_id 
+                           AND ca.application_id != :current_id
+                           AND ca.status != 'completed'
                            ORDER BY ca.applied_at DESC");
     $stmt->bindParam(':student_id', $student['id']);
     $stmt->bindParam(':current_id', $application_id);
@@ -385,9 +445,25 @@ try {
                         </div>
                     </div>
 
-                    <?php if (!empty($student_courses)): ?>
+                    <?php 
+                    // Separate current enrolled (approved) and completed courses
+                    $current_enrolled = [];
+                    $completed_courses = [];
+                    
+                    foreach ($student_courses as $course) {
+                        if ($course['status'] === 'completed') {
+                            $completed_courses[] = $course;
+                        } elseif ($course['status'] === 'approved') {
+                            $current_enrolled[] = $course;
+                        }
+                    }
+                    ?>
+                    
+                    <?php if (!empty($current_enrolled)): ?>
                         <div class="mb-6">
-                            <h4 class="font-medium text-gray-900 mb-3">Current Enrolled Course</h4>
+                            <h4 class="font-medium text-gray-900 mb-3">
+                                <i class="fas fa-graduation-cap mr-2 text-blue-600"></i>Current Enrolled Course
+                            </h4>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
@@ -395,11 +471,12 @@ try {
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NC Level</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adviser</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training Period</th>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <?php foreach ($student_courses as $course): ?>
+                                        <?php foreach ($current_enrolled as $course): ?>
                                             <tr class="hover:bg-gray-50">
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm font-medium text-gray-900">
@@ -417,21 +494,81 @@ try {
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
-                                                    <?php
-                                                    $status_class = '';
-                                                    switch ($course['status']) {
-                                                        case 'completed':
-                                                            $status_class = 'bg-green-100 text-green-800';
-                                                            break;
-                                                        case 'approved':
-                                                            $status_class = 'bg-blue-100 text-blue-800';
-                                                            break;
-                                                        default:
-                                                            $status_class = 'bg-yellow-100 text-yellow-800';
-                                                    }
-                                                    ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
-                                                        <?php echo ucfirst($course['status']); ?>
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                            <?php echo date('M j, Y', strtotime($course['training_start'])); ?> - 
+                                                            <?php echo date('M j, Y', strtotime($course['training_end'])); ?>
+                                                        <?php else: ?>
+                                                            -
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        <i class="fas fa-clock mr-1"></i>Approved
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($completed_courses)): ?>
+                        <div class="mb-6">
+                            <h4 class="font-medium text-gray-900 mb-3">
+                                <i class="fas fa-check-circle mr-2 text-green-600"></i>Completed Courses (<?php echo count($completed_courses); ?>)
+                            </h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NC Level</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adviser</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training Period</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <?php foreach ($completed_courses as $course): ?>
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($course['course_name']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php echo htmlspecialchars($course['nc_level']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php echo $course['adviser'] ? htmlspecialchars($course['adviser']) : '-'; ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                            <?php echo date('M j, Y', strtotime($course['training_start'])); ?> - 
+                                                            <?php echo date('M j, Y', strtotime($course['training_end'])); ?>
+                                                        <?php else: ?>
+                                                            -
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php echo $course['approved_at'] ? date('M j, Y', strtotime($course['approved_at'])) : '-'; ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <i class="fas fa-check-circle mr-1"></i>Completed
                                                     </span>
                                                 </td>
                                             </tr>

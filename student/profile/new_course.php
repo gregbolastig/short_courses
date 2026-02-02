@@ -27,19 +27,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
             
             // Check if student has any approved course applications (not yet completed)
-            $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
-            $stmt->bindParam(':student_id', $student['id']);
-            $stmt->execute();
-            $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+            // Only block if student status is 'approved' (not 'completed')
+            $approved_count = 0;
+            if ($student['status'] === 'approved') {
+                $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+                $stmt->bindParam(':student_id', $student['id']);
+                $stmt->execute();
+                $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+            }
             
             // Check if student has an active course that is not completed
             // Students can only apply when their current course status is 'completed'
+            // If status is 'completed', they can apply again
             $has_active_course = false;
             if (!empty($student['course']) && $student['status'] !== 'completed') {
                 $has_active_course = true;
             }
             
             // Check if trying to apply for the same course that's already in students table
+            // Only block if the course is not completed
             $duplicate_course = false;
             if (!empty($student['course']) && !empty($_POST['course']) && 
                 strtolower(trim($student['course'])) === strtolower(trim($_POST['course'])) && 
@@ -49,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             if ($pending_count > 0) {
                 $errors[] = 'You already have a pending course application. Please wait for admin review before applying for another course.';
-            } elseif ($approved_count > 0) {
+            } elseif ($approved_count > 0 && $student['status'] === 'approved') {
                 $errors[] = 'You have an approved course application. Please wait for course completion approval before applying for another course.';
             } elseif ($has_active_course) {
                 $errors[] = 'You have an active course enrollment (status: ' . ucfirst($student['status']) . '). You can only apply for a new course after your current course is completed.';
@@ -102,20 +108,25 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         $can_apply = true;
         $restriction_message = '';
         
+        // Students can apply if their status is 'completed' or if they have no active course
         // Check for pending course applications
         $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
         
-        // Check for approved course applications (not yet completed)
-        $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
-        $stmt->bindParam(':student_id', $student_profile['id']);
-        $stmt->execute();
-        $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+        // Check for approved course applications that are NOT yet completed
+        // Only block if student status is 'approved' (not 'completed')
+        $approved_count = 0;
+        if ($student_profile['status'] === 'approved') {
+            $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+            $stmt->bindParam(':student_id', $student_profile['id']);
+            $stmt->execute();
+            $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+        }
         
         // Check for active courses - students can only apply when status is 'completed'
-        // Students with 'approved' status have an active course and cannot apply for new ones
+        // If status is 'completed', they can apply again
         $has_active_course = false;
         if (!empty($student_profile['course']) && $student_profile['status'] !== 'completed') {
             $has_active_course = true;
@@ -124,7 +135,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         if ($pending_count > 0) {
             $can_apply = false;
             $restriction_message = 'You have a pending course application waiting for admin review. Please wait for the review to complete before applying for another course.';
-        } elseif ($approved_count > 0) {
+        } elseif ($approved_count > 0 && $student_profile['status'] === 'approved') {
             $can_apply = false;
             $restriction_message = 'You have an approved course application. Please wait for course completion approval before applying for another course.';
         } elseif ($has_active_course) {
