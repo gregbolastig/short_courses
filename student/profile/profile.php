@@ -61,19 +61,75 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             // Create course record from student's assigned course (if any)
             $student_courses = [];
             
-            // Get all course applications (pending, approved, rejected)
-            $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id ORDER BY applied_at DESC");
+            // Get all course applications with their current status
+            $stmt = $conn->prepare("
+                SELECT ca.* 
+                FROM course_applications ca
+                WHERE ca.student_id = :student_id 
+                ORDER BY ca.applied_at DESC
+            ");
             $stmt->bindParam(':student_id', $student_profile['id']);
             $stmt->execute();
             $all_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Add all applications to courses list for display
+            // Check if student_enrollments table exists (for two-stage system)
+            $stmt = $conn->query("SHOW TABLES LIKE 'student_enrollments'");
+            $enrollments_table_exists = $stmt->rowCount() > 0;
+            
+            $all_enrollments = [];
+            if ($enrollments_table_exists) {
+                // Get all student enrollments (approved applications that became enrollments)
+                $stmt = $conn->prepare("
+                    SELECT se.*, c.course_name, a.adviser_name, ca.applied_at
+                    FROM student_enrollments se
+                    INNER JOIN courses c ON se.course_id = c.course_id
+                    LEFT JOIN advisers a ON se.adviser_id = a.adviser_id
+                    LEFT JOIN course_applications ca ON se.application_id = ca.application_id
+                    WHERE se.student_id = :student_id 
+                    ORDER BY se.enrolled_at DESC
+                ");
+                $stmt->bindParam(':student_id', $student_profile['id']);
+                $stmt->execute();
+                $all_enrollments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            // Process course applications
             foreach ($all_applications as $app) {
-                $app_status = 'waiting_assignment';
-                if ($app['status'] === 'approved') {
-                    $app_status = 'approved';
-                } elseif ($app['status'] === 'rejected') {
+                // Skip if this application has been converted to an enrollment (two-stage system)
+                if ($enrollments_table_exists && isset($app['enrollment_created']) && $app['enrollment_created']) {
+                    continue;
+                }
+                
+                $app_status = 'pending';
+                $completion_date = null;
+                $certificate_number = null;
+                
+                if ($app['status'] === 'rejected') {
                     $app_status = 'rejected';
+                } elseif ($app['status'] === 'completed') {
+                    // Admin has approved the course completion
+                    $app_status = 'completed';
+                    $completion_date = $app['reviewed_at'];
+                    $certificate_number = 'CERT-' . date('Y', strtotime($app['reviewed_at'])) . '-' . str_pad($student_profile['id'], 6, '0', STR_PAD_LEFT);
+                } elseif ($app['status'] === 'approved') {
+                    // In single-stage system, approved means enrolled
+                    if (!$enrollments_table_exists) {
+                        // Check training dates to determine actual status
+                        $today = date('Y-m-d');
+                        if (!empty($app['training_start']) && !empty($app['training_end'])) {
+                            if ($today < $app['training_start']) {
+                                $app_status = 'pending_start';
+                            } elseif ($today >= $app['training_start'] && $today <= $app['training_end']) {
+                                $app_status = 'in_progress';
+                            } else {
+                                $app_status = 'training_ended';
+                            }
+                        } else {
+                            $app_status = 'enrolled';
+                        }
+                    } else {
+                        $app_status = 'approved';
+                    }
                 } elseif ($app['status'] === 'pending') {
                     $app_status = 'pending';
                 }
@@ -86,55 +142,114 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     'training_end' => $app['training_end'],
                     'adviser' => $app['adviser'] ?: 'Not Assigned',
                     'status' => $app_status,
-                    'completion_date' => null,
-                    'certificate_number' => null,
+                    'completion_date' => $completion_date,
+                    'certificate_number' => $certificate_number,
                     'approved_at' => $app['reviewed_at'],
                     'applied_at' => $app['applied_at']
                 ];
             }
             
-            // Show course if student has been approved or completed (has course assigned)
-            if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
-                // Determine course status based on student status and training dates
-                $course_status = 'pending';
-                $completion_date = null;
-                $certificate_number = null;
-                
-                if ($student_profile['status'] === 'completed') {
-                    // If student status is completed, course is always completed regardless of dates
-                    $course_status = 'completed';
-                    $completion_date = $student_profile['training_end'];
-                    $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT);
-                } elseif ($student_profile['status'] === 'approved') {
-                    // Only for approved students, check training dates
-                    $today = date('Y-m-d');
-                    if (!empty($student_profile['training_start']) && !empty($student_profile['training_end'])) {
-                        if ($today < $student_profile['training_start']) {
-                            $course_status = 'pending'; // Training hasn't started yet
-                        } elseif ($today >= $student_profile['training_start'] && $today <= $student_profile['training_end']) {
-                            $course_status = 'in_progress'; // Currently in training
+            // Process enrollments (if two-stage system exists)
+            if ($enrollments_table_exists) {
+                foreach ($all_enrollments as $enrollment) {
+                    // Determine enrollment status
+                    $course_status = 'enrolled';
+                    $completion_date = null;
+                    $certificate_number = null;
+                    
+                    if ($enrollment['completion_status'] === 'approved') {
+                        // Course completion has been approved - show as completed
+                        $course_status = 'completed';
+                        $completion_date = $enrollment['completion_approved_at'];
+                        $certificate_number = $enrollment['certificate_number'];
+                    } elseif ($enrollment['enrollment_status'] === 'completed' && $enrollment['completion_status'] === 'pending') {
+                        // Course is completed but waiting for admin approval
+                        $course_status = 'awaiting_completion_approval';
+                    } elseif ($enrollment['enrollment_status'] === 'enrolled') {
+                        // Check training dates to determine if in progress or pending
+                        $today = date('Y-m-d');
+                        if (!empty($enrollment['training_start']) && !empty($enrollment['training_end'])) {
+                            if ($today < $enrollment['training_start']) {
+                                $course_status = 'pending_start'; // Training hasn't started yet
+                            } elseif ($today >= $enrollment['training_start'] && $today <= $enrollment['training_end']) {
+                                $course_status = 'in_progress'; // Currently in training
+                            } else {
+                                $course_status = 'training_ended'; // Training period ended, awaiting completion
+                            }
                         } else {
-                            $course_status = 'completed'; // Training period ended
-                            $completion_date = $student_profile['training_end'];
-                            $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 3, '0', STR_PAD_LEFT);
+                            $course_status = 'enrolled'; // Enrolled but no training dates set
                         }
-                    } else {
-                        $course_status = 'approved'; // Approved but no training dates set
+                    } elseif ($enrollment['enrollment_status'] === 'dropped') {
+                        $course_status = 'dropped';
+                    }
+                    
+                    $student_courses[] = [
+                        'id' => 'enroll_' . $enrollment['enrollment_id'],
+                        'course_name' => $enrollment['course_name'],
+                        'nc_level' => $enrollment['nc_level'] ?: 'Not specified',
+                        'training_start' => $enrollment['training_start'],
+                        'training_end' => $enrollment['training_end'],
+                        'adviser' => $enrollment['adviser_name'] ?: 'Not Assigned',
+                        'status' => $course_status,
+                        'completion_date' => $completion_date,
+                        'certificate_number' => $certificate_number,
+                        'approved_at' => $enrollment['enrolled_at'],
+                        'applied_at' => $enrollment['applied_at']
+                    ];
+                }
+            }
+            
+            // Legacy support: Show course if student has been approved or completed (has course assigned in students table)
+            if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
+                // Check if this course is already shown from applications/enrollments
+                $course_already_shown = false;
+                foreach ($student_courses as $existing_course) {
+                    if ($existing_course['course_name'] === $student_profile['course']) {
+                        $course_already_shown = true;
+                        break;
                     }
                 }
                 
-                $student_courses[] = [
-                    'id' => 1,
-                    'course_name' => $student_profile['course'],
-                    'nc_level' => $student_profile['nc_level'] ?: 'Not specified',
-                    'training_start' => $student_profile['training_start'],
-                    'training_end' => $student_profile['training_end'],
-                    'adviser' => $student_profile['adviser'],
-                    'status' => $course_status,
-                    'completion_date' => $completion_date,
-                    'certificate_number' => $certificate_number,
-                    'approved_at' => $student_profile['approved_at']
-                ];
+                if (!$course_already_shown) {
+                    // Determine course status based on student status and training dates
+                    $course_status = 'pending';
+                    $completion_date = null;
+                    $certificate_number = null;
+                    
+                    if ($student_profile['status'] === 'completed') {
+                        // Admin has approved the course completion - show as completed
+                        $course_status = 'completed';
+                        $completion_date = $student_profile['approved_at'];
+                        $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 6, '0', STR_PAD_LEFT);
+                    } elseif ($student_profile['status'] === 'approved') {
+                        // Only for approved students, check training dates
+                        $today = date('Y-m-d');
+                        if (!empty($student_profile['training_start']) && !empty($student_profile['training_end'])) {
+                            if ($today < $student_profile['training_start']) {
+                                $course_status = 'pending_start'; // Training hasn't started yet
+                            } elseif ($today >= $student_profile['training_start'] && $today <= $student_profile['training_end']) {
+                                $course_status = 'in_progress'; // Currently in training
+                            } else {
+                                $course_status = 'training_ended'; // Training period ended
+                            }
+                        } else {
+                            $course_status = 'enrolled'; // Approved but no training dates set
+                        }
+                    }
+                    
+                    $student_courses[] = [
+                        'id' => 'legacy_1',
+                        'course_name' => $student_profile['course'],
+                        'nc_level' => $student_profile['nc_level'] ?: 'Not specified',
+                        'training_start' => $student_profile['training_start'],
+                        'training_end' => $student_profile['training_end'],
+                        'adviser' => $student_profile['adviser'],
+                        'status' => $course_status,
+                        'completion_date' => $completion_date,
+                        'certificate_number' => $certificate_number,
+                        'approved_at' => $student_profile['approved_at']
+                    ];
+                }
             }
         }
     } catch (PDOException $e) {
@@ -365,25 +480,40 @@ include '../components/header.php';
                                                         $status_icon = 'fas fa-play-circle';
                                                         $status_text = 'In Progress';
                                                         break;
-                                                    case 'approved':
+                                                    case 'enrolled':
                                                         $status_class = 'bg-purple-100 text-purple-800';
-                                                        $status_icon = 'fas fa-thumbs-up';
-                                                        $status_text = 'Approved';
+                                                        $status_icon = 'fas fa-user-graduate';
+                                                        $status_text = 'Enrolled';
                                                         break;
-                                                    case 'pending':
+                                                    case 'pending_start':
                                                         $status_class = 'bg-yellow-100 text-yellow-800';
                                                         $status_icon = 'fas fa-clock';
                                                         $status_text = 'Pending Start';
                                                         break;
-                                                    case 'waiting_assignment':
+                                                    case 'training_ended':
+                                                        $status_class = 'bg-indigo-100 text-indigo-800';
+                                                        $status_icon = 'fas fa-flag-checkered';
+                                                        $status_text = 'Training Completed';
+                                                        break;
+                                                    case 'awaiting_completion_approval':
+                                                        $status_class = 'bg-amber-100 text-amber-800';
+                                                        $status_icon = 'fas fa-hourglass-half';
+                                                        $status_text = 'Awaiting Completion Approval';
+                                                        break;
+                                                    case 'pending':
                                                         $status_class = 'bg-orange-100 text-orange-800';
                                                         $status_icon = 'fas fa-hourglass-half';
-                                                        $status_text = 'Waiting for Course Assignment';
+                                                        $status_text = 'Application Pending';
                                                         break;
                                                     case 'rejected':
                                                         $status_class = 'bg-red-100 text-red-800';
                                                         $status_icon = 'fas fa-times-circle';
-                                                        $status_text = 'Rejected';
+                                                        $status_text = 'Application Rejected';
+                                                        break;
+                                                    case 'dropped':
+                                                        $status_class = 'bg-gray-100 text-gray-800';
+                                                        $status_icon = 'fas fa-user-times';
+                                                        $status_text = 'Dropped';
                                                         break;
                                                     default:
                                                         $status_class = 'bg-gray-100 text-gray-800';
@@ -402,8 +532,12 @@ include '../components/header.php';
                                                         <p class="font-medium text-green-600"><?php echo htmlspecialchars($course['certificate_number']); ?></p>
                                                         <p class="text-gray-500">Issued: <?php echo date('M j, Y', strtotime($course['completion_date'])); ?></p>
                                                     </div>
-                                                <?php elseif ($course['status'] === 'approved'): ?>
+                                                <?php elseif (in_array($course['status'], ['enrolled', 'in_progress', 'training_ended', 'awaiting_completion_approval'])): ?>
                                                     <span class="text-xs text-gray-500">In progress</span>
+                                                <?php elseif ($course['status'] === 'pending'): ?>
+                                                    <span class="text-xs text-gray-500">Application pending</span>
+                                                <?php elseif ($course['status'] === 'rejected'): ?>
+                                                    <span class="text-xs text-red-500">Not available</span>
                                                 <?php else: ?>
                                                     <span class="text-xs text-gray-400">Not available</span>
                                                 <?php endif; ?>
@@ -418,8 +552,8 @@ include '../components/header.php';
                         <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
                             <?php
                             $completed_courses = array_filter($student_courses, function($course) { return $course['status'] === 'completed'; });
-                            $in_progress_courses = array_filter($student_courses, function($course) { return $course['status'] === 'approved'; });
-                            $pending_courses = array_filter($student_courses, function($course) { return $course['status'] === 'pending'; });
+                            $in_progress_courses = array_filter($student_courses, function($course) { return in_array($course['status'], ['enrolled', 'in_progress', 'training_ended', 'awaiting_completion_approval']); });
+                            $pending_courses = array_filter($student_courses, function($course) { return in_array($course['status'], ['pending', 'pending_start']); });
                             ?>
                             <div class="bg-white p-4 rounded-lg border border-gray-200 text-center">
                                 <div class="text-2xl font-bold text-green-600"><?php echo count($completed_courses); ?></div>
