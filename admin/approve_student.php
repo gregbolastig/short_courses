@@ -79,21 +79,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } elseif ($current_student['status'] === 'approved') {
-                // Course completion approval - just change status to completed
-                $stmt = $conn->prepare("UPDATE students SET 
-                    status = 'completed',
-                    approved_by = :admin_id,
-                    approved_at = NOW()
-                    WHERE id = :id AND status = 'approved'");
+                // Course completion approval - change status to completed
+                $conn->beginTransaction();
                 
-                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                $stmt->bindParam(':id', $student_id);
-                
-                if ($stmt->execute() && $stmt->rowCount() > 0) {
+                try {
+                    // Update students table
+                    $stmt = $conn->prepare("UPDATE students SET 
+                        status = 'completed',
+                        approved_by = :admin_id,
+                        approved_at = NOW()
+                        WHERE id = :id AND status = 'approved'");
+                    
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    // Also update course_applications table to mark as completed
+                    $stmt = $conn->prepare("UPDATE course_applications SET 
+                        status = 'completed',
+                        reviewed_by = :admin_id,
+                        reviewed_at = NOW()
+                        WHERE student_id = :id AND status = 'approved'");
+                    
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    
                     $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
                     header("refresh:2;url=dashboard.php");
-                } else {
-                    $error_message = 'Failed to approve course completion.';
+                } catch (PDOException $e) {
+                    $conn->rollBack();
+                    $error_message = 'Failed to approve course completion: ' . $e->getMessage();
                 }
             } else {
                 $error_message = 'Student is not in a valid status for approval.';

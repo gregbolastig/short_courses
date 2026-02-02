@@ -41,19 +41,40 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             } elseif ($current_student['status'] === 'approved' && !empty($current_student['course'])) {
                 // Course application completion approval (status: approved -> completed)
                 // Student already has approved course application from course_applications table
-                $stmt = $conn->prepare("UPDATE students SET 
-                    status = 'completed',
-                    approved_by = :admin_id,
-                    approved_at = NOW()
-                    WHERE id = :id AND status = 'approved'");
+                $conn->beginTransaction();
                 
-                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                $stmt->bindParam(':id', $student_id);
-                
-                if ($stmt->execute() && $stmt->rowCount() > 0) {
-                    $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
-                } else {
-                    $error_message = 'Failed to approve course completion.';
+                try {
+                    // Update students table
+                    $stmt = $conn->prepare("UPDATE students SET 
+                        status = 'completed',
+                        approved_by = :admin_id,
+                        approved_at = NOW()
+                        WHERE id = :id AND status = 'approved'");
+                    
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    // Also update course_applications table to mark as completed
+                    $stmt = $conn->prepare("UPDATE course_applications SET 
+                        status = 'completed',
+                        reviewed_by = :admin_id,
+                        reviewed_at = NOW()
+                        WHERE student_id = :id AND status = 'approved'");
+                    
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    
+                    $success_message = 'Course completion approved successfully! Status updated from "approved" to "completed". Student can now apply for new courses.';
+                    // Redirect to refresh and show updated status
+                    header("Location: dashboard.php?approved=" . $student_id);
+                    exit;
+                } catch (PDOException $e) {
+                    $conn->rollBack();
+                    $error_message = 'Failed to approve course completion: ' . $e->getMessage();
                 }
             } elseif ($current_student['status'] === 'pending' && empty($current_student['course'])) {
                 // Student registration approval (status: pending -> completed)
@@ -89,7 +110,10 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     $stmt->bindParam(':id', $student_id);
                     
                     if ($stmt->execute()) {
-                        $success_message = 'Student registration approved successfully! Course completion has been recorded.';
+                        $success_message = 'Student registration approved successfully! Status updated from "pending" to "completed". Course completion has been recorded.';
+                        // Redirect to refresh and show updated status
+                        header("Location: dashboard.php?approved=" . $student_id);
+                        exit;
                     } else {
                         $error_message = 'Failed to approve student registration.';
                     }
@@ -1057,7 +1081,7 @@ try {
                                 <div class="block md:hidden">
                                     <div class="divide-y divide-gray-200">
                                         <?php foreach ($recent_students as $student): ?>
-                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                            <div id="student-card-<?php echo $student['id']; ?>" class="p-4 hover:bg-gray-50 transition-colors duration-200 <?php echo (isset($_GET['approved']) && $_GET['approved'] == $student['id']) ? 'bg-green-50 animate-pulse' : ''; ?>">
                                                 <div class="flex items-start justify-between">
                                                     <div class="flex-1 min-w-0">
                                                         <div class="flex items-center space-x-3 mb-2">
@@ -1166,7 +1190,7 @@ try {
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
                                             <?php foreach ($recent_students as $student): ?>
-                                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                <tr id="student-row-<?php echo $student['id']; ?>" class="hover:bg-gray-50 transition-colors duration-200 <?php echo (isset($_GET['approved']) && $_GET['approved'] == $student['id']) ? 'bg-green-50 animate-pulse' : ''; ?>">
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm font-medium text-gray-900">
                                                             <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
@@ -1482,9 +1506,9 @@ try {
 
                     <!-- Action Buttons -->
                     <div class="flex flex-col sm:flex-row-reverse gap-3">
-                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
+                        <button type="submit" id="approveSubmitBtn" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
                             <i class="fas fa-check mr-2"></i>
-                            Approve & Complete
+                            <span id="approveBtnText">Approve & Complete</span>
                         </button>
                         <button type="button" onclick="closeApprovalModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                             <i class="fas fa-times mr-2"></i>
@@ -1495,6 +1519,74 @@ try {
             </div>
         </div>
     </div>
+    
+    <script>
+    // Handle approval form submission with dynamic status update
+    document.getElementById('approvalForm')?.addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('approveSubmitBtn');
+        const btnText = document.getElementById('approveBtnText');
+        
+        if (submitBtn && btnText) {
+            submitBtn.disabled = true;
+            btnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+        }
+        
+        // Form will submit normally, page will refresh and show updated status
+    });
+    
+    // Update status display dynamically after page load (if coming from approval)
+    window.addEventListener('load', function() {
+        // Check if coming from approval redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const approvedId = urlParams.get('approved');
+        
+        if (approvedId) {
+            // Find the student row and highlight it
+            const studentRow = document.getElementById('student-row-' + approvedId);
+            const studentCard = document.getElementById('student-card-' + approvedId);
+            
+            if (studentRow) {
+                // Scroll to the updated row
+                studentRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Remove highlight after 3 seconds
+                setTimeout(function() {
+                    studentRow.classList.remove('bg-green-50', 'animate-pulse');
+                }, 3000);
+            }
+            
+            if (studentCard) {
+                // Scroll to the updated card
+                studentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Remove highlight after 3 seconds
+                setTimeout(function() {
+                    studentCard.classList.remove('bg-green-50', 'animate-pulse');
+                }, 3000);
+            }
+            
+            // Scroll to top to show success message
+            setTimeout(function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+            
+            // Clean URL after highlighting
+            setTimeout(function() {
+                const newUrl = window.location.pathname + window.location.search.replace(/[?&]approved=[^&]*/, '').replace(/^&/, '?');
+                window.history.replaceState({}, '', newUrl);
+            }, 3000);
+        }
+        
+        // Check if there's a success message
+        const successMsg = document.querySelector('.bg-green-50');
+        if (successMsg) {
+            // Auto-hide success message after 5 seconds
+            setTimeout(function() {
+                successMsg.style.transition = 'opacity 0.5s ease-out';
+                successMsg.style.opacity = '0';
+                setTimeout(() => successMsg.remove(), 500);
+            }, 5000);
+        }
+    });
+    </script>
     
     <?php include 'components/admin-scripts.php'; ?>
 </body>
