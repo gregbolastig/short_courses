@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS students (
     school_city VARCHAR(100) NOT NULL,
     verification_code VARCHAR(4) NOT NULL DEFAULT '0000',
     is_verified BOOLEAN DEFAULT FALSE,
-    status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+    status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending',
     course VARCHAR(200),
     nc_level VARCHAR(50),
     training_start DATE,

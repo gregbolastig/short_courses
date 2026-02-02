@@ -373,9 +373,66 @@ function initializeStudentSearch() {
 initializeStudentSearch();
 
 // Approval Modal Functions
-function openApprovalModal(studentId, studentName) {
+function openApprovalModal(studentId, studentName, course = '', ncLevel = '', adviser = '', trainingStart = '', trainingEnd = '') {
     document.getElementById('modalStudentId').value = studentId;
     document.getElementById('modalStudentName').textContent = studentName;
+    
+    // Pre-fill form fields if provided (for approved students)
+    if (course) {
+        const courseSelect = document.getElementById('course');
+        if (courseSelect) {
+            courseSelect.value = course;
+            courseSelect.disabled = true; // Disable for approved students
+        }
+    }
+    if (ncLevel) {
+        const ncLevelSelect = document.getElementById('nc_level');
+        if (ncLevelSelect) {
+            ncLevelSelect.value = ncLevel;
+            ncLevelSelect.disabled = true;
+        }
+    }
+    if (adviser) {
+        const adviserSelect = document.getElementById('adviser');
+        if (adviserSelect) {
+            adviserSelect.value = adviser;
+            adviserSelect.disabled = true;
+        }
+    }
+    if (trainingStart) {
+        const trainingStartInput = document.getElementById('training_start');
+        if (trainingStartInput) {
+            trainingStartInput.value = trainingStart;
+            trainingStartInput.disabled = true;
+        }
+    }
+    if (trainingEnd) {
+        const trainingEndInput = document.getElementById('training_end');
+        if (trainingEndInput) {
+            trainingEndInput.value = trainingEnd;
+            trainingEndInput.disabled = true;
+        }
+    }
+    
+    // Update modal title and description for approved students
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modalDescription');
+    if (course) {
+        if (modalTitle) {
+            modalTitle.textContent = 'Approve Course Completion';
+        }
+        if (modalDesc) {
+            modalDesc.textContent = 'Approve this student\'s course completion. Once approved, the student can apply for new courses.';
+        }
+    } else {
+        if (modalTitle) {
+            modalTitle.textContent = 'Approve & Complete Course';
+        }
+        if (modalDesc) {
+            modalDesc.textContent = 'Assign course details and mark as completed';
+        }
+    }
+    
     document.getElementById('approvalModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -383,8 +440,25 @@ function openApprovalModal(studentId, studentName) {
 function closeApprovalModal() {
     document.getElementById('approvalModal').classList.add('hidden');
     document.body.style.overflow = '';
-    // Reset form
-    document.getElementById('approvalForm').reset();
+    // Reset form and re-enable fields
+    const form = document.getElementById('approvalForm');
+    if (form) {
+        form.reset();
+        // Re-enable all disabled fields
+        const disabledFields = form.querySelectorAll('[disabled]');
+        disabledFields.forEach(field => {
+            field.disabled = false;
+        });
+    }
+    // Reset modal title and description
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modalDescription');
+    if (modalTitle) {
+        modalTitle.textContent = 'Approve & Complete Course';
+    }
+    if (modalDesc) {
+        modalDesc.textContent = 'Assign course details and mark as completed';
+    }
 }
 
 // Close modal on Escape key

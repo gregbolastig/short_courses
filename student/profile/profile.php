@@ -61,6 +61,38 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             // Create course record from student's assigned course (if any)
             $student_courses = [];
             
+            // Get all course applications (pending, approved, rejected)
+            $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id ORDER BY applied_at DESC");
+            $stmt->bindParam(':student_id', $student_profile['id']);
+            $stmt->execute();
+            $all_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Add all applications to courses list for display
+            foreach ($all_applications as $app) {
+                $app_status = 'waiting_assignment';
+                if ($app['status'] === 'approved') {
+                    $app_status = 'approved';
+                } elseif ($app['status'] === 'rejected') {
+                    $app_status = 'rejected';
+                } elseif ($app['status'] === 'pending') {
+                    $app_status = 'pending';
+                }
+                
+                $student_courses[] = [
+                    'id' => 'app_' . $app['application_id'],
+                    'course_name' => $app['course_name'],
+                    'nc_level' => $app['nc_level'] ?: 'Pending Assignment',
+                    'training_start' => $app['training_start'],
+                    'training_end' => $app['training_end'],
+                    'adviser' => $app['adviser'] ?: 'Not Assigned',
+                    'status' => $app_status,
+                    'completion_date' => null,
+                    'certificate_number' => null,
+                    'approved_at' => $app['reviewed_at'],
+                    'applied_at' => $app['applied_at']
+                ];
+            }
+            
             // Show course if student has been approved or completed (has course assigned)
             if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
                 // Determine course status based on student status and training dates
@@ -342,6 +374,11 @@ include '../components/header.php';
                                                         $status_class = 'bg-yellow-100 text-yellow-800';
                                                         $status_icon = 'fas fa-clock';
                                                         $status_text = 'Pending Start';
+                                                        break;
+                                                    case 'waiting_assignment':
+                                                        $status_class = 'bg-orange-100 text-orange-800';
+                                                        $status_icon = 'fas fa-hourglass-half';
+                                                        $status_text = 'Waiting for Course Assignment';
                                                         break;
                                                     case 'rejected':
                                                         $status_class = 'bg-red-100 text-red-800';

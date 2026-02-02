@@ -14,7 +14,7 @@ $advisers = [];
 
 // Get student ID from URL
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: pending_approvals.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -25,76 +25,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'approve') {
-        // Validate required fields for approval
-        $required_fields = ['course', 'nc_level', 'adviser', 'training_start', 'training_end'];
-        $missing_fields = [];
-        
-        foreach ($required_fields as $field) {
-            if (empty($_POST[$field])) {
-                $missing_fields[] = ucfirst(str_replace('_', ' ', $field));
-            }
-        }
-        
-        if (!empty($missing_fields)) {
-            $error_message = 'Please fill in all required fields: ' . implode(', ', $missing_fields);
-        } else {
-            try {
-                $database = new Database();
-                $conn = $database->getConnection();
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            // Get current student status
+            $stmt = $conn->prepare("SELECT status FROM students WHERE id = :id");
+            $stmt->bindParam(':id', $student_id);
+            $stmt->execute();
+            $current_student = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$current_student) {
+                $error_message = 'Student not found.';
+            } elseif ($current_student['status'] === 'pending') {
+                // Initial registration approval - need course details
+                $required_fields = ['course', 'nc_level', 'adviser', 'training_start', 'training_end'];
+                $missing_fields = [];
                 
-                // Update student with approval and course details
+                foreach ($required_fields as $field) {
+                    if (empty($_POST[$field])) {
+                        $missing_fields[] = ucfirst(str_replace('_', ' ', $field));
+                    }
+                }
+                
+                if (!empty($missing_fields)) {
+                    $error_message = 'Please fill in all required fields: ' . implode(', ', $missing_fields);
+                } else {
+                    // Update student with approval and course details (status: pending -> approved)
+                    $stmt = $conn->prepare("UPDATE students SET 
+                        status = 'approved',
+                        course = :course,
+                        nc_level = :nc_level,
+                        adviser = :adviser,
+                        training_start = :training_start,
+                        training_end = :training_end,
+                        approved_by = :admin_id,
+                        approved_at = NOW()
+                        WHERE id = :id");
+                    
+                    $stmt->bindParam(':course', $_POST['course']);
+                    $stmt->bindParam(':nc_level', $_POST['nc_level']);
+                    $stmt->bindParam(':adviser', $_POST['adviser']);
+                    $stmt->bindParam(':training_start', $_POST['training_start']);
+                    $stmt->bindParam(':training_end', $_POST['training_end']);
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    
+                    if ($stmt->execute()) {
+                        $success_message = 'Course application approved successfully! Student data has been moved to the students table with status "approved".';
+                        header("refresh:2;url=dashboard.php");
+                    } else {
+                        $error_message = 'Failed to approve course application.';
+                    }
+                }
+            } elseif ($current_student['status'] === 'approved') {
+                // Course completion approval - just change status to completed
                 $stmt = $conn->prepare("UPDATE students SET 
                     status = 'completed',
-                    course = :course,
-                    nc_level = :nc_level,
-                    adviser = :adviser,
-                    training_start = :training_start,
-                    training_end = :training_end,
                     approved_by = :admin_id,
                     approved_at = NOW()
-                    WHERE id = :id");
+                    WHERE id = :id AND status = 'approved'");
                 
-                $stmt->bindParam(':course', $_POST['course']);
-                $stmt->bindParam(':nc_level', $_POST['nc_level']);
-                $stmt->bindParam(':adviser', $_POST['adviser']);
-                $stmt->bindParam(':training_start', $_POST['training_start']);
-                $stmt->bindParam(':training_end', $_POST['training_end']);
                 $stmt->bindParam(':admin_id', $_SESSION['user_id']);
                 $stmt->bindParam(':id', $student_id);
                 
-                if ($stmt->execute()) {
-                    $success_message = 'Student registration approved successfully! Course completion has been recorded.';
-                    // Redirect after 2 seconds
-                    header("refresh:2;url=pending_approvals.php");
+                if ($stmt->execute() && $stmt->rowCount() > 0) {
+                    $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
+                    header("refresh:2;url=dashboard.php");
                 } else {
-                    $error_message = 'Failed to approve student registration.';
+                    $error_message = 'Failed to approve course completion.';
                 }
-            } catch (PDOException $e) {
-                $error_message = 'Database error: ' . $e->getMessage();
+            } else {
+                $error_message = 'Student is not in a valid status for approval.';
             }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
         }
     } elseif ($action === 'reject') {
         try {
             $database = new Database();
             $conn = $database->getConnection();
             
-            $stmt = $conn->prepare("UPDATE students SET 
-                status = 'rejected',
-                approved_by = :admin_id,
-                approved_at = NOW()
-                WHERE id = :id");
-            
-            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            // Get current student status
+            $stmt = $conn->prepare("SELECT status FROM students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
+            $stmt->execute();
+            $current_student = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($stmt->execute()) {
-                $success_message = 'Student registration rejected.';
-                // Redirect after 2 seconds
-                header("refresh:2;url=pending_approvals.php");
+            if ($current_student && $current_student['status'] === 'approved') {
+                // Reject course completion - update both tables
+                $conn->beginTransaction();
+                
+                $stmt = $conn->prepare("UPDATE students SET 
+                    status = 'rejected',
+                    approved_by = :admin_id,
+                    approved_at = NOW()
+                    WHERE id = :id");
+                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                $stmt->bindParam(':id', $student_id);
+                $stmt->execute();
+                
+                $stmt = $conn->prepare("UPDATE course_applications SET 
+                    status = 'rejected',
+                    reviewed_by = :admin_id,
+                    reviewed_at = NOW()
+                    WHERE student_id = :id AND status = 'approved'");
+                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                $stmt->bindParam(':id', $student_id);
+                $stmt->execute();
+                
+                $conn->commit();
+                $success_message = 'Course completion rejected successfully.';
+                header("refresh:2;url=dashboard.php");
             } else {
-                $error_message = 'Failed to reject student registration.';
+                // Regular student registration rejection
+                $stmt = $conn->prepare("UPDATE students SET 
+                    status = 'rejected',
+                    approved_by = :admin_id,
+                    approved_at = NOW()
+                    WHERE id = :id");
+                
+                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                $stmt->bindParam(':id', $student_id);
+                
+                if ($stmt->execute()) {
+                    $success_message = 'Student registration rejected.';
+                    header("refresh:2;url=pending_approvals.php");
+                } else {
+                    $error_message = 'Failed to reject student registration.';
+                }
             }
         } catch (PDOException $e) {
+            if (isset($conn) && $conn->inTransaction()) {
+                $conn->rollback();
+            }
             $error_message = 'Database error: ' . $e->getMessage();
         }
     }
@@ -105,13 +169,14 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id AND status = 'pending'");
+    // Allow both pending and approved status
+    $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id AND status IN ('pending', 'approved')");
     $stmt->bindParam(':id', $student_id);
     $stmt->execute();
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$student) {
-        header('Location: pending_approvals.php');
+        header('Location: dashboard.php');
         exit;
     }
     
@@ -183,8 +248,20 @@ try {
 
             <!-- Page Header -->
             <div class="mb-6 md:mb-8">
-                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Approve Student Registration</h1>
-                <p class="text-gray-600">Review student details and assign course information</p>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                    <?php if ($student['status'] === 'approved'): ?>
+                        Approve Course Completion
+                    <?php else: ?>
+                        Approve Student Registration
+                    <?php endif; ?>
+                </h1>
+                <p class="text-gray-600">
+                    <?php if ($student['status'] === 'approved'): ?>
+                        Review student course details and approve course completion
+                    <?php else: ?>
+                        Review student details and assign course information
+                    <?php endif; ?>
+                </p>
             </div>
 
             <!-- Alert Messages -->
@@ -297,6 +374,44 @@ try {
                     </div>
                 </div>
 
+                <!-- Course Information Card (for approved students) -->
+                <?php if ($student['status'] === 'approved' && !empty($student['course'])): ?>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                        <h3 class="text-lg font-semibold text-white">
+                            <i class="fas fa-graduation-cap mr-2"></i>Course Information
+                        </h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Course</label>
+                                <p class="text-lg font-semibold text-gray-900"><?php echo htmlspecialchars($student['course']); ?></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">NC Level</label>
+                                <p class="text-lg font-semibold text-gray-900"><?php echo htmlspecialchars($student['nc_level'] ?: 'Not specified'); ?></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Assigned Adviser</label>
+                                <p class="text-lg font-semibold text-gray-900"><?php echo htmlspecialchars($student['adviser'] ?: 'Not assigned'); ?></p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Training Period</label>
+                                <p class="text-lg font-semibold text-gray-900">
+                                    <?php if ($student['training_start'] && $student['training_end']): ?>
+                                        <?php echo date('M j, Y', strtotime($student['training_start'])); ?> - 
+                                        <?php echo date('M j, Y', strtotime($student['training_end'])); ?>
+                                    <?php else: ?>
+                                        Not specified
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- Approval Form -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div class="flex items-center mb-6">
@@ -304,100 +419,129 @@ try {
                             <i class="fas fa-check-circle text-green-600"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900">Course Assignment & Approval</h3>
-                            <p class="text-gray-600 text-sm">Assign course details to approve this student's registration</p>
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <?php if ($student['status'] === 'approved'): ?>
+                                    Course Completion Approval
+                                <?php else: ?>
+                                    Course Assignment & Approval
+                                <?php endif; ?>
+                            </h3>
+                            <p class="text-gray-600 text-sm">
+                                <?php if ($student['status'] === 'approved'): ?>
+                                    Approve this student's course completion. Once approved, the student can apply for new courses.
+                                <?php else: ?>
+                                    Assign course details to approve this student's registration
+                                <?php endif; ?>
+                            </p>
                         </div>
                     </div>
 
                     <form method="POST" class="space-y-6">
                         <input type="hidden" name="action" value="approve">
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Course Selection -->
+                        <?php if ($student['status'] === 'approved'): ?>
+                            <!-- Course Completion Approval (no form fields needed) -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-sm text-blue-800">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    <strong>Note:</strong> Approving this course completion will change the student's status to "completed". 
+                                    The student will then be able to apply for new courses.
+                                </p>
+                            </div>
+                        <?php else: ?>
+                            <!-- Initial Registration Approval (need course details) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Course Selection -->
+                                <div>
+                                    <label for="course" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-book text-blue-600 mr-2"></i>Course *
+                                    </label>
+                                    <select id="course" name="course" required 
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Select a course</option>
+                                        <?php foreach ($courses as $course): ?>
+                                            <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                                <?php echo htmlspecialchars($course['course_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <!-- NC Level -->
+                                <div>
+                                    <label for="nc_level" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-certificate text-blue-600 mr-2"></i>NC Level *
+                                    </label>
+                                    <select id="nc_level" name="nc_level" required 
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Select NC Level</option>
+                                        <option value="NC I">NC I</option>
+                                        <option value="NC II">NC II</option>
+                                        <option value="NC III">NC III</option>
+                                        <option value="NC IV">NC IV</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Adviser Selection -->
                             <div>
-                                <label for="course" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-book text-blue-600 mr-2"></i>Course *
+                                <label for="adviser" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-user-tie text-blue-600 mr-2"></i>Assigned Adviser *
                                 </label>
-                                <select id="course" name="course" required 
+                                <select id="adviser" name="adviser" required 
                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Select a course</option>
-                                    <?php foreach ($courses as $course): ?>
-                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
-                                            <?php echo htmlspecialchars($course['course_name']); ?>
+                                    <option value="">Select an adviser</option>
+                                    <?php foreach ($advisers as $adviser): ?>
+                                        <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                            <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                            <?php if ($adviser['specialization']): ?>
+                                                - <?php echo htmlspecialchars($adviser['specialization']); ?>
+                                            <?php endif; ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
 
-                            <!-- NC Level -->
-                            <div>
-                                <label for="nc_level" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-certificate text-blue-600 mr-2"></i>NC Level *
-                                </label>
-                                <select id="nc_level" name="nc_level" required 
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Select NC Level</option>
-                                    <option value="NC I">NC I</option>
-                                    <option value="NC II">NC II</option>
-                                    <option value="NC III">NC III</option>
-                                    <option value="NC IV">NC IV</option>
-                                </select>
-                            </div>
-                        </div>
+                            <!-- Training Period -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="training_start" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>Training Start Date *
+                                    </label>
+                                    <input type="date" id="training_start" name="training_start" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
 
-                        <!-- Adviser Selection -->
-                        <div>
-                            <label for="adviser" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-user-tie text-blue-600 mr-2"></i>Assigned Adviser *
-                            </label>
-                            <select id="adviser" name="adviser" required 
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">Select an adviser</option>
-                                <?php foreach ($advisers as $adviser): ?>
-                                    <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
-                                        <?php echo htmlspecialchars($adviser['adviser_name']); ?>
-                                        <?php if ($adviser['specialization']): ?>
-                                            - <?php echo htmlspecialchars($adviser['specialization']); ?>
-                                        <?php endif; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <!-- Training Period -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="training_start" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>Training Start Date *
-                                </label>
-                                <input type="date" id="training_start" name="training_start" required 
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <div>
+                                    <label for="training_end" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <i class="fas fa-calendar-check text-blue-600 mr-2"></i>Training End Date *
+                                    </label>
+                                    <input type="date" id="training_end" name="training_end" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
                             </div>
-
-                            <div>
-                                <label for="training_end" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-calendar-check text-blue-600 mr-2"></i>Training End Date *
-                                </label>
-                                <input type="date" id="training_end" name="training_end" required 
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                        </div>
+                        <?php endif; ?>
 
                         <!-- Action Buttons -->
                         <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
                             <button type="submit" 
                                     class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
-                                <i class="fas fa-check mr-2"></i>Approve & Assign Course
+                                <i class="fas fa-check mr-2"></i>
+                                <?php if ($student['status'] === 'approved'): ?>
+                                    Approve Completion
+                                <?php else: ?>
+                                    Approve & Assign Course
+                                <?php endif; ?>
                             </button>
                             
                             <button type="button" onclick="showRejectModal()" 
                                     class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                                <i class="fas fa-times mr-2"></i>Reject Registration
+                                <i class="fas fa-times mr-2"></i>Reject
                             </button>
                             
-                            <a href="pending_approvals.php" 
+                            <a href="<?php echo $student['status'] === 'approved' ? 'dashboard.php' : 'pending_approvals.php'; ?>" 
                                class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                                <i class="fas fa-arrow-left mr-2"></i>Back to Pending
+                                <i class="fas fa-arrow-left mr-2"></i>Back
                             </a>
                         </div>
                     </form>
@@ -413,10 +557,10 @@ try {
                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                     <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Reject Registration</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Reject</h3>
                 <div class="mt-2 px-7 py-3">
                     <p class="text-sm text-gray-500 mb-4">
-                        Are you sure you want to reject this student's registration? This action cannot be undone.
+                        Are you sure you want to reject this <?php echo $student['status'] === 'approved' ? 'course completion' : 'student registration'; ?>? This action cannot be undone.
                     </p>
                 </div>
                 <div class="flex items-center justify-center space-x-4 pt-4">
@@ -445,20 +589,27 @@ try {
             document.getElementById('rejectModal').classList.add('hidden');
         }
         
-        // Set minimum date for training start to today
-        document.getElementById('training_start').min = new Date().toISOString().split('T')[0];
-        
-        // Update training end minimum date when start date changes
-        document.getElementById('training_start').addEventListener('change', function() {
-            const startDate = this.value;
-            const endDateInput = document.getElementById('training_end');
-            endDateInput.min = startDate;
+        // Set minimum date for training start to today (only for pending students)
+        <?php if ($student['status'] === 'pending'): ?>
+        const trainingStartInput = document.getElementById('training_start');
+        if (trainingStartInput) {
+            trainingStartInput.min = new Date().toISOString().split('T')[0];
             
-            // Clear end date if it's before the new start date
-            if (endDateInput.value && endDateInput.value < startDate) {
-                endDateInput.value = '';
-            }
-        });
+            // Update training end minimum date when start date changes
+            trainingStartInput.addEventListener('change', function() {
+                const startDate = this.value;
+                const endDateInput = document.getElementById('training_end');
+                if (endDateInput) {
+                    endDateInput.min = startDate;
+                    
+                    // Clear end date if it's before the new start date
+                    if (endDateInput.value && endDateInput.value < startDate) {
+                        endDateInput.value = '';
+                    }
+                }
+            });
+        }
+        <?php endif; ?>
     </script>
 </body>
 </html>

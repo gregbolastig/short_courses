@@ -79,7 +79,12 @@ function createDatabaseAndTable() {
             school_city VARCHAR(100) NOT NULL,
             verification_code VARCHAR(4) NOT NULL,
             is_verified BOOLEAN DEFAULT FALSE,
-            status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+            status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending',
+            course VARCHAR(200),
+            nc_level VARCHAR(50),
+            training_start DATE,
+            training_end DATE,
+            adviser VARCHAR(200),
             approved_by INT NULL,
             approved_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -179,9 +184,32 @@ function fixDatabase() {
             $statusExists = $stmt->fetch();
             
             if (!$statusExists) {
-                $conn->exec("ALTER TABLE students ADD COLUMN status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'");
+                $conn->exec("ALTER TABLE students ADD COLUMN status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending'");
                 $conn->exec("ALTER TABLE students ADD COLUMN approved_by INT NULL");
                 $conn->exec("ALTER TABLE students ADD COLUMN approved_at TIMESTAMP NULL");
+            } else {
+                // Update status enum to include 'completed' if it doesn't already
+                $stmt = $conn->query("SHOW COLUMNS FROM students WHERE Field = 'status'");
+                $column = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($column && strpos($column['Type'], 'completed') === false) {
+                    $conn->exec("ALTER TABLE students MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'completed') NOT NULL DEFAULT 'pending'");
+                }
+            }
+            
+            // Check and add course-related columns
+            $course_columns = [
+                'course' => 'VARCHAR(200)',
+                'nc_level' => 'VARCHAR(50)',
+                'training_start' => 'DATE',
+                'training_end' => 'DATE',
+                'adviser' => 'VARCHAR(200)'
+            ];
+            
+            foreach ($course_columns as $column => $definition) {
+                $stmt = $conn->query("SHOW COLUMNS FROM students LIKE '$column'");
+                if (!$stmt->fetch()) {
+                    $conn->exec("ALTER TABLE students ADD COLUMN $column $definition");
+                }
             }
             
             // Check and add new guardian name columns

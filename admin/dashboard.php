@@ -9,6 +9,17 @@ requireAdmin();
 // Set page title
 $page_title = 'Dashboard';
 
+// Check for session messages
+if (isset($_SESSION['success_message'])) {
+    $success_message = $_SESSION['success_message'];
+    unset($_SESSION['success_message']);
+}
+
+if (isset($_SESSION['error_message'])) {
+    $error_message = $_SESSION['error_message'];
+    unset($_SESSION['error_message']);
+}
+
 // Handle approval/rejection actions
 if (isset($_POST['action']) && isset($_POST['student_id'])) {
     $action = $_POST['action'];
@@ -19,37 +30,72 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             $database = new Database();
             $conn = $database->getConnection();
             
-            // Get form data
-            $course = $_POST['course'];
-            $nc_level = $_POST['nc_level'];
-            $training_start = $_POST['training_start'];
-            $training_end = $_POST['training_end'];
-            $adviser = $_POST['adviser'];
-            
-            // Update student with approval details
-            $stmt = $conn->prepare("UPDATE students SET 
-                status = 'approved', 
-                approved_by = :admin_id, 
-                approved_at = NOW(),
-                course = :course,
-                nc_level = :nc_level,
-                training_start = :training_start,
-                training_end = :training_end,
-                adviser = :adviser
-                WHERE id = :id");
-            
-            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-            $stmt->bindParam(':course', $course);
-            $stmt->bindParam(':nc_level', $nc_level);
-            $stmt->bindParam(':training_start', $training_start);
-            $stmt->bindParam(':training_end', $training_end);
-            $stmt->bindParam(':adviser', $adviser);
+            // Check current student status
+            $stmt = $conn->prepare("SELECT status, course FROM students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
+            $stmt->execute();
+            $current_student = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($stmt->execute()) {
-                $success_message = 'Student registration approved successfully with course details.';
+            if (!$current_student) {
+                $error_message = 'Student not found.';
+            } elseif ($current_student['status'] === 'approved' && !empty($current_student['course'])) {
+                // Course application completion approval (status: approved -> completed)
+                // Student already has approved course application from course_applications table
+                $stmt = $conn->prepare("UPDATE students SET 
+                    status = 'completed',
+                    approved_by = :admin_id,
+                    approved_at = NOW()
+                    WHERE id = :id AND status = 'approved'");
+                
+                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                $stmt->bindParam(':id', $student_id);
+                
+                if ($stmt->execute() && $stmt->rowCount() > 0) {
+                    $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
+                } else {
+                    $error_message = 'Failed to approve course completion.';
+                }
+            } elseif ($current_student['status'] === 'pending' && empty($current_student['course'])) {
+                // Student registration approval (status: pending -> completed)
+                // Initial student registration - goes directly to completed
+                $course = $_POST['course'] ?? '';
+                $nc_level = $_POST['nc_level'] ?? '';
+                $training_start = $_POST['training_start'] ?? '';
+                $training_end = $_POST['training_end'] ?? '';
+                $adviser = $_POST['adviser'] ?? '';
+                
+                // Validate required fields
+                if (empty($course) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
+                    $error_message = 'Please fill in all required fields.';
+                } else {
+                    // Update student with approval and course details (status: pending -> completed)
+                    $stmt = $conn->prepare("UPDATE students SET 
+                        status = 'completed',
+                        approved_by = :admin_id,
+                        approved_at = NOW(),
+                        course = :course,
+                        nc_level = :nc_level,
+                        training_start = :training_start,
+                        training_end = :training_end,
+                        adviser = :adviser
+                        WHERE id = :id");
+                    
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':course', $course);
+                    $stmt->bindParam(':nc_level', $nc_level);
+                    $stmt->bindParam(':training_start', $training_start);
+                    $stmt->bindParam(':training_end', $training_end);
+                    $stmt->bindParam(':adviser', $adviser);
+                    $stmt->bindParam(':id', $student_id);
+                    
+                    if ($stmt->execute()) {
+                        $success_message = 'Student registration approved successfully! Course completion has been recorded.';
+                    } else {
+                        $error_message = 'Failed to approve student registration.';
+                    }
+                }
             } else {
-                $error_message = 'Failed to approve student registration.';
+                $error_message = 'Student is not in a valid status for approval.';
             }
         } catch (PDOException $e) {
             $error_message = 'Database error: ' . $e->getMessage();
@@ -67,16 +113,48 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $database = new Database();
             $conn = $database->getConnection();
             
-            $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
-            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            // Check if student has status 'approved' (course application approved, need to reject completion)
+            $stmt = $conn->prepare("SELECT status FROM students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
+            $stmt->execute();
+            $student = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($stmt->execute()) {
-                $success_message = 'Student registration rejected successfully.';
-            } else {
-                $error_message = 'Failed to reject student registration.';
+            if ($student) {
+                if ($student['status'] === 'approved') {
+                    // Reject course completion - update both students table and course_applications
+                    $conn->beginTransaction();
+                    
+                    // Update students table
+                    $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    // Update course_applications table
+                    $stmt = $conn->prepare("UPDATE course_applications SET status = 'rejected', reviewed_by = :admin_id, reviewed_at = NOW() WHERE student_id = :id AND status = 'approved'");
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    $success_message = 'Course completion rejected successfully.';
+                } else {
+                    // Regular student registration rejection
+                    $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    
+                    if ($stmt->execute()) {
+                        $success_message = 'Student registration rejected successfully.';
+                    } else {
+                        $error_message = 'Failed to reject student registration.';
+                    }
+                }
             }
         } catch (PDOException $e) {
+            if (isset($conn) && $conn->inTransaction()) {
+                $conn->rollback();
+            }
             $error_message = 'Database error: ' . $e->getMessage();
         }
     }
@@ -95,9 +173,9 @@ try {
     $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
     $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
     
-    // Approved students
-    $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'");
-    $approved_students = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
+    // Completed students
+    $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
+    $completed_students = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
     
     // Recent registrations (last 7 days)
     $stmt = $conn->query("SELECT COUNT(*) as recent FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
@@ -108,17 +186,32 @@ try {
     $per_page = 10; // Show 10 students per page
     $offset = ($page - 1) * $per_page;
     
-    // Get total count for pagination
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
-    $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-    $total_pages = ceil($total_students_count / $per_page);
     
-    // Get recent students with pagination
-    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, status, created_at FROM students ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+    // Get course applications - includes:
+    // 1. Student registrations (status='pending' - initial registrations)
+    // 2. Approved course applications (status='approved' with course - from course_applications)
+    // 3. Completed students (status='completed' - keep visible for viewing)
+    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, training_start, training_end, approved_at, created_at 
+                           FROM students 
+                           WHERE status = 'pending' 
+                              OR (status = 'approved' AND course IS NOT NULL)
+                              OR status = 'completed'
+                           ORDER BY 
+                               CASE 
+                                   WHEN status = 'pending' THEN created_at 
+                                   WHEN status = 'approved' THEN approved_at 
+                                   WHEN status = 'completed' THEN approved_at 
+                               END DESC
+                           LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Update total count for pagination
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL) OR status = 'completed'");
+    $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_pages = ceil($total_students_count / $per_page);
     
     // Get active courses for approval modal
     $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
@@ -154,13 +247,38 @@ try {
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Get approved course applications (students with status='approved' - awaiting completion approval)
+    $stmt = $conn->query("SELECT COUNT(*) as approved_applications FROM students WHERE status = 'approved' AND course IS NOT NULL");
+    $approved_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_applications'];
+    
+    // Pagination for approved applications
+    $approved_page = isset($_GET['approved_page']) ? max(1, intval($_GET['approved_page'])) : 1;
+    $approved_per_page = 10;
+    $approved_offset = ($approved_page - 1) * $approved_per_page;
+    
+    // Get total count for pagination
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'approved' AND course IS NOT NULL");
+    $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_approved_pages = ceil($total_approved_count / $approved_per_page);
+    
+    // Get approved applications (students with status='approved')
+    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, course, nc_level, adviser, training_start, training_end, status, approved_at 
+                           FROM students 
+                           WHERE status = 'approved' AND course IS NOT NULL 
+                           ORDER BY approved_at DESC 
+                           LIMIT :limit OFFSET :offset");
+    $stmt->bindValue(':limit', $approved_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $approved_offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $approved_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
     // Set default values in case of error
     $recent_students = [];
     $total_students = 0;
     $pending_approvals = 0;
-    $approved_students = 0;
+    $completed_students = 0;
     $recent_registrations = 0;
     $total_pages = 0;
     $active_courses = [];
@@ -168,6 +286,9 @@ try {
     $pending_applications = 0;
     $recent_applications = [];
     $total_app_pages = 0;
+    $approved_applications_count = 0;
+    $approved_applications = [];
+    $total_approved_pages = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -253,13 +374,13 @@ try {
                         <?php endif; ?>
 
                         <!-- Statistics Cards -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6 mb-6 md:mb-8">
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
                                             <div class="bg-blue-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-users text-blue-600 text-xl md:text-2xl"></i>
+                                                <i class="fas fa-users text-blue-900 text-xl md:text-2xl"></i>
                                             </div>
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
@@ -321,25 +442,25 @@ try {
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-green-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-check-circle text-green-600 text-xl md:text-2xl"></i>
+                                            <div class="bg-blue-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-graduation-cap text-blue-900 text-xl md:text-2xl"></i>
                                             </div>
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Approved Students</dt>
-                                                <dd class="text-2xl md:text-3xl font-bold text-green-600 animate-pulse"><?php echo $approved_students; ?></dd>
-                                                <dd class="text-xs text-green-600 flex items-center mt-1">
-                                                    <i class="fas fa-check mr-1"></i>
-                                                    <?php echo $approved_students > 0 ? round(($approved_students / max($total_students, 1)) * 100) : 0; ?>% approval rate
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Completed Students</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-blue-900 animate-pulse"><?php echo $completed_students; ?></dd>
+                                                <dd class="text-xs text-blue-900 flex items-center mt-1">
+                                                    <i class="fas fa-medal mr-1"></i>
+                                                    Course graduates
                                                 </dd>
                                             </dl>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-green-50 px-4 md:px-6 py-3">
-                                    <a href="students/index.php?status=approved" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
-                                        View approved
+                                <div class="bg-blue-50 px-4 md:px-6 py-3">
+                                    <a href="students/index.php?status=completed" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
+                                        View completed
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
@@ -407,6 +528,41 @@ try {
                                     </a>
                                 </div>
                             </div>
+
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-green-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-check-circle text-green-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Approved Applications</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-green-600 animate-pulse"><?php echo $approved_applications_count; ?></dd>
+                                                <?php if ($approved_applications_count > 0): ?>
+                                                    <dd class="text-xs text-orange-600 flex items-center mt-1 animate-attention-pulse">
+                                                        <i class="fas fa-clock mr-1"></i>
+                                                        Awaiting completion
+                                                    </dd>
+                                                <?php else: ?>
+                                                    <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                        <i class="fas fa-check-circle mr-1"></i>
+                                                        All processed!
+                                                    </dd>
+                                                <?php endif; ?>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-green-50 px-4 md:px-6 py-3">
+                                    <a href="#approved-applications" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
+                                        Review approved
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Course Applications Section -->
@@ -424,7 +580,7 @@ try {
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <i class="fas fa-search text-gray-400"></i>
                                             </div>
-                                            <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                            <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
                                         </div>
                                         <span class="text-sm text-gray-600">
                                             <?php echo $pending_applications; ?> pending applications
@@ -486,7 +642,7 @@ try {
                                                         
                                                         <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
                                                             <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
-                                                               class="text-blue-600 hover:text-blue-900 flex items-center text-xs">
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>Review
                                                             </a>
                                                         </div>
@@ -543,8 +699,8 @@ try {
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div class="flex items-center space-x-3">
                                                         <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
-                                                           class="text-blue-600 hover:text-blue-900 flex items-center">
-                                                            <i class="fas fa-eye mr-1"></i>Review
+                                                           class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                            <i class="fas fa-eye mr-2"></i>Review
                                                         </a>
                                                     </div>
                                                 </td>
@@ -591,7 +747,7 @@ try {
                                                 
                                                 <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
                                                     <?php if ($i == $app_page): ?>
-                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-orange-500 rounded text-sm font-medium text-white bg-orange-600 shadow-md"><?php echo $i; ?></span>
+                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-900 rounded text-sm font-medium text-white bg-blue-900 shadow-md"><?php echo $i; ?></span>
                                                     <?php else: ?>
                                                         <a href="?app_page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
                                                     <?php endif; ?>
@@ -627,13 +783,246 @@ try {
                         </div>
                         <?php endif; ?>
 
-                        <!-- Recent Students
+                        <!-- Removed: Approved Course Applications section - now shown in Course Applications above -->
+                        <?php if (false && $approved_applications_count > 0): ?>
+                        <div id="approved-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
+                            <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">
+                                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                        Approved Course Applications (Awaiting Completion)
+                                    </h3>
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo $approved_applications_count; ?> approved applications
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <?php if (empty($approved_applications)): ?>
+                                <div class="text-center py-8 md:py-12">
+                                    <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
+                                        <i class="fas fa-check-circle text-gray-400 text-xl md:text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No approved applications</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">All approved applications have been processed.</p>
+                                </div>
+                            <?php else: ?>
+                                <!-- Mobile Card View -->
+                                <div class="block md:hidden">
+                                    <div class="divide-y divide-gray-200">
+                                        <?php foreach ($approved_applications as $student): ?>
+                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center space-x-3 mb-2">
+                                                            <div class="bg-green-600 rounded-full p-2">
+                                                                <i class="fas fa-user-graduate text-white text-xs"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="text-sm font-medium text-gray-900 truncate">
+                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                                </p>
+                                                                <p class="text-xs text-gray-500 truncate">
+                                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="space-y-1">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Course:</span>
+                                                                <span class="text-xs text-gray-900 font-medium">
+                                                                    <?php echo htmlspecialchars($student['course']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">ULI:</span>
+                                                                <span class="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                                    <?php echo htmlspecialchars($student['uli']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Approved:</span>
+                                                                <span class="text-xs text-gray-500">
+                                                                    <?php echo $student['approved_at'] ? date('M j, Y g:i A', strtotime($student['approved_at'])) : 'N/A'; ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100">
+                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-1"></i>View
+                                                            </a>
+                                                            <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                                                <i class="fas fa-check mr-1"></i>Approve
+                                                            </a>
+                                                            <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                                               onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                                <i class="fas fa-times mr-1"></i>Reject
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                
+                                <!-- Desktop Table View -->
+                                <div class="hidden md:block overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <?php foreach ($approved_applications as $student): ?>
+                                            <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center">
+                                                        <div class="bg-green-100 rounded-full p-2 mr-3">
+                                                            <i class="fas fa-user-graduate text-green-600 text-sm"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-sm font-medium text-gray-900">
+                                                                <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                            </div>
+                                                            <div class="text-sm text-gray-500">
+                                                                <?php echo htmlspecialchars($student['email']); ?>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                        <?php echo htmlspecialchars($student['uli']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($student['course']); ?>
+                                                    </div>
+                                                    <?php if ($student['nc_level']): ?>
+                                                        <div class="text-sm text-gray-500">
+                                                            <?php echo htmlspecialchars($student['nc_level']); ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <?php echo $student['approved_at'] ? date('M j, Y g:i A', strtotime($student['approved_at'])) : 'N/A'; ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div class="flex items-center space-x-3">
+                                                        <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                           class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                            <i class="fas fa-eye mr-2"></i>View
+                                                        </a>
+                                                        <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                                           class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                                            <i class="fas fa-check mr-2"></i>Approve
+                                                        </a>
+                                                        <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                           class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                                           onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                            <i class="fas fa-times mr-2"></i>Reject
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <?php endif; ?>
+                            
+                            <!-- Pagination -->
+                            <?php if ($total_approved_pages > 1): ?>
+                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div class="text-sm text-gray-700">
+                                            Showing <?php echo $approved_offset + 1; ?> to <?php echo min($approved_offset + $approved_per_page, $total_approved_count); ?> of <?php echo $total_approved_count; ?> applications
+                                        </div>
+                                        
+                                        <div class="flex items-center space-x-2">
+                                            <!-- Previous Button -->
+                                            <?php if ($approved_page > 1): ?>
+                                                <a href="?approved_page=<?php echo $approved_page - 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                            
+                                            <!-- Page Numbers -->
+                                            <div class="hidden sm:flex items-center space-x-1">
+                                                <?php
+                                                $start_page = max(1, $approved_page - 2);
+                                                $end_page = min($total_approved_pages, $approved_page + 2);
+                                                
+                                                if ($start_page > 1): ?>
+                                                    <a href="?approved_page=1" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">1</a>
+                                                    <?php if ($start_page > 2): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                                
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                    <?php if ($i == $approved_page): ?>
+                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-green-600 rounded text-sm font-medium text-white bg-green-600 shadow-md"><?php echo $i; ?></span>
+                                                    <?php else: ?>
+                                                        <a href="?approved_page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
+                                                    <?php endif; ?>
+                                                <?php endfor; ?>
+                                                
+                                                <?php if ($end_page < $total_approved_pages): ?>
+                                                    <?php if ($end_page < $total_approved_pages - 1): ?>
+                                                        <span class="text-gray-500">...</span>
+                                                    <?php endif; ?>
+                                                    <a href="?approved_page=<?php echo $total_approved_pages; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $total_approved_pages; ?></a>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <div class="sm:hidden text-sm text-gray-700">
+                                                Page <?php echo $approved_page; ?> of <?php echo $total_approved_pages; ?>
+                                            </div>
+                                            
+                                            <!-- Next Button -->
+                                            <?php if ($approved_page < $total_approved_pages): ?>
+                                                <a href="?approved_page=<?php echo $approved_page + 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Recent Students -->
                         <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
                                     <h3 class="text-base md:text-lg font-semibold text-gray-900">
-                                        <i class="fas fa-history text-gray-500 mr-2"></i>
-                                        Recent Student Registrations
+                                        <i class="fas fa-file-alt text-gray-500 mr-2"></i>
+                                        Course Applications
                                     </h3>
                                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                         <!-- Search Bar -->
@@ -641,24 +1030,24 @@ try {
                                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <i class="fas fa-search text-gray-400"></i>
                                             </div>
-                                            <input type="text" id="studentSearch" placeholder="Search students..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                                            <input type="text" id="studentSearch" placeholder="Search students..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
                                         </div>
-                                        <a href="students/index.php" class="text-sm text-primary-600 hover:text-primary-500 font-medium flex items-center justify-center sm:justify-start">
+                                        <a href="students/index.php" class="text-sm text-blue-900 hover:text-blue-800 font-medium flex items-center justify-center sm:justify-start">
                                             View all
                                             <i class="fas fa-arrow-right ml-1"></i>
                                         </a>
                                     </div>
                                 </div>
                             </div>
-                            
                             <?php if (empty($recent_students)): ?>
                                 <div class="text-center py-8 md:py-12">
                                     <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
-                                        <i class="fas fa-users text-gray-400 text-xl md:text-2xl"></i>
+                                        <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
                                     </div>
-                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No students registered yet</h3>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No course applications</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">No pending student registrations or approved course applications at this time.</p>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">Get started by having students register through the student portal.</p>
-                                    <a href="../student/register.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700">
+                                    <a href="../student/register.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
                                         <i class="fas fa-external-link-alt mr-2"></i>
                                         Go to Student Portal
                                     </a>
@@ -672,7 +1061,7 @@ try {
                                                 <div class="flex items-start justify-between">
                                                     <div class="flex-1 min-w-0">
                                                         <div class="flex items-center space-x-3 mb-2">
-                                                            <div class="bg-blue-600 rounded-full p-2">
+                                                            <div class="bg-blue-900 rounded-full p-2">
                                                                 <i class="fas fa-user text-white text-xs"></i>
                                                             </div>
                                                             <div class="flex-1 min-w-0">
@@ -698,7 +1087,8 @@ try {
                                                                 $status_classes = [
                                                                     'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                                     'approved' => 'bg-green-100 text-green-800 border-green-200',
-                                                                    'rejected' => 'bg-red-100 text-red-800 border-red-200'
+                                                                    'rejected' => 'bg-red-100 text-red-800 border-red-200',
+                                                                    'completed' => 'bg-blue-100 text-blue-800 border-blue-200'
                                                                 ];
                                                                 $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
                                                                 ?>
@@ -706,17 +1096,25 @@ try {
                                                                     <?php echo ucfirst($student['status']); ?>
                                                                 </span>
                                                             </div>
+                                                            <?php if (!empty($student['course'])): ?>
                                                             <div class="flex items-center justify-between">
-                                                                <span class="text-xs text-gray-500">Registered:</span>
+                                                                <span class="text-xs text-gray-500">Course:</span>
+                                                                <span class="text-xs text-gray-900 font-medium">
+                                                                    <?php echo htmlspecialchars($student['course']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <?php endif; ?>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Approved:</span>
                                                                 <span class="text-xs text-gray-500">
-                                                                    <?php echo date('M j, Y', strtotime($student['created_at'])); ?>
+                                                                    <?php echo $student['approved_at'] ? date('M j, Y g:i A', strtotime($student['approved_at'])) : date('M j, Y', strtotime($student['created_at'])); ?>
                                                                 </span>
                                                             </div>
                                                         </div>
                                                         
                                                         <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
                                                             <a href="students/view.php?id=<?php echo $student['id']; ?>" 
-                                                               class="text-primary-600 hover:text-primary-900 flex items-center text-xs">
+                                                               class="text-blue-900 hover:text-blue-800 flex items-center text-xs">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
                                                             
@@ -727,9 +1125,22 @@ try {
                                                                 </button>
                                                                 <a href="?action=reject&id=<?php echo $student['id']; ?>" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center text-xs"
-                                                                   onclick="return confirm('Are you sure you want to reject this student?')">
+                                                                   onclick="return confirm('Are you sure you want to reject this student registration?')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
+                                                            <?php elseif ($student['status'] === 'approved'): ?>
+                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', '<?php echo htmlspecialchars($student['course'] ?? ''); ?>', '<?php echo htmlspecialchars($student['nc_level'] ?? ''); ?>', '<?php echo htmlspecialchars($student['adviser'] ?? ''); ?>', '<?php echo $student['training_start'] ?? ''; ?>', '<?php echo $student['training_end'] ?? ''; ?>')" 
+                                                                   class="text-green-600 hover:text-green-900 flex items-center text-xs">
+                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                </button>
+                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                   class="text-red-600 hover:text-red-900 flex items-center text-xs"
+                                                                   onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                </a>
+                                                            <?php elseif ($student['status'] === 'completed'): ?>
+                                                                <!-- Completed - only View action, no Approve/Reject -->
+                                                                <span class="text-xs text-gray-500 italic">Completed</span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </div>
@@ -747,8 +1158,9 @@ try {
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Date</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved Date</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
@@ -771,11 +1183,17 @@ try {
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo htmlspecialchars($student['course'] ?? 'N/A'); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
                                                         <?php
                                                         $status_classes = [
                                                             'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                             'approved' => 'bg-green-100 text-green-800 border-green-200',
-                                                            'rejected' => 'bg-red-100 text-red-800 border-red-200'
+                                                            'rejected' => 'bg-red-100 text-red-800 border-red-200',
+                                                            'completed' => 'bg-blue-100 text-blue-800 border-blue-200'
                                                         ];
                                                         $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
                                                         ?>
@@ -784,12 +1202,12 @@ try {
                                                         </span>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <?php echo date('M j, Y g:i A', strtotime($student['created_at'])); ?>
+                                                        <?php echo $student['approved_at'] ? date('M j, Y g:i A', strtotime($student['approved_at'])) : date('M j, Y g:i A', strtotime($student['created_at'])); ?>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div class="flex items-center space-x-3">
                                                             <a href="students/view.php?id=<?php echo $student['id']; ?>" 
-                                                               class="text-primary-600 hover:text-primary-900 flex items-center">
+                                                               class="text-blue-900 hover:text-blue-800 flex items-center">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
                                                             
@@ -800,9 +1218,22 @@ try {
                                                                 </button>
                                                                 <a href="?action=reject&id=<?php echo $student['id']; ?>" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center"
-                                                                   onclick="return confirm('Are you sure you want to reject this student?')">
+                                                                   onclick="return confirm('Are you sure you want to reject this student registration?')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
+                                                            <?php elseif ($student['status'] === 'approved'): ?>
+                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', '<?php echo htmlspecialchars($student['course'] ?? ''); ?>', '<?php echo htmlspecialchars($student['nc_level'] ?? ''); ?>', '<?php echo htmlspecialchars($student['adviser'] ?? ''); ?>', '<?php echo $student['training_start'] ?? ''; ?>', '<?php echo $student['training_end'] ?? ''; ?>')" 
+                                                                   class="text-green-600 hover:text-green-900 flex items-center">
+                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                </button>
+                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                   class="text-red-600 hover:text-red-900 flex items-center"
+                                                                   onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                </a>
+                                                            <?php elseif ($student['status'] === 'completed'): ?>
+                                                                <!-- Completed - only View action, no Approve/Reject -->
+                                                                <span class="text-xs text-gray-500 italic">Completed</span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </td>
@@ -818,7 +1249,7 @@ try {
                                 <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
                                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                                         <div class="text-sm text-gray-700">
-                                            Showing <?php echo $offset + 1; ?> to <?php echo min($offset + $per_page, $total_students_count); ?> of <?php echo $total_students_count; ?> students
+                                            Showing <?php echo $offset + 1; ?> to <?php echo min($offset + $per_page, $total_students_count); ?> of <?php echo $total_students_count; ?> applications
                                         </div>
                                         
                                         <div class="flex items-center space-x-2">
@@ -848,7 +1279,7 @@ try {
                                                 
                                                 <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
                                                     <?php if ($i == $page): ?>
-                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-500 rounded text-sm font-medium text-white bg-blue-600 shadow-md"><?php echo $i; ?></span>
+                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-900 rounded text-sm font-medium text-white bg-blue-900 shadow-md"><?php echo $i; ?></span>
                                                     <?php else: ?>
                                                         <a href="?page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
                                                     <?php endif; ?>
@@ -888,16 +1319,16 @@ try {
                             <div class="bg-white shadow-lg rounded-xl p-4 md:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
                                 <div class="flex items-center mb-4">
                                     <div class="bg-blue-100 rounded-lg p-2 md:p-3 mr-3 md:mr-4">
-                                        <i class="fas fa-users text-blue-600 text-lg md:text-xl"></i>
+                                        <i class="fas fa-users text-blue-900 text-lg md:text-xl"></i>
                                     </div>
                                     <h3 class="text-base md:text-lg font-semibold text-gray-900">Student Management</h3>
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Manage all student records, approvals, and registrations.</p>
                                 <div class="space-y-2">
-                                    <a href="students/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="students/index.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View All Students
                                     </a>
-                                    <a href="pending_approvals.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="pending_approvals.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Pending Approvals (<?php echo $pending_approvals; ?>)
                                     </a>
                                 </div>
@@ -912,10 +1343,10 @@ try {
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Manage academic advisers and their assignments.</p>
                                 <div class="space-y-2">
-                                    <a href="advisers/index.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="advisers/index.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View Adviser List
                                     </a>
-                                    <a href="advisers/add.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
+                                    <a href="advisers/add.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Add New Adviser
                                     </a>
                                 </div>
@@ -924,17 +1355,17 @@ try {
                             <div class="bg-white shadow-lg rounded-xl p-4 md:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
                                 <div class="flex items-center mb-4">
                                     <div class="bg-purple-100 rounded-lg p-2 md:p-3 mr-3 md:mr-4">
-                                        <i class="fas fa-tags text-purple-600 text-lg md:text-xl"></i>
+                                        <i class="fas fa-book text-purple-600 text-lg md:text-xl"></i>
                                     </div>
-                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">Category Management</h3>
+                                    <h3 class="text-base md:text-lg font-semibold text-gray-900">Course Management</h3>
                                 </div>
-                                <p class="text-sm md:text-base text-gray-600 mb-4">Organize and manage student categories and classifications.</p>
+                                <p class="text-sm md:text-base text-gray-600 mb-4">Organize and manage courses and course applications.</p>
                                 <div class="space-y-2">
-                                    <a href="categories.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
-                                        <i class="fas fa-arrow-right mr-1"></i>Manage Categories
+                                    <a href="courses/index.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Manage Courses
                                     </a>
-                                    <a href="add_category.php" class="block text-primary-600 hover:text-primary-700 text-sm font-medium">
-                                        <i class="fas fa-arrow-right mr-1"></i>Add New Category
+                                    <a href="courses/add.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                        <i class="fas fa-arrow-right mr-1"></i>Add New Course
                                     </a>
                                 </div>
                             </div>
@@ -965,7 +1396,7 @@ try {
                             </div>
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 mb-2" id="modal-title">
-                            Approve Student Registration
+                            Approve & Complete Course
                         </h3>
                         <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
                     </div>
@@ -975,11 +1406,11 @@ try {
                         <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
                             <div class="flex items-center justify-center space-x-3 mb-2">
                                 <div class="bg-blue-100 rounded-lg p-2">
-                                    <i class="fas fa-user-graduate text-blue-600"></i>
+                                    <i class="fas fa-user-graduate text-blue-900"></i>
                                 </div>
                                 <span class="font-semibold text-gray-900 text-lg" id="modalStudentName"></span>
                             </div>
-                            <p class="text-sm text-gray-600">Complete the course assignment details below</p>
+                            <p class="text-sm text-gray-600" id="modalDescription">Assign course details and mark as completed</p>
                         </div>
                     </div>
 
@@ -1053,7 +1484,7 @@ try {
                     <div class="flex flex-col sm:flex-row-reverse gap-3">
                         <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
                             <i class="fas fa-check mr-2"></i>
-                            Approve Student
+                            Approve & Complete
                         </button>
                         <button type="button" onclick="closeApprovalModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                             <i class="fas fa-times mr-2"></i>

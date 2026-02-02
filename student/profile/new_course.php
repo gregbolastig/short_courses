@@ -26,16 +26,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $stmt->execute();
             $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
             
-            // Check if student has any active/approved courses that are not completed
+            // Check if student has any approved course applications (not yet completed)
+            $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+            $stmt->bindParam(':student_id', $student['id']);
+            $stmt->execute();
+            $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+            
+            // Check if student has an active course that is not completed
+            // Students can only apply when their current course status is 'completed'
             $has_active_course = false;
-            if (!empty($student['course']) && in_array($student['status'], ['pending', 'approved'])) {
+            if (!empty($student['course']) && $student['status'] !== 'completed') {
                 $has_active_course = true;
+            }
+            
+            // Check if trying to apply for the same course that's already in students table
+            $duplicate_course = false;
+            if (!empty($student['course']) && !empty($_POST['course']) && 
+                strtolower(trim($student['course'])) === strtolower(trim($_POST['course'])) && 
+                $student['status'] !== 'completed') {
+                $duplicate_course = true;
             }
             
             if ($pending_count > 0) {
                 $errors[] = 'You already have a pending course application. Please wait for admin review before applying for another course.';
+            } elseif ($approved_count > 0) {
+                $errors[] = 'You have an approved course application. Please wait for course completion approval before applying for another course.';
             } elseif ($has_active_course) {
-                $errors[] = 'You have an active course enrollment. Please complete your current course before applying for a new one.';
+                $errors[] = 'You have an active course enrollment (status: ' . ucfirst($student['status']) . '). You can only apply for a new course after your current course is completed.';
+            } elseif ($duplicate_course) {
+                $errors[] = 'You are already enrolled in this course. You can only apply for a new course after completing your current course.';
             } else {
                 // Insert new course application into course_applications table
                 $stmt = $conn->prepare("INSERT INTO course_applications 
@@ -78,6 +97,52 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         // Get available courses from database
         $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
         $available_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Check if student can apply for new courses
+        $can_apply = true;
+        $restriction_message = '';
+        
+        // Check for pending course applications
+        $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
+        $stmt->bindParam(':student_id', $student_profile['id']);
+        $stmt->execute();
+        $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
+        
+        // Check for approved course applications (not yet completed)
+        $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+        $stmt->bindParam(':student_id', $student_profile['id']);
+        $stmt->execute();
+        $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
+        
+        // Check for active courses - students can only apply when status is 'completed'
+        // Students with 'approved' status have an active course and cannot apply for new ones
+        $has_active_course = false;
+        if (!empty($student_profile['course']) && $student_profile['status'] !== 'completed') {
+            $has_active_course = true;
+        }
+        
+        if ($pending_count > 0) {
+            $can_apply = false;
+            $restriction_message = 'You have a pending course application waiting for admin review. Please wait for the review to complete before applying for another course.';
+        } elseif ($approved_count > 0) {
+            $can_apply = false;
+            $restriction_message = 'You have an approved course application. Please wait for course completion approval before applying for another course.';
+        } elseif ($has_active_course) {
+            $can_apply = false;
+            $restriction_message = 'You have an active course enrollment (status: ' . ucfirst($student_profile['status']) . '). You can only apply for a new course after your current course is completed.';
+        }
+        
+        // Get pending applications for display
+        $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id AND status = 'pending' ORDER BY applied_at DESC");
+        $stmt->bindParam(':student_id', $student_profile['id']);
+        $stmt->execute();
+        $pending_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Get approved applications for display
+        $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id AND status = 'approved' ORDER BY applied_at DESC");
+        $stmt->bindParam(':student_id', $student_profile['id']);
+        $stmt->execute();
+        $approved_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
     } catch (PDOException $e) {
         $errors[] = 'Database error: ' . $e->getMessage();
@@ -145,48 +210,146 @@ include '../components/header.php';
                         </div>
                     </div>
                     
-                    <!-- Course Registration Form -->
-                    <form id="courseApplicationForm" method="POST" class="space-y-6">
-                        <input type="hidden" name="action" value="register_course">
-                        <input type="hidden" name="uli" value="<?php echo htmlspecialchars($student_profile['uli']); ?>">
-                        
-                        <div>
-                            <label for="course" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-graduation-cap text-red-800 mr-2"></i>Select Course
-                            </label>
-                            <select name="course" id="course" required 
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors duration-200">
-                                <option value="">Choose a course...</option>
-                                <?php foreach ($available_courses as $course): ?>
-                                    <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
-                                        <?php echo htmlspecialchars($course['course_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <h4 class="text-sm font-semibold text-blue-800 mb-2">
-                                <i class="fas fa-info-circle mr-2"></i>Course Application Process
+                    
+                    <!-- Pending Applications Display -->
+                    <?php if (!empty($pending_applications)): ?>
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                            <h4 class="text-sm font-semibold text-orange-800 mb-2">
+                                <i class="fas fa-hourglass-half mr-2"></i>Pending Course Applications
                             </h4>
-                            <ul class="text-sm text-blue-700 space-y-1">
-                                <li>• Your application will be reviewed by admin</li>
-                                <li>• Admin will assign NC Level and training schedule</li>
-                                <li>• You can apply for multiple courses</li>
-                            </ul>
+                            <?php foreach ($pending_applications as $app): ?>
+                                <div class="bg-white border border-orange-200 rounded-lg p-3 mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium text-gray-900"><?php echo htmlspecialchars($app['course_name']); ?></p>
+                                            <p class="text-sm text-gray-600">Applied: <?php echo date('M j, Y', strtotime($app['applied_at'])); ?></p>
+                                        </div>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-clock mr-1"></i>Pending Review
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                        
-                        <div class="flex items-center justify-between pt-4">
+                    <?php endif; ?>
+                    
+                    <!-- Approved Applications Display -->
+                    <?php if (!empty($approved_applications)): ?>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                            <h4 class="text-sm font-semibold text-green-800 mb-2">
+                                <i class="fas fa-check-circle mr-2"></i>Approved Course Applications
+                            </h4>
+                            <?php foreach ($approved_applications as $app): ?>
+                                <div class="bg-white border border-green-200 rounded-lg p-3 mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium text-gray-900"><?php echo htmlspecialchars($app['course_name']); ?></p>
+                                            <?php if ($app['nc_level']): ?>
+                                                <p class="text-sm text-gray-600">NC Level: <?php echo htmlspecialchars($app['nc_level']); ?></p>
+                                            <?php endif; ?>
+                                            <?php if ($app['adviser']): ?>
+                                                <p class="text-sm text-gray-600">Adviser: <?php echo htmlspecialchars($app['adviser']); ?></p>
+                                            <?php endif; ?>
+                                            <p class="text-sm text-gray-600">Approved: <?php echo $app['reviewed_at'] ? date('M j, Y', strtotime($app['reviewed_at'])) : date('M j, Y', strtotime($app['applied_at'])); ?></p>
+                                        </div>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check mr-1"></i>Approved - Awaiting Completion
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Current Course Status (from students table) -->
+                    <?php if (!empty($student_profile['course']) && in_array($student_profile['status'], ['approved', 'completed'])): ?>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                            <h4 class="text-sm font-semibold text-blue-800 mb-2">
+                                <i class="fas fa-graduation-cap mr-2"></i>Current Course Enrollment
+                            </h4>
+                            <div class="bg-white border border-blue-200 rounded-lg p-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium text-gray-900"><?php echo htmlspecialchars($student_profile['course']); ?></p>
+                                        <?php if ($student_profile['nc_level']): ?>
+                                            <p class="text-sm text-gray-600">NC Level: <?php echo htmlspecialchars($student_profile['nc_level']); ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($student_profile['adviser']): ?>
+                                            <p class="text-sm text-gray-600">Adviser: <?php echo htmlspecialchars($student_profile['adviser']); ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($student_profile['training_start'] && $student_profile['training_end']): ?>
+                                            <p class="text-sm text-gray-600">
+                                                Training Period: <?php echo date('M j, Y', strtotime($student_profile['training_start'])); ?> - 
+                                                <?php echo date('M j, Y', strtotime($student_profile['training_end'])); ?>
+                                            </p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                        <?php echo $student_profile['status'] === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'; ?>">
+                                        <?php echo ucfirst($student_profile['status']); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Course Registration Form -->
+                    <?php if ($can_apply): ?>
+                        <form id="courseApplicationForm" method="POST" class="space-y-6">
+                            <input type="hidden" name="action" value="register_course">
+                            <input type="hidden" name="uli" value="<?php echo htmlspecialchars($student_profile['uli']); ?>">
+                            
+                            <div>
+                                <label for="course" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-graduation-cap text-red-800 mr-2"></i>Select Course
+                                </label>
+                                <select name="course" id="course" required 
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors duration-200">
+                                    <option value="">Choose a course...</option>
+                                    <?php foreach ($available_courses as $course): ?>
+                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                            <?php echo htmlspecialchars($course['course_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h4 class="text-sm font-semibold text-blue-800 mb-2">
+                                    <i class="fas fa-info-circle mr-2"></i>Course Application Process
+                                </h4>
+                                <ul class="text-sm text-blue-700 space-y-1">
+                                    <li>• Your application will be reviewed by admin</li>
+                                    <li>• Admin will assign NC Level and training schedule</li>
+                                    <li>• You can only have one active course at a time</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="flex items-center justify-between pt-4">
+                                <a href="profile.php?uli=<?php echo urlencode($student_profile['uli']); ?>" 
+                                   class="inline-flex items-center px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors duration-200">
+                                    <i class="fas fa-arrow-left mr-2"></i>Cancel
+                                </a>
+                                <button type="button" onclick="showConfirmationModal()" 
+                                        class="inline-flex items-center px-6 py-3 bg-red-800 text-white font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
+                                    <i class="fas fa-paper-plane mr-2"></i>Submit Application
+                                </button>
+                            </div>
+                        </form>
+                    <?php else: ?>
+                        <!-- Restriction Message -->
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">Course Application Not Available</h3>
+                            <p class="text-gray-600 mb-4 max-w-md mx-auto"><?php echo $restriction_message; ?></p>
                             <a href="profile.php?uli=<?php echo urlencode($student_profile['uli']); ?>" 
-                               class="inline-flex items-center px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors duration-200">
-                                <i class="fas fa-arrow-left mr-2"></i>Cancel
+                               class="inline-flex items-center px-4 py-2 bg-red-800 text-white font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
+                                <i class="fas fa-arrow-left mr-2"></i>Back to Profile
                             </a>
-                            <button type="button" onclick="showConfirmationModal()" 
-                                    class="inline-flex items-center px-6 py-3 bg-red-800 text-white font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
-                                <i class="fas fa-paper-plane mr-2"></i>Submit Application
-                            </button>
                         </div>
-                    </form>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
