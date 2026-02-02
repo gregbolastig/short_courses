@@ -666,6 +666,8 @@ try {
         </main>
     </div>
 
+    <?php include '../components/admin-scripts.php'; ?>
+    
     <script>
         function confirmDelete(studentId, studentName) {
             if (confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
