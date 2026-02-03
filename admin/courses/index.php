@@ -21,15 +21,54 @@ $total_pages = 0;
 $total_courses = 0;
 $search = '';
 
+// Handle success messages from URL parameters
+$show_success_modal = false;
+$success_modal_message = '';
+$success_modal_course_name = '';
+
+if (isset($_GET['success'])) {
+    $success_type = $_GET['success'];
+    $show_success_modal = true;
+    
+    switch ($success_type) {
+        case 'created':
+            $success_modal_message = 'Course created successfully!';
+            $success_modal_course_name = isset($_GET['course_name']) ? $_GET['course_name'] : '';
+            break;
+        case 'updated':
+            $success_modal_message = 'Course updated successfully!';
+            $success_modal_course_name = isset($_GET['course_name']) ? $_GET['course_name'] : '';
+            break;
+        case 'deleted':
+            $success_modal_message = 'Course deleted successfully!';
+            $success_modal_course_name = isset($_GET['course_name']) ? $_GET['course_name'] : '';
+            break;
+        default:
+            $show_success_modal = false;
+    }
+}
+
 // Handle delete operation
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     try {
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+        // Get course name before deleting
+        $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = ?");
         $stmt->execute([$_GET['delete']]);
-        $success_message = 'Course deleted successfully!';
+        $course = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($course) {
+            $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+            $stmt->execute([$_GET['delete']]);
+            
+            // Redirect with success parameter
+            header("Location: index.php?success=deleted&course_name=" . urlencode($course['course_name']));
+            exit;
+        } else {
+            $error_message = 'Course not found.';
+        }
     } catch (PDOException $e) {
         $error_message = 'Cannot delete course: ' . $e->getMessage();
     }
@@ -167,19 +206,6 @@ try {
                                     </div>
                                     <div class="ml-3">
                                         <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <?php if (isset($success_message)): ?>
-                            <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-check-circle text-green-400"></i>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -375,6 +401,59 @@ try {
         </div>
     </div>
     
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 z-50 <?php echo $show_success_modal ? '' : 'hidden'; ?> overflow-y-auto" aria-labelledby="success-modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay with blur effect -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeSuccessModal()"></div>
+
+            <!-- Modal panel with enhanced design -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
+                <!-- Header Section -->
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 mb-4 shadow-lg">
+                        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-inner">
+                            <i class="fas fa-check text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" id="success-modal-title">
+                        Success!
+                    </h3>
+                    <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
+                </div>
+
+                <!-- Content Section -->
+                <div class="text-center mb-8">
+                    <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+                        <div class="flex items-center justify-center space-x-3 mb-2">
+                            <div class="bg-green-100 rounded-lg p-2">
+                                <i class="fas fa-graduation-cap text-green-600"></i>
+                            </div>
+                            <span class="font-semibold text-gray-900 text-lg" id="successCourseName"><?php echo htmlspecialchars($success_modal_course_name); ?></span>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 leading-relaxed text-lg font-medium" id="successMessage">
+                        <?php echo htmlspecialchars($success_modal_message); ?>
+                    </p>
+                    <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div class="flex items-center justify-center space-x-2 text-green-700">
+                            <i class="fas fa-info-circle text-sm"></i>
+                            <span class="text-sm font-medium">Operation completed successfully</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex justify-center">
+                    <button type="button" onclick="closeSuccessModal()" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
+                        <i class="fas fa-check mr-2"></i>
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -448,18 +527,41 @@ try {
             document.body.classList.remove('overflow-hidden');
         }
         
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            
+            // Clean up URL by removing success parameters
+            const url = new URL(window.location);
+            url.searchParams.delete('success');
+            url.searchParams.delete('course_name');
+            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
+        }
+        
         document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
             if (courseToDelete) {
                 window.location.href = `?delete=${courseToDelete}`;
             }
         });
         
-        // Close modal on Escape key
+        // Close modals on Escape key
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && !document.getElementById('deleteModal').classList.contains('hidden')) {
-                closeDeleteModal();
+            if (event.key === 'Escape') {
+                if (!document.getElementById('deleteModal').classList.contains('hidden')) {
+                    closeDeleteModal();
+                }
+                if (!document.getElementById('successModal').classList.contains('hidden')) {
+                    closeSuccessModal();
+                }
             }
         });
+        
+        // Show success modal if needed
+        <?php if ($show_success_modal): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('overflow-hidden');
+        });
+        <?php endif; ?>
     </script>
     
     <?php include '../components/admin-scripts.php'; ?>

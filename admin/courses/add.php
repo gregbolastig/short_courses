@@ -27,10 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['course_name']
         ]);
         
-        $success_message = 'Course created successfully!';
-        
-        // Redirect to courses list after 2 seconds
-        header("refresh:2;url=index.php");
+        // Redirect immediately to index.php with success parameter
+        header("Location: index.php?success=created&course_name=" . urlencode($_POST['course_name']));
+        exit;
         
     } catch (PDOException $e) {
         $error_message = 'Database error: ' . $e->getMessage();
