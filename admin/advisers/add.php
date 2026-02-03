@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $success_message = 'Adviser created successfully!';
         
-        // Redirect to advisers list after 2 seconds
-        header("refresh:2;url=index.php");
+        // Redirect to advisers list with success parameter
+        header("Location: index.php?success=created&name=" . urlencode($full_name));
         
     } catch (PDOException $e) {
         $error_message = 'Database error: ' . $e->getMessage();

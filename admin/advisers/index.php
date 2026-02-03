@@ -35,6 +35,29 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
+// Handle success messages from other pages
+if (isset($_GET['success'])) {
+    $success_type = $_GET['success'];
+    $adviser_name = isset($_GET['name']) ? $_GET['name'] : 'Adviser';
+    
+    switch ($success_type) {
+        case 'created':
+            $success_message = 'Adviser created successfully!';
+            $show_success_modal = true;
+            $modal_title = 'Adviser Created Successfully!';
+            $modal_message = "The adviser '{$adviser_name}' has been successfully added to your system.";
+            $modal_icon = 'fas fa-check-circle';
+            break;
+        case 'updated':
+            $success_message = 'Adviser updated successfully!';
+            $show_success_modal = true;
+            $modal_title = 'Adviser Updated Successfully!';
+            $modal_message = "The adviser '{$adviser_name}' has been successfully updated.";
+            $modal_icon = 'fas fa-edit';
+            break;
+    }
+}
+
 // Get advisers with pagination
 try {
     $database = new Database();
@@ -428,6 +451,65 @@ try {
         </div>
     </div>
     
+    <!-- Success Modal -->
+    <?php if (isset($show_success_modal) && $show_success_modal): ?>
+    <div id="successModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay with blur effect -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeSuccessModal()"></div>
+
+            <!-- Modal panel with enhanced design -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
+                <!-- Header Section -->
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 mb-4 shadow-lg">
+                        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-inner">
+                            <i class="<?php echo $modal_icon ?? 'fas fa-check-circle'; ?> text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2" id="modal-title">
+                        <?php echo htmlspecialchars($modal_title ?? 'Success!'); ?>
+                    </h3>
+                    <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
+                </div>
+
+                <!-- Content Section -->
+                <div class="text-center mb-8">
+                    <div class="bg-green-50 rounded-xl p-4 mb-4 border border-green-200">
+                        <div class="flex items-center justify-center space-x-3 mb-2">
+                            <div class="bg-blue-100 rounded-lg p-2">
+                                <i class="fas fa-chalkboard-teacher text-blue-600"></i>
+                            </div>
+                            <span class="font-semibold text-gray-900 text-lg"><?php echo htmlspecialchars($_GET['name'] ?? 'Adviser'); ?></span>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 leading-relaxed">
+                        <?php echo htmlspecialchars($modal_message ?? 'Operation completed successfully!'); ?>
+                    </p>
+                    <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div class="flex items-center justify-center space-x-2 text-green-700">
+                            <i class="fas fa-info-circle text-sm"></i>
+                            <span class="text-sm font-medium">You can now manage this adviser from the list below</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" onclick="closeSuccessModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
+                        <i class="fas fa-check mr-2"></i>
+                        Great!
+                    </button>
+                    <a href="add.php" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Another
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <script>
         let adviserToDelete = null;
         
@@ -444,16 +526,42 @@ try {
             document.body.classList.remove('overflow-hidden');
         }
         
+        function closeSuccessModal() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+                // Clean URL by removing success parameters
+                const url = new URL(window.location);
+                url.searchParams.delete('success');
+                url.searchParams.delete('name');
+                window.history.replaceState({}, document.title, url.pathname + url.search);
+            }
+        }
+        
+        // Auto-show success modal if it exists
+        document.addEventListener('DOMContentLoaded', function() {
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+                document.body.classList.add('overflow-hidden');
+            }
+        });
+        
         document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
             if (adviserToDelete) {
                 window.location.href = `?delete=${adviserToDelete}`;
             }
         });
         
-        // Close modal on Escape key
+        // Close modals on Escape key
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && !document.getElementById('deleteModal').classList.contains('hidden')) {
-                closeDeleteModal();
+            if (event.key === 'Escape') {
+                if (!document.getElementById('deleteModal').classList.contains('hidden')) {
+                    closeDeleteModal();
+                }
+                if (document.getElementById('successModal') && !document.getElementById('successModal').classList.contains('hidden')) {
+                    closeSuccessModal();
+                }
             }
         });
     </script>
