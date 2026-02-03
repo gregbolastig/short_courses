@@ -158,6 +158,7 @@ try {
                             </div>
                         </div>
                         
+                        
                         <!-- Alerts -->
                         <?php if (isset($error_message)): ?>
                             <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
@@ -184,7 +185,7 @@ try {
                                 </div>
                             </div>
                         <?php endif; ?>
-                           
+
                         <!-- Advisers Table -->
                         <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                             <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
