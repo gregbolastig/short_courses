@@ -39,12 +39,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $stmt = $conn->prepare("UPDATE students SET 
                 civil_status = :civil_status, 
                 contact_number = :contact_number, 
-                email = :email 
+                email = :email,
+                province = :province,
+                city = :city,
+                barangay = :barangay
                 WHERE id = :id");
             
             $stmt->bindParam(':civil_status', $_POST['civil_status']);
             $stmt->bindParam(':contact_number', $contact_number);
             $stmt->bindParam(':email', $_POST['email']);
+            $stmt->bindParam(':province', $_POST['province']);
+            $stmt->bindParam(':city', $_POST['city']);
+            $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':id', $_POST['student_id']);
             
             if ($stmt->execute()) {
@@ -658,14 +664,12 @@ include '../components/header.php';
                             <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Date of Birth</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo date('M j, Y', strtotime($student_profile['birthday'])); ?></p>
-                                <p class="text-xs text-gray-500 mt-1">Cannot be changed</p>
                             </div>
                             <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Age</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo $student_profile['age']; ?> years old</p>
-                                <p class="text-xs text-gray-500 mt-1">Auto-calculated</p>
                             </div>
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                            <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Place of Birth</label>
                                 <p class="text-sm font-semibold text-gray-900">
                                     <?php 
@@ -680,14 +684,12 @@ include '../components/header.php';
                                     echo $birth_location;
                                     ?>
                                 </p>
-                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                             
                             <!-- Non-editable fields (continued) -->
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                            <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Sex</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['sex']); ?></p>
-                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                             
                             <div class="bg-gray-50 p-4 rounded-lg">
@@ -756,23 +758,60 @@ include '../components/header.php';
                                 </div>
                             </div>
                             
-                            <!-- Restricted fields -->
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Address</label>
-                                <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['barangay'] . ', ' . $student_profile['city'] . ', ' . $student_profile['province']); ?></p>
-                                <p class="text-xs text-red-800 mt-1">Contact registrar to change</p>
+                            <!-- Address fields with API integration -->
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Province</label>
+                                <div class="view-mode">
+                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['province']); ?></p>
+                                </div>
+                                <div class="edit-mode hidden">
+                                    <select name="province" id="edit_province" class="w-full text-sm border border-gray-300 rounded px-2 py-1">
+                                        <option value="">Loading provinces...</option>
+                                    </select>
+                                    <div id="edit_province-loading" class="hidden text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>Loading provinces...
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-500 mb-1">City</label>
+                                <div class="view-mode">
+                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['city']); ?></p>
+                                </div>
+                                <div class="edit-mode hidden">
+                                    <select name="city" id="edit_city" class="w-full text-sm border border-gray-300 rounded px-2 py-1">
+                                        <option value="">Select province first</option>
+                                    </select>
+                                    <div id="edit_city-loading" class="hidden text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>Loading cities...
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Barangay</label>
+                                <div class="view-mode">
+                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['barangay']); ?></p>
+                                </div>
+                                <div class="edit-mode hidden">
+                                    <select name="barangay" id="edit_barangay" class="w-full text-sm border border-gray-300 rounded px-2 py-1">
+                                        <option value="">Select city first</option>
+                                    </select>
+                                    <div id="edit_barangay-loading" class="hidden text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-spinner fa-spin mr-1"></i>Loading barangays...
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Last School</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['last_school']); ?></p>
-                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                             
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                            <div class="bg-gray-50 p-4 rounded-lg">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">ULI</label>
                                 <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['uli']); ?></p>
-                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                         </div>
                     </form>
@@ -781,8 +820,16 @@ include '../components/header.php';
         <?php endif; ?>
     </main>
     
+    <!-- Include API utilities -->
+    <script src="../components/api-utils.js"></script>
+    
     <script>
         let isEditMode = false;
+        let originalAddressData = {
+            province: '<?php echo htmlspecialchars($student_profile['province']); ?>',
+            city: '<?php echo htmlspecialchars($student_profile['city']); ?>',
+            barangay: '<?php echo htmlspecialchars($student_profile['barangay']); ?>'
+        };
         
         function toggleEditMode() {
             isEditMode = !isEditMode;
@@ -796,14 +843,112 @@ include '../components/header.php';
                 viewModes.forEach(el => el.classList.add('hidden'));
                 editModes.forEach(el => el.classList.remove('hidden'));
                 editControls.classList.remove('hidden');
-                editBtn.style.display = 'none'; // Hide the edit button when in edit mode
+                editBtn.style.display = 'none';
+                
+                // Initialize address dropdowns
+                initializeAddressDropdowns();
             } else {
                 // Switch to view mode
                 viewModes.forEach(el => el.classList.remove('hidden'));
                 editModes.forEach(el => el.classList.add('hidden'));
                 editControls.classList.add('hidden');
-                editBtn.style.display = 'inline-flex'; // Show the edit button when in view mode
+                editBtn.style.display = 'inline-flex';
             }
+        }
+        
+        async function initializeAddressDropdowns() {
+            try {
+                // Load provinces
+                await APIUtils.loadProvinces('edit_province', originalAddressData.province);
+                
+                // Setup cascading behavior
+                setupAddressCascade();
+                
+                // If we have a selected province, load cities
+                if (originalAddressData.province) {
+                    const provinceSelect = document.getElementById('edit_province');
+                    const selectedOption = Array.from(provinceSelect.options).find(option => option.value === originalAddressData.province);
+                    if (selectedOption && selectedOption.dataset.code) {
+                        await APIUtils.loadCities(selectedOption.dataset.code, 'edit_city', originalAddressData.city);
+                        
+                        // If we have a selected city, load barangays
+                        if (originalAddressData.city) {
+                            const citySelect = document.getElementById('edit_city');
+                            const selectedCityOption = Array.from(citySelect.options).find(option => option.value === originalAddressData.city);
+                            if (selectedCityOption && selectedCityOption.dataset.code) {
+                                await APIUtils.loadBarangays(selectedCityOption.dataset.code, 'edit_barangay', originalAddressData.barangay);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error initializing address dropdowns:', error);
+                // Fallback to text inputs if API fails
+                fallbackToTextInputs();
+            }
+        }
+        
+        function setupAddressCascade() {
+            const provinceSelect = document.getElementById('edit_province');
+            const citySelect = document.getElementById('edit_city');
+            const barangaySelect = document.getElementById('edit_barangay');
+            
+            if (provinceSelect) {
+                provinceSelect.addEventListener('change', async function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const provinceCode = selectedOption.dataset.code;
+                    
+                    // Clear dependent dropdowns
+                    citySelect.innerHTML = '<option value="">Select city/municipality</option>';
+                    barangaySelect.innerHTML = '<option value="">Select barangay</option>';
+                    
+                    if (provinceCode) {
+                        try {
+                            await APIUtils.loadCities(provinceCode, 'edit_city');
+                        } catch (error) {
+                            console.error('Error loading cities:', error);
+                        }
+                    }
+                });
+            }
+            
+            if (citySelect) {
+                citySelect.addEventListener('change', async function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const cityCode = selectedOption.dataset.code;
+                    
+                    // Clear barangay dropdown
+                    barangaySelect.innerHTML = '<option value="">Select barangay</option>';
+                    
+                    if (cityCode) {
+                        try {
+                            await APIUtils.loadBarangays(cityCode, 'edit_barangay');
+                        } catch (error) {
+                            console.error('Error loading barangays:', error);
+                        }
+                    }
+                });
+            }
+        }
+        
+        function fallbackToTextInputs() {
+            // If API fails, convert dropdowns to text inputs
+            const addressFields = ['edit_province', 'edit_city', 'edit_barangay'];
+            const originalValues = [originalAddressData.province, originalAddressData.city, originalAddressData.barangay];
+            
+            addressFields.forEach((fieldId, index) => {
+                const select = document.getElementById(fieldId);
+                if (select) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = select.name;
+                    input.value = originalValues[index];
+                    input.className = select.className;
+                    input.placeholder = `Enter ${select.name}`;
+                    
+                    select.parentNode.replaceChild(input, select);
+                }
+            });
         }
         
         function saveChanges() {
@@ -812,68 +957,31 @@ include '../components/header.php';
             if (phoneInput) {
                 const phoneValue = phoneInput.value.trim();
                 if (phoneValue && !/^\d{10}$/.test(phoneValue)) {
-                    showModal('Validation Error', 'Phone number must be exactly 10 digits.', 'error');
+                    alert('Phone number must be exactly 10 digits.');
                     phoneInput.focus();
                     return;
                 }
             }
             
-            showModal('Confirm Changes', 'Are you sure you want to save these changes?', 'confirm', function() {
+            // Validate address fields
+            const province = document.getElementById('edit_province')?.value || document.querySelector('input[name="province"]')?.value;
+            const city = document.getElementById('edit_city')?.value || document.querySelector('input[name="city"]')?.value;
+            const barangay = document.getElementById('edit_barangay')?.value || document.querySelector('input[name="barangay"]')?.value;
+            
+            if (!province || !city || !barangay) {
+                alert('Please select/enter all address fields (Province, City, Barangay).');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to save these changes?')) {
                 document.getElementById('profileForm').submit();
-            });
+            }
         }
         
         function cancelEdit() {
-            showModal('Confirm Cancel', 'Are you sure you want to cancel? Any unsaved changes will be lost.', 'confirm', function() {
+            if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
                 location.reload();
-            });
-        }
-        
-        // Modal functions
-        function showModal(title, message, type, callback = null) {
-            const modal = document.getElementById('messageModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalMessage = document.getElementById('modalMessage');
-            const modalIcon = document.getElementById('modalIcon');
-            const confirmBtn = document.getElementById('confirmBtn');
-            const cancelBtn = document.getElementById('cancelBtn');
-            const okBtn = document.getElementById('okBtn');
-            
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
-            
-            // Reset button visibility
-            confirmBtn.classList.add('hidden');
-            cancelBtn.classList.add('hidden');
-            okBtn.classList.add('hidden');
-            
-            if (type === 'success') {
-                modalIcon.innerHTML = '<i class="fas fa-check-circle text-green-500 text-4xl"></i>';
-                okBtn.classList.remove('hidden');
-                okBtn.className = 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200';
-            } else if (type === 'error') {
-                modalIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500 text-4xl"></i>';
-                okBtn.classList.remove('hidden');
-                okBtn.className = 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200';
-            } else if (type === 'confirm') {
-                modalIcon.innerHTML = '<i class="fas fa-question-circle text-blue-500 text-4xl"></i>';
-                confirmBtn.classList.remove('hidden');
-                cancelBtn.classList.remove('hidden');
-                
-                confirmBtn.onclick = function() {
-                    hideModal();
-                    if (callback) callback();
-                };
             }
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-        
-        function hideModal() {
-            const modal = document.getElementById('messageModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
         }
         
         // Add input validation for phone number
@@ -900,5 +1008,33 @@ include '../components/header.php';
             }
         });
     </script>
+    
+    <!-- Modal for messages -->
+    <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <div class="text-center">
+                <div id="modalIcon" class="mb-4">
+                    <!-- Icon will be inserted here -->
+                </div>
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-900 mb-2">
+                    <!-- Title will be inserted here -->
+                </h3>
+                <p id="modalMessage" class="text-gray-600 mb-6 whitespace-pre-line">
+                    <!-- Message will be inserted here -->
+                </p>
+                <div class="flex justify-center space-x-3">
+                    <button id="confirmBtn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Confirm
+                    </button>
+                    <button id="cancelBtn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200" onclick="hideModal()">
+                        Cancel
+                    </button>
+                    <button id="okBtn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200" onclick="hideModal()">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <?php include '../components/footer.php'; ?> 
