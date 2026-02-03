@@ -12,25 +12,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("UPDATE students SET 
-            sex = :sex, 
-            civil_status = :civil_status, 
-            contact_number = :contact_number, 
-            email = :email, 
-            last_school = :last_school 
-            WHERE id = :id");
-        
-        $stmt->bindParam(':sex', $_POST['sex']);
-        $stmt->bindParam(':civil_status', $_POST['civil_status']);
-        $stmt->bindParam(':contact_number', $_POST['contact_number']);
-        $stmt->bindParam(':email', $_POST['email']);
-        $stmt->bindParam(':last_school', $_POST['last_school']);
-        $stmt->bindParam(':id', $_POST['student_id']);
-        
-        if ($stmt->execute()) {
-            $success_message = 'Profile updated successfully!';
+        // Handle contact number - combine country code and phone number
+        $contact_number = '';
+        if (!empty($_POST['country_code']) && !empty($_POST['phone_number'])) {
+            $country_code = $_POST['country_code'];
+            $phone_number = $_POST['phone_number'];
+            
+            // Validate country code format
+            if (!preg_match('/^\+\d{1,4}$/', $country_code)) {
+                $errors[] = 'Invalid country code format';
+            }
+            
+            // Validate phone number (should be exactly 10 digits)
+            if (!preg_match('/^\d{10}$/', $phone_number)) {
+                $errors[] = 'Phone number must be exactly 10 digits';
+            }
+            
+            if (empty($errors)) {
+                $contact_number = $country_code . $phone_number;
+            }
         } else {
-            $errors[] = 'Failed to update profile. Please try again.';
+            $errors[] = 'Both country code and phone number are required';
+        }
+        
+        if (empty($errors)) {
+            $stmt = $conn->prepare("UPDATE students SET 
+                civil_status = :civil_status, 
+                contact_number = :contact_number, 
+                email = :email 
+                WHERE id = :id");
+            
+            $stmt->bindParam(':civil_status', $_POST['civil_status']);
+            $stmt->bindParam(':contact_number', $contact_number);
+            $stmt->bindParam(':email', $_POST['email']);
+            $stmt->bindParam(':id', $_POST['student_id']);
+            
+            if ($stmt->execute()) {
+                $success_message = 'Profile updated successfully!';
+                // Refresh the student profile data
+                $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+                $stmt->bindParam(':id', $_POST['student_id']);
+                $stmt->execute();
+                $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);
+            } else {
+                $errors[] = 'Failed to update profile. Please try again.';
+            }
         }
     } catch (PDOException $e) {
         $errors[] = 'Database error: ' . $e->getMessage();
@@ -639,20 +665,29 @@ include '../components/header.php';
                                 <p class="text-sm font-semibold text-gray-900"><?php echo $student_profile['age']; ?> years old</p>
                                 <p class="text-xs text-gray-500 mt-1">Auto-calculated</p>
                             </div>
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+                                <label class="block text-sm font-medium text-gray-500 mb-1">Place of Birth</label>
+                                <p class="text-sm font-semibold text-gray-900">
+                                    <?php 
+                                    $birth_location = '';
+                                    if (!empty($student_profile['birth_city']) && !empty($student_profile['birth_province'])) {
+                                        $birth_location = htmlspecialchars($student_profile['birth_city'] . ', ' . $student_profile['birth_province']);
+                                    } elseif (!empty($student_profile['place_of_birth'])) {
+                                        $birth_location = htmlspecialchars($student_profile['place_of_birth']);
+                                    } else {
+                                        $birth_location = 'Not specified';
+                                    }
+                                    echo $birth_location;
+                                    ?>
+                                </p>
+                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
+                            </div>
                             
-                            <!-- Editable fields -->
-                            <div class="bg-gray-50 p-4 rounded-lg">
+                            <!-- Non-editable fields (continued) -->
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Sex</label>
-                                <div class="view-mode">
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['sex']); ?></p>
-                                </div>
-                                <div class="edit-mode hidden">
-                                    <select name="sex" class="w-full text-sm border border-gray-300 rounded px-2 py-1">
-                                        <option value="Male" <?php echo $student_profile['sex'] === 'Male' ? 'selected' : ''; ?>>Male</option>
-                                        <option value="Female" <?php echo $student_profile['sex'] === 'Female' ? 'selected' : ''; ?>>Female</option>
-                                        <option value="Other" <?php echo $student_profile['sex'] === 'Other' ? 'selected' : ''; ?>>Other</option>
-                                    </select>
-                                </div>
+                                <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['sex']); ?></p>
+                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                             
                             <div class="bg-gray-50 p-4 rounded-lg">
@@ -676,8 +711,37 @@ include '../components/header.php';
                                     <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['contact_number']); ?></p>
                                 </div>
                                 <div class="edit-mode hidden">
-                                    <input type="text" name="contact_number" value="<?php echo htmlspecialchars($student_profile['contact_number']); ?>" 
-                                           class="w-full text-sm border border-gray-300 rounded px-2 py-1">
+                                    <?php
+                                    // Parse the stored contact number to separate country code and number
+                                    $stored_contact = $student_profile['contact_number'];
+                                    $country_code = '';
+                                    $phone_number = '';
+                                    
+                                    // Check if it starts with a country code (+ followed by digits)
+                                    if (preg_match('/^(\+\d{1,4})(\d+)$/', $stored_contact, $matches)) {
+                                        $country_code = $matches[1];
+                                        $phone_number = $matches[2];
+                                    } else {
+                                        // If no country code found, assume it's just the number
+                                        $phone_number = $stored_contact;
+                                        $country_code = '+63'; // Default to Philippines
+                                    }
+                                    ?>
+                                    <div class="flex space-x-2">
+                                        <select name="country_code" id="edit_country_code" class="w-20 text-sm border border-gray-300 rounded px-2 py-1">
+                                            <option value="+63" <?php echo $country_code === '+63' ? 'selected' : ''; ?>>🇵🇭 +63</option>
+                                            <option value="+1" <?php echo $country_code === '+1' ? 'selected' : ''; ?>>🇺🇸 +1</option>
+                                            <option value="+44" <?php echo $country_code === '+44' ? 'selected' : ''; ?>>🇬🇧 +44</option>
+                                            <option value="+86" <?php echo $country_code === '+86' ? 'selected' : ''; ?>>🇨🇳 +86</option>
+                                            <option value="+81" <?php echo $country_code === '+81' ? 'selected' : ''; ?>>🇯🇵 +81</option>
+                                            <option value="+82" <?php echo $country_code === '+82' ? 'selected' : ''; ?>>🇰🇷 +82</option>
+                                            <option value="+65" <?php echo $country_code === '+65' ? 'selected' : ''; ?>>🇸🇬 +65</option>
+                                        </select>
+                                        <input type="text" name="phone_number" value="<?php echo htmlspecialchars($phone_number); ?>" 
+                                               placeholder="10-digit number" maxlength="10" pattern="\d{10}"
+                                               class="flex-1 text-sm border border-gray-300 rounded px-2 py-1">
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Enter 10-digit number without country code</p>
                                 </div>
                             </div>
                             
@@ -699,15 +763,10 @@ include '../components/header.php';
                                 <p class="text-xs text-red-800 mt-1">Contact registrar to change</p>
                             </div>
                             
-                            <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-100">
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Last School</label>
-                                <div class="view-mode">
-                                    <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['last_school']); ?></p>
-                                </div>
-                                <div class="edit-mode hidden">
-                                    <input type="text" name="last_school" value="<?php echo htmlspecialchars($student_profile['last_school']); ?>" 
-                                           class="w-full text-sm border border-gray-300 rounded px-2 py-1">
-                                </div>
+                                <p class="text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($student_profile['last_school']); ?></p>
+                                <p class="text-xs text-red-800 mt-1">Cannot be changed</p>
                             </div>
                             
                             <div class="bg-red-50 p-4 rounded-lg border border-red-100">
@@ -748,16 +807,98 @@ include '../components/header.php';
         }
         
         function saveChanges() {
-            if (confirm('Are you sure you want to save these changes?')) {
-                document.getElementById('profileForm').submit();
+            // Validate phone number before saving
+            const phoneInput = document.querySelector('input[name="phone_number"]');
+            if (phoneInput) {
+                const phoneValue = phoneInput.value.trim();
+                if (phoneValue && !/^\d{10}$/.test(phoneValue)) {
+                    showModal('Validation Error', 'Phone number must be exactly 10 digits.', 'error');
+                    phoneInput.focus();
+                    return;
+                }
             }
+            
+            showModal('Confirm Changes', 'Are you sure you want to save these changes?', 'confirm', function() {
+                document.getElementById('profileForm').submit();
+            });
         }
         
         function cancelEdit() {
-            if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
-                toggleEditMode(); // Switch back to view mode without reloading
-            }
+            showModal('Confirm Cancel', 'Are you sure you want to cancel? Any unsaved changes will be lost.', 'confirm', function() {
+                location.reload();
+            });
         }
+        
+        // Modal functions
+        function showModal(title, message, type, callback = null) {
+            const modal = document.getElementById('messageModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const confirmBtn = document.getElementById('confirmBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const okBtn = document.getElementById('okBtn');
+            
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            
+            // Reset button visibility
+            confirmBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+            okBtn.classList.add('hidden');
+            
+            if (type === 'success') {
+                modalIcon.innerHTML = '<i class="fas fa-check-circle text-green-500 text-4xl"></i>';
+                okBtn.classList.remove('hidden');
+                okBtn.className = 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200';
+            } else if (type === 'error') {
+                modalIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500 text-4xl"></i>';
+                okBtn.classList.remove('hidden');
+                okBtn.className = 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200';
+            } else if (type === 'confirm') {
+                modalIcon.innerHTML = '<i class="fas fa-question-circle text-blue-500 text-4xl"></i>';
+                confirmBtn.classList.remove('hidden');
+                cancelBtn.classList.remove('hidden');
+                
+                confirmBtn.onclick = function() {
+                    hideModal();
+                    if (callback) callback();
+                };
+            }
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        function hideModal() {
+            const modal = document.getElementById('messageModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        
+        // Add input validation for phone number
+        document.addEventListener('DOMContentLoaded', function() {
+            const phoneInput = document.querySelector('input[name="phone_number"]');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', function() {
+                    // Remove any non-digit characters
+                    this.value = this.value.replace(/\D/g, '');
+                    
+                    // Limit to 10 digits
+                    if (this.value.length > 10) {
+                        this.value = this.value.slice(0, 10);
+                    }
+                });
+                
+                phoneInput.addEventListener('blur', function() {
+                    if (this.value && this.value.length !== 10) {
+                        this.setCustomValidity('Phone number must be exactly 10 digits');
+                    } else {
+                        this.setCustomValidity('');
+                    }
+                });
+            }
+        });
     </script>
     
     <?php include '../components/footer.php'; ?> 

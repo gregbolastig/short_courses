@@ -140,12 +140,7 @@ if (count($name_parts) >= 3) {
                                         Editing: <span class="font-semibold text-blue-600"><?php echo htmlspecialchars($adviser['adviser_name'] ?? ''); ?></span>
                                     </p>
                                 </div>
-                                <div class="flex items-center space-x-4">
-                                    <a href="index.php" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-arrow-left mr-2"></i>
-                                        Back to Advisers
-                                    </a>
-                                </div>
+                                
                             </div>
                         </div>
                         

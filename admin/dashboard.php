@@ -398,7 +398,8 @@ try {
                         <?php endif; ?>
 
                         <!-- Statistics Cards -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6 mb-6 md:mb-8">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6 mb-6 md:mb-8">
+                            <!-- Total Students Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -419,7 +420,7 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-blue-50 px-4 md:px-6 py-3">
+                                <div class="bg-blue-50 px-4 md:px-6 py-3 border-t border-blue-100">
                                     <a href="students/index.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
                                         View all students
                                         <i class="fas fa-arrow-right ml-2"></i>
@@ -427,6 +428,7 @@ try {
                                 </div>
                             </div>
 
+                            <!-- Pending Approvals Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -454,27 +456,28 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-yellow-50 px-4 md:px-6 py-3">
+                                <div class="bg-yellow-50 px-4 md:px-6 py-3 border-t border-yellow-100">
                                     <a href="pending_approvals.php" class="text-sm text-yellow-700 hover:text-yellow-800 font-medium flex items-center transition-colors duration-200">
-                                        Review pending
+                                        Review pending approvals
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
                             </div>
 
+                            <!-- Completed Students Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-blue-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-graduation-cap text-blue-900 text-xl md:text-2xl"></i>
+                                            <div class="bg-green-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-graduation-cap text-green-600 text-xl md:text-2xl"></i>
                                             </div>
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
                                                 <dt class="text-sm font-medium text-gray-500 truncate">Completed Students</dt>
-                                                <dd class="text-2xl md:text-3xl font-bold text-blue-900 animate-pulse"><?php echo $completed_students; ?></dd>
-                                                <dd class="text-xs text-blue-900 flex items-center mt-1">
+                                                <dd class="text-2xl md:text-3xl font-bold text-green-600 animate-pulse"><?php echo $completed_students; ?></dd>
+                                                <dd class="text-xs text-green-600 flex items-center mt-1">
                                                     <i class="fas fa-medal mr-1"></i>
                                                     Course graduates
                                                 </dd>
@@ -482,14 +485,15 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-blue-50 px-4 md:px-6 py-3">
-                                    <a href="students/index.php?status=completed" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
-                                        View completed
+                                <div class="bg-green-50 px-4 md:px-6 py-3 border-t border-green-100">
+                                    <a href="students/index.php?status=completed" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
+                                        View completed students
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
                             </div>
 
+                            <!-- Recent Registrations Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -510,14 +514,15 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-purple-50 px-4 md:px-6 py-3">
+                                <div class="bg-purple-50 px-4 md:px-6 py-3 border-t border-purple-100">
                                     <a href="students/index.php?filter=recent" class="text-sm text-purple-700 hover:text-purple-800 font-medium flex items-center transition-colors duration-200">
-                                        View recent
+                                        View recent students
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
                             </div>
 
+                            <!-- Course Applications Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -545,26 +550,27 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-orange-50 px-4 md:px-6 py-3">
-                                    <a href="#course-applications" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
-                                        Review applications
+                                <div class="bg-orange-50 px-4 md:px-6 py-3 border-t border-orange-100">
+                                    <a href="course_application/index.php" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
+                                        View course applications
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
                             </div>
 
+                            <!-- Approved Applications Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
-                                            <div class="bg-green-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-check-circle text-green-600 text-xl md:text-2xl"></i>
+                                            <div class="bg-indigo-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-check-circle text-indigo-600 text-xl md:text-2xl"></i>
                                             </div>
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
                                                 <dt class="text-sm font-medium text-gray-500 truncate">Approved Applications</dt>
-                                                <dd class="text-2xl md:text-3xl font-bold text-green-600 animate-pulse"><?php echo $approved_applications_count; ?></dd>
+                                                <dd class="text-2xl md:text-3xl font-bold text-indigo-600 animate-pulse"><?php echo $approved_applications_count; ?></dd>
                                                 <?php if ($approved_applications_count > 0): ?>
                                                     <dd class="text-xs text-orange-600 flex items-center mt-1 animate-attention-pulse">
                                                         <i class="fas fa-clock mr-1"></i>
@@ -580,9 +586,9 @@ try {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="bg-green-50 px-4 md:px-6 py-3">
-                                    <a href="#approved-applications" class="text-sm text-green-700 hover:text-green-800 font-medium flex items-center transition-colors duration-200">
-                                        Review approved
+                                <div class="bg-indigo-50 px-4 md:px-6 py-3 border-t border-indigo-100">
+                                    <a href="#approved-applications" class="text-sm text-indigo-700 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200">
+                                        View approved applications
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
