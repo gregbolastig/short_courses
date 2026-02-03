@@ -8,8 +8,8 @@ This directory contains reusable components for the student portal pages.
 Standard header for student portal pages.
 
 **Variables:**
-- `$page_title` - Page title (default: "JZGMSAT Student Portal")
-- `$page_subtitle` - Subtitle (default: "Student Registration System")
+- `$page_title` - Main title (default: "JZGMSAT")
+- `$page_subtitle` - Full school name (default: "Jacobo Z. Gonzales Memorial School of Arts and Trades")
 - `$page_description` - Optional description text
 - `$show_logo` - Show logo icon (default: true)
 

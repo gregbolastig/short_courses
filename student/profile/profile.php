@@ -957,7 +957,7 @@ include '../components/header.php';
             if (phoneInput) {
                 const phoneValue = phoneInput.value.trim();
                 if (phoneValue && !/^\d{10}$/.test(phoneValue)) {
-                    alert('Phone number must be exactly 10 digits.');
+                    showModal('Validation Error', 'Phone number must be exactly 10 digits.', 'error');
                     phoneInput.focus();
                     return;
                 }
@@ -969,20 +969,108 @@ include '../components/header.php';
             const barangay = document.getElementById('edit_barangay')?.value || document.querySelector('input[name="barangay"]')?.value;
             
             if (!province || !city || !barangay) {
-                alert('Please select/enter all address fields (Province, City, Barangay).');
+                showModal('Validation Error', 'Please select/enter all address fields (Province, City, Barangay).', 'error');
                 return;
             }
             
-            if (confirm('Are you sure you want to save these changes?')) {
+            // Show confirmation modal
+            showModal('Confirm Changes', 'Are you sure you want to save these changes?', 'confirm', function() {
                 document.getElementById('profileForm').submit();
-            }
+            });
         }
         
         function cancelEdit() {
-            if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+            showModal('Confirm Cancel', 'Are you sure you want to cancel? Any unsaved changes will be lost.', 'confirm', function() {
                 location.reload();
-            }
+            });
         }
+        
+        // Modal functions
+        function showModal(title, message, type, callback = null) {
+            const modal = document.getElementById('messageModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalIcon = document.getElementById('modalIcon');
+            const confirmBtn = document.getElementById('confirmBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const okBtn = document.getElementById('okBtn');
+            const modalContent = modal.querySelector('.bg-white');
+            
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            
+            // Reset button visibility
+            confirmBtn.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+            okBtn.classList.add('hidden');
+            
+            if (type === 'success') {
+                modalIcon.innerHTML = '<div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto"><i class="fas fa-check text-green-600 text-2xl"></i></div>';
+                okBtn.classList.remove('hidden');
+                okBtn.className = 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium';
+                okBtn.innerHTML = '<i class="fas fa-check mr-2"></i>OK';
+            } else if (type === 'error') {
+                modalIcon.innerHTML = '<div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto"><i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i></div>';
+                okBtn.classList.remove('hidden');
+                okBtn.className = 'px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium';
+                okBtn.innerHTML = '<i class="fas fa-times mr-2"></i>OK';
+            } else if (type === 'confirm') {
+                modalIcon.innerHTML = '<div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto"><i class="fas fa-question-circle text-blue-600 text-2xl"></i></div>';
+                confirmBtn.classList.remove('hidden');
+                cancelBtn.classList.remove('hidden');
+                
+                // Set up confirm button click handler
+                confirmBtn.onclick = function() {
+                    hideModal();
+                    if (callback) callback();
+                };
+            }
+            
+            // Show modal with animation
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Trigger animation
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+        
+        function hideModal() {
+            const modal = document.getElementById('messageModal');
+            const modalContent = modal.querySelector('.bg-white');
+            
+            // Animate out
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                
+                // Reset button handlers
+                const confirmBtn = document.getElementById('confirmBtn');
+                confirmBtn.onclick = null;
+            }, 200);
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('messageModal');
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    hideModal();
+                }
+            });
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    hideModal();
+                }
+            });
+        });
         
         // Add input validation for phone number
         document.addEventListener('DOMContentLoaded', function() {
@@ -1011,7 +1099,7 @@ include '../components/header.php';
     
     <!-- Modal for messages -->
     <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform transition-all duration-300 scale-95">
             <div class="text-center">
                 <div id="modalIcon" class="mb-4">
                     <!-- Icon will be inserted here -->
@@ -1023,14 +1111,14 @@ include '../components/header.php';
                     <!-- Message will be inserted here -->
                 </p>
                 <div class="flex justify-center space-x-3">
-                    <button id="confirmBtn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                        Confirm
+                    <button id="confirmBtn" class="hidden px-6 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors duration-200 font-medium">
+                        <i class="fas fa-check mr-2"></i>Confirm
                     </button>
-                    <button id="cancelBtn" class="hidden px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200" onclick="hideModal()">
-                        Cancel
+                    <button id="cancelBtn" class="hidden px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 font-medium" onclick="hideModal()">
+                        <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button id="okBtn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200" onclick="hideModal()">
-                        OK
+                    <button id="okBtn" class="hidden px-6 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors duration-200 font-medium" onclick="hideModal()">
+                        <i class="fas fa-check mr-2"></i>OK
                     </button>
                 </div>
             </div>

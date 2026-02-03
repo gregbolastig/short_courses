@@ -184,29 +184,8 @@ try {
                                 </div>
                             </div>
                         <?php endif; ?>
-
-                        <!-- Statistics Cards -->
-                        <div class="mb-8">
-                            <div class="bg-white overflow-hidden shadow-xl rounded-2xl border border-gray-100">
-                                <div class="px-6 py-8">
-                                    <div class="flex items-center justify-center">
-                                        <div class="flex items-center space-x-6">
-                                            <div class="flex-shrink-0">
-                                                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg">
-                                                    <i class="fas fa-chalkboard-teacher text-white text-3xl"></i>
-                                                </div>
-                                            </div>
-                                            <div class="text-center">
-                                                <dt class="text-lg font-medium text-gray-600 mb-1">Total Advisers</dt>
-                                                <dd class="text-4xl font-bold text-gray-900 tracking-tight"><?php echo $total_advisers_count; ?></dd>
-                                                <p class="text-sm text-gray-500 mt-1">Active educational advisers</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>    
-                    <!-- Advisers Table -->
+                           
+                        <!-- Advisers Table -->
                         <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                             <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

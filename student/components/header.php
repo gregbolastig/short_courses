@@ -1,11 +1,12 @@
 <?php
 /**
- * Student Portal Header Component
- * Reusable header for student pages
+ * Student Header Component
+ * Reusable header for student pages with full school name
  */
 
-// Default values if not set - using consistent title
-$page_title = $page_title ?? 'JZGMSAT Student Portal';
+// Default values if not set - using abbreviated name for header display
+$page_title = $page_title ?? 'JZGMSAT';
+$page_subtitle = $page_subtitle ?? 'Jacobo Z. Gonzales Memorial School of Arts and Trades';
 $show_logo = $show_logo ?? true;
 $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-500 to-primary-700';
 ?>
@@ -14,7 +15,7 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($page_title); ?></title>
+    <title><?php echo isset($page_subtitle) ? htmlspecialchars($page_subtitle) : 'Jacobo Z. Gonzales Memorial School of Arts and Trades'; ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -82,14 +83,14 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen">
-    <!-- Header with improved design -->
+    <!-- Header with compact design -->
     <header class="bg-gradient-to-r from-primary-600 via-primary-500 to-primary-700 shadow-2xl relative overflow-hidden">
         <div class="absolute inset-0 bg-black opacity-10"></div>
         <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs><pattern id=\"grain\" width=\"100\" height=\"100\" patternUnits=\"userSpaceOnUse\"><circle cx=\"25\" cy=\"25\" r=\"1\" fill=\"white\" opacity=\"0.1\"/><circle cx=\"75\" cy=\"75\" r=\"1\" fill=\"white\" opacity=\"0.1\"/></pattern></defs><rect width=\"100\" height=\"100\" fill=\"url(%23grain)\"/></svg></div>
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-center py-4 sm:py-6">
+            <div class="flex items-center justify-center py-3 sm:py-4">
                 <div class="text-center">
-                    <div class="flex flex-col sm:flex-row items-center justify-center mb-2">
+                    <div class="flex flex-col sm:flex-row items-center justify-center">
                         <?php if ($show_logo): ?>
                         <?php 
                         // Determine the correct path based on the current directory depth
@@ -104,15 +105,15 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
                             $logo_path = '../../assets/images/Logo.png';
                         }
                         ?>
-                        <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-full border-3 border-white/40 shadow-lg mb-3 sm:mb-0 sm:mr-6">
+                        <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-12 w-12 sm:h-16 sm:w-16 object-cover rounded-full border-2 border-white/40 shadow-lg mb-2 sm:mb-0 sm:mr-4">
                         <?php endif; ?>
-                        <div>
-                            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>
+                        <div class="text-center sm:text-left">
+                            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>
                             <?php if (isset($page_subtitle)): ?>
-                            <p class="text-lg text-white text-opacity-90 mb-2"><?php echo htmlspecialchars($page_subtitle); ?></p>
+                            <p class="text-xs sm:text-sm text-white text-opacity-80 mt-1"><?php echo htmlspecialchars($page_subtitle); ?></p>
                             <?php endif; ?>
                             <?php if (isset($page_description)): ?>
-                            <p class="text-sm text-white text-opacity-70"><?php echo htmlspecialchars($page_description); ?></p>
+                            <p class="text-xs text-white text-opacity-70 mt-1"><?php echo htmlspecialchars($page_description); ?></p>
                             <?php endif; ?>
                         </div>
                     </div>

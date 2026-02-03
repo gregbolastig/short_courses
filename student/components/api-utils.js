@@ -59,7 +59,9 @@ async function loadProvinces(selectId, selectedValue = '') {
         if (!apiCache.provinces) {
             const response = await fetch(`${PSGC_API_BASE}/provinces/`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            apiCache.provinces = await response.json();
+            const data = await response.json();
+            // Sort provinces alphabetically by name
+            apiCache.provinces = data.sort((a, b) => a.name.localeCompare(b.name));
         }
         
         const provinces = apiCache.provinces;
@@ -100,7 +102,9 @@ async function loadCities(provinceCode, selectId, selectedValue = '') {
         if (!apiCache.cities[cacheKey]) {
             const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            apiCache.cities[cacheKey] = await response.json();
+            const data = await response.json();
+            // Sort cities alphabetically by name
+            apiCache.cities[cacheKey] = data.sort((a, b) => a.name.localeCompare(b.name));
         }
         
         const cities = apiCache.cities[cacheKey];
@@ -141,7 +145,9 @@ async function loadBarangays(cityCode, selectId, selectedValue = '') {
         if (!apiCache.barangays[cacheKey]) {
             const response = await fetch(`${PSGC_API_BASE}/cities-municipalities/${cityCode}/barangays/`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            apiCache.barangays[cacheKey] = await response.json();
+            const data = await response.json();
+            // Sort barangays alphabetically by name
+            apiCache.barangays[cacheKey] = data.sort((a, b) => a.name.localeCompare(b.name));
         }
         
         const barangays = apiCache.barangays[cacheKey];
