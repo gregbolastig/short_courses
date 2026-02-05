@@ -55,8 +55,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 
 // Get search parameters
 $search = $_GET['search'] ?? '';
-$filter_province = $_GET['filter_province'] ?? '';
-$filter_sex = $_GET['filter_sex'] ?? '';
+$filter_course = $_GET['filter_course'] ?? '';
 $filter_status = $_GET['filter_status'] ?? '';
 
 // Pagination
@@ -73,14 +72,9 @@ if (!empty($search)) {
     $params[':search'] = '%' . $search . '%';
 }
 
-if (!empty($filter_province)) {
-    $where_conditions[] = "province = :province";
-    $params[':province'] = $filter_province;
-}
-
-if (!empty($filter_sex)) {
-    $where_conditions[] = "sex = :sex";
-    $params[':sex'] = $filter_sex;
+if (!empty($filter_course)) {
+    $where_conditions[] = "course = :course";
+    $params[':course'] = $filter_course;
 }
 
 if (!empty($filter_status)) {
@@ -117,9 +111,14 @@ try {
     $stmt->execute();
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get unique provinces for filter
-    $stmt = $conn->query("SELECT DISTINCT province FROM students WHERE province IS NOT NULL AND province != '' ORDER BY province");
-    $provinces = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    // Get courses from courses table for filter
+    $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+    $courses = $stmt->fetchAll(PDO::FETCH_COLUMN);
+  
+    // Initialize courses as empty array if query fails
+    if (!$courses) {
+        $courses = [];
+    }
     
     // Get statistics
     $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
@@ -323,86 +322,72 @@ try {
                     </div>
                 </div>
             </div>
-            <!-- Enhanced Search and Filter Section -->
-            <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 mb-8">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3">
-                            <i class="fas fa-search text-white"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900">Search & Filter Students</h2>
-                            <p class="text-sm text-gray-600">Find and filter students by various criteria</p>
-                        </div>
-                    </div>
-                    <div class="hidden md:flex items-center text-sm text-gray-500">
-                        <i class="fas fa-filter mr-2"></i>
-                        <span>Advanced Filtering</span>
-                    </div>
-                </div>
-                
-                <form method="GET" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-search text-gray-400"></i>
+                                    <!-- Search and Filter Section -->
+                        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 mb-8">
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mr-3">
+                                        <i class="fas fa-filter text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-900">Filter & Search Students</h2>
+                                        <p class="text-sm text-gray-600">Use filters to find specific students</p>
+                                    </div>
                                 </div>
-                                <input type="text" id="search" name="search" 
-                                       placeholder="Name, Email, ULI, Student ID..." 
-                                       value="<?php echo htmlspecialchars($search); ?>"
-                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
                             </div>
+                            
+                            <form method="GET" class="space-y-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-search text-gray-400"></i>
+                                            </div>
+                                            <input type="text" id="search" name="search" 
+                                                   placeholder="Student name, email, ID..." 
+                                                   value="<?php echo htmlspecialchars($search); ?>"
+                                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                        <select id="filter_status" name="filter_status" 
+                                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                            <option value="">All Status</option>
+                                            <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                            <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
+                                            <option value="rejected" <?php echo ($filter_status === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                            <option value="completed" <?php echo ($filter_status === 'completed') ? 'selected' : ''; ?>>Completed</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="filter_course" class="block text-sm font-medium text-gray-700 mb-2">Course</label>
+                                         <select id="filter_course" name="filter_course" 
+                                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                             <option value="">All Courses</option>
+                                             <?php foreach ($courses as $course): ?>
+                                                 <option value="<?php echo htmlspecialchars($course); ?>" 
+                                                         <?php echo ($filter_course == $course) ? 'selected' : ''; ?>>
+                                                     <?php echo htmlspecialchars($course); ?>
+                                                 </option>
+                                             <?php endforeach; ?>
+                                         </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                                    <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
+                                        <i class="fas fa-times mr-2"></i>Clear Filters
+                                    </a>
+                                    <button type="submit" class="inline-flex items-center px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                                        <i class="fas fa-filter mr-2"></i>Apply Filters
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        
-                        <div>
-                            <label for="filter_province" class="block text-sm font-medium text-gray-700 mb-2">Province</label>
-                            <select id="filter_province" name="filter_province" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                <option value="">All Provinces</option>
-                                <?php foreach ($provinces as $province): ?>
-                                    <option value="<?php echo htmlspecialchars($province); ?>" 
-                                            <?php echo ($filter_province === $province) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($province); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label for="filter_sex" class="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                            <select id="filter_sex" name="filter_sex" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                <option value="">All Genders</option>
-                                <option value="Male" <?php echo ($filter_sex === 'Male') ? 'selected' : ''; ?>>Male</option>
-                                <option value="Female" <?php echo ($filter_sex === 'Female') ? 'selected' : ''; ?>>Female</option>
-                                <option value="Other" <?php echo ($filter_sex === 'Other') ? 'selected' : ''; ?>>Other</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                            <select id="filter_status" name="filter_status" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                <option value="">All Status</option>
-                                <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
-                                <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
-                                <option value="rejected" <?php echo ($filter_status === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                            <i class="fas fa-search mr-2"></i>Apply Filters
-                        </button>
-                        <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                            <i class="fas fa-times mr-2"></i>Clear Filters
-                        </a>
-                    </div>
-                </form>
-            </div>
 
             <!-- Enhanced Students Table -->
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

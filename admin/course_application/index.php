@@ -439,7 +439,7 @@ try {
                                                 <th class="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Course Details</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Application Info</th>
                                                 <th class="px-6 py-4 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                                                <th class="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">View Details</th>
+                                                <th class="px-6 py-4 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
@@ -501,16 +501,10 @@ try {
                                                         </span>
                                                     </td>
                                                     <td class="px-6 py-4 text-center">
-                                                        <div class="flex items-center justify-center space-x-2">
-                                                            <a href="view.php?id=<?php echo $app['application_id']; ?>" 
-                                                               class="inline-flex items-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                                                                <i class="fas fa-eye mr-2"></i>View Details
-                                                            </a>
-                                                            <a href="../students/view.php?id=<?php echo $app['student_id']; ?>" 
-                                                               class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                                                <i class="fas fa-user mr-2"></i>Student Profile
-                                                            </a>
-                                                        </div>
+                                                        <a href="view.php?id=<?php echo $app['application_id']; ?>" 
+                                                           class="inline-flex items-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                                                            <i class="fas fa-eye mr-2"></i>View Details
+                                                        </a>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -575,14 +569,10 @@ try {
                                                 </div>
                                             </div>
                                             
-                                            <div class="flex items-center justify-center mt-4 space-x-2">
+                                            <div class="flex items-center justify-center mt-4">
                                                 <a href="view.php?id=<?php echo $app['application_id']; ?>" 
-                                                   class="inline-flex items-center justify-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 flex-1">
+                                                   class="inline-flex items-center justify-center px-6 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                                                     <i class="fas fa-eye mr-2"></i>View Details
-                                                </a>
-                                                <a href="../students/view.php?id=<?php echo $app['student_id']; ?>" 
-                                                   class="inline-flex items-center justify-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 flex-1">
-                                                    <i class="fas fa-user mr-2"></i>Student Profile
                                                 </a>
                                             </div>
                                         </div>
