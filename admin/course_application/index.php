@@ -90,8 +90,8 @@ try {
     $stmt->execute();
     $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get courses for filter dropdown
-    $stmt = $conn->query("SELECT DISTINCT course_name FROM course_applications WHERE course_name IS NOT NULL ORDER BY course_name");
+    // Get courses from courses table for filter dropdown
+    $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get statistics
