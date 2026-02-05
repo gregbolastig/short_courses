@@ -547,9 +547,18 @@ try {
                                         <i class="fas fa-file-alt text-gray-500 mr-2"></i>
                                         Pending Course Applications
                                     </h3>
-                                    <span class="text-sm text-gray-600">
-                                        <?php echo $pending_applications; ?> pending applications
-                                    </span>
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                                        <!-- Search Bar -->
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-search text-gray-400"></i>
+                                            </div>
+                                            <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
+                                        </div>
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo $pending_applications; ?> pending applications
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -822,10 +831,9 @@ try {
                                             </div>
                                             <input type="text" id="studentSearch" placeholder="Search students..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
                                         </div>
-                                        <a href="students/index.php" class="text-sm text-blue-900 hover:text-blue-800 font-medium flex items-center justify-center sm:justify-start">
-                                            View all
-                                            <i class="fas fa-arrow-right ml-1"></i>
-                                        </a>
+                                        <span class="text-sm text-gray-600">
+                                            <?php echo count($recent_students); ?> student applications
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -837,9 +845,9 @@ try {
                                     <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No course applications</h3>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">No pending student registrations or approved course applications at this time.</p>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">Get started by having students register through the student portal.</p>
-                                    <a href="../student/register.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
-                                        <i class="fas fa-external-link-alt mr-2"></i>
-                                        Go to Student Portal
+                                    <a href="students/index.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
+                                        <i class="fas fa-users mr-2"></i>
+                                        Manage Students
                                     </a>
                                 </div>
                             <?php else: ?>
