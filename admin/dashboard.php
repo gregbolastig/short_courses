@@ -542,7 +542,6 @@ try {
                         </div>
 
                         <!-- Course Applications Section -->
-                        <?php if ($pending_applications > 0): ?>
                         <div id="course-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
@@ -571,7 +570,21 @@ try {
                                         <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
                                     </div>
                                     <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No pending applications</h3>
-                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">All course applications have been reviewed.</p>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
+                                        <?php if ($pending_applications == 0): ?>
+                                            No course applications are currently pending review.
+                                        <?php else: ?>
+                                            All course applications have been reviewed.
+                                        <?php endif; ?>
+                                    </p>
+                                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                        <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                            <i class="fas fa-list mr-2"></i>View All Applications
+                                        </a>
+                                        <a href="students/index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                                            <i class="fas fa-users mr-2"></i>Manage Students
+                                        </a>
+                                    </div>
                                 </div>
                             <?php else: ?>
                                 <!-- Mobile Card View -->
@@ -757,7 +770,6 @@ try {
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <?php endif; ?>
 
                         <!-- Removed: Approved Course Applications section - now shown in Course Applications above -->
                         <?php if (false && $approved_applications_count > 0): ?>

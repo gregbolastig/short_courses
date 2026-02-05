@@ -11,7 +11,7 @@
             <div class="flex items-center flex-shrink-0 px-3 md:px-4 mb-6 md:mb-8">
                 <div class="bg-white bg-opacity-20 p-2 md:p-3 rounded-lg mr-2 md:mr-3 flex-shrink-0 backdrop-blur-sm">
                     <img src="<?php 
-                        if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                        if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                             echo '../../assets/images/logo.png';
                         } else {
                             echo '../assets/images/logo.png';
@@ -28,7 +28,7 @@
             <nav class="mt-3 md:mt-5 flex-1 px-2 space-y-1 md:space-y-2">
                 <!-- Dashboard -->
                 <a href="<?php 
-                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../dashboard.php';
                     } else {
                         echo 'dashboard.php';
@@ -50,6 +50,8 @@
                         echo '../courses/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
                         echo '../courses/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                        echo '../courses/index.php';
                     } else {
                         echo 'courses/index.php';
                     }
@@ -69,6 +71,8 @@
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../students/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                        echo '../students/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../students/index.php';
                     } else {
                         echo 'students/index.php';
@@ -90,6 +94,8 @@
                         echo '../advisers/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
                         echo '../advisers/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                        echo '../advisers/index.php';
                     } else {
                         echo 'advisers/index.php';
                     }
@@ -109,6 +115,8 @@
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../course_application/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo '../course_application/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../course_application/index.php';
                     } else {
                         echo 'course_application/index.php';
@@ -184,12 +192,12 @@
                             </div>
                             <div class="mt-2">
                                 <a href="<?php 
-                                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
-                                        echo '../pending_approvals.php';
-                                    } else {
-                                        echo 'pending_approvals.php';
-                                    }
-                                ?>" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                    echo '../pending_approvals.php';
+                } else {
+                    echo 'pending_approvals.php';
+                }
+            ?>" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
                                     <i class="fas fa-arrow-right mr-1"></i>
                                     Review pending approvals
                                 </a>
@@ -199,7 +207,7 @@
                         
                         <div class="py-1">
                             <a href="<?php 
-                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                     echo '../profile.php';
                 } else {
                     echo 'profile.php';
@@ -214,7 +222,7 @@
                                 </div>
                             </a>
                             <a href="<?php 
-                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                     echo '../preferences.php';
                 } else {
                     echo 'preferences.php';
@@ -230,29 +238,24 @@
                             </a>
                             <a href="<?php 
                 if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
-                    echo '../pending_approvals.php';
+                    echo '../system_activity/index.php';
+                } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                    echo 'index.php';
                 } else {
-                    echo 'pending_approvals.php';
+                    echo 'system_activity/index.php';
                 }
             ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
-                                <div class="bg-yellow-100 rounded-lg p-2 mr-3">
-                                    <i class="fas fa-bell text-yellow-600"></i>
+                                <div class="bg-purple-100 rounded-lg p-2 mr-3">
+                                    <i class="fas fa-history text-purple-600"></i>
                                 </div>
-                                <div class="flex-1 flex items-center justify-between">
-                                    <div>
-                                        <p class="font-medium">Notifications</p>
-                                        <p class="text-xs text-gray-500">Pending approvals</p>
-                                    </div>
-                                    <?php if (isset($pending_approvals) && $pending_approvals > 0): ?>
-                                        <span class="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
-                                            <?php echo $pending_approvals; ?>
-                                        </span>
-                                    <?php endif; ?>
+                                <div>
+                                    <p class="font-medium">System Activity</p>
+                                    <p class="text-xs text-gray-500">View system activities</p>
                                 </div>
                             </a>
                             <div class="border-t border-gray-100 my-1"></div>
                             <a href="<?php 
-                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                     echo '../../auth/logout.php';
                 } else {
                     echo '../auth/logout.php';
@@ -284,7 +287,7 @@
                 <div class="flex items-center min-w-0 flex-1">
                     <div class="bg-white bg-opacity-20 p-2 rounded-lg mr-3 flex-shrink-0 backdrop-blur-sm">
                         <img src="<?php 
-                            if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                            if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                                 echo '../../assets/images/logo.png';
                             } else {
                                 echo '../assets/images/logo.png';
@@ -305,7 +308,7 @@
             <nav class="mt-3 flex-1 px-2 space-y-1">
                 <!-- Dashboard -->
                 <a href="<?php 
-                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                    if (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || strpos($_SERVER['PHP_SELF'], '/students/') !== false || strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../dashboard.php';
                     } else {
                         echo 'dashboard.php';
@@ -327,6 +330,8 @@
                         echo '../courses/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
                         echo '../courses/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                        echo '../courses/index.php';
                     } else {
                         echo 'courses/index.php';
                     }
@@ -346,6 +351,8 @@
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../students/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
+                        echo '../students/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../students/index.php';
                     } else {
                         echo 'students/index.php';
@@ -367,6 +374,8 @@
                         echo '../advisers/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) {
                         echo '../advisers/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
+                        echo '../advisers/index.php';
                     } else {
                         echo 'advisers/index.php';
                     }
@@ -386,6 +395,8 @@
                     } elseif (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) {
                         echo '../course_application/index.php';
                     } elseif (strpos($_SERVER['PHP_SELF'], '/students/') !== false) {
+                        echo '../course_application/index.php';
+                    } elseif (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) {
                         echo '../course_application/index.php';
                     } else {
                         echo 'course_application/index.php';

@@ -162,3 +162,22 @@ CREATE INDEX IF NOT EXISTS idx_students_status ON students(status);
 CREATE INDEX IF NOT EXISTS idx_students_lastname ON students(last_name, first_name);
 CREATE INDEX IF NOT EXISTS idx_courses_active ON courses(is_active);
 CREATE INDEX IF NOT EXISTS idx_courses_name ON courses(course_name);
+
+-- System Activities table for tracking all system activities
+CREATE TABLE IF NOT EXISTS system_activities (
+    activity_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    user_type ENUM('admin', 'student', 'system') NOT NULL DEFAULT 'system',
+    activity_type VARCHAR(50) NOT NULL,
+    activity_description TEXT NOT NULL,
+    entity_type VARCHAR(50) NULL,
+    entity_id INT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_activity_type (activity_type),
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_entity_type (entity_type),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);

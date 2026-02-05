@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/system_activity_logger.php';
 
 $error = '';
 $success = '';
@@ -34,9 +35,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['role'] = $user['role'];
                 
+                // Log successful login
+                $logger = new SystemActivityLogger($conn);
+                $logger->logAdminLogin($user['id'], $user['username']);
+                
                 header('Location: ../admin/dashboard.php');
                 exit;
             } else {
+                // Log failed login attempt
+                $logger = new SystemActivityLogger($conn);
+                $logger->log(
+                    'login_failed',
+                    "Failed login attempt for username: {$username}",
+                    'system',
+                    null
+                );
+                
                 $error = 'Invalid username or password';
             }
         } catch (PDOException $e) {
