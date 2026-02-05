@@ -2,12 +2,16 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
 
 // Set page title
 $page_title = 'Edit Course';
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Get course ID from URL
 $course_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -54,6 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['course_name'],
             $course_id
         ]);
+        
+        // Log course update
+        $logger->log(
+            'course_updated',
+            "Admin updated course '{$_POST['course_name']}' (ID: {$course_id})",
+            'admin',
+            $_SESSION['user_id'],
+            'course',
+            $course_id
+        );
         
         $success_message = 'Course updated successfully!';
         

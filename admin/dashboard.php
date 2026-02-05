@@ -2,9 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../includes/auth_middleware.php';
+require_once '../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Set page title
 $page_title = 'Dashboard';
@@ -68,6 +72,16 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     
                     $conn->commit();
                     
+                    // Log course completion approval
+                    $logger->log(
+                        'course_completion_approved',
+                        "Admin approved course completion for student '{$current_student['first_name']} {$current_student['last_name']}' in course '{$current_student['course']}'",
+                        'admin',
+                        $_SESSION['user_id'],
+                        'student',
+                        $student_id
+                    );
+                    
                     $success_message = 'Course completion approved successfully! Status updated from "approved" to "completed". Student can now apply for new courses.';
                     // Redirect to refresh and show updated status
                     header("Location: dashboard.php?approved=" . $student_id);
@@ -110,6 +124,16 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     $stmt->bindParam(':id', $student_id);
                     
                     if ($stmt->execute()) {
+                        // Log student registration approval
+                        $logger->log(
+                            'student_registration_approved',
+                            "Admin approved student registration for '{$current_student['first_name']} {$current_student['last_name']}' with course '{$course}'",
+                            'admin',
+                            $_SESSION['user_id'],
+                            'student',
+                            $student_id
+                        );
+                        
                         $success_message = 'Student registration approved successfully! Status updated from "pending" to "completed". Course completion has been recorded.';
                         // Redirect to refresh and show updated status
                         header("Location: dashboard.php?approved=" . $student_id);
@@ -161,6 +185,17 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                     $stmt->execute();
                     
                     $conn->commit();
+                    
+                    // Log course completion rejection
+                    $logger->log(
+                        'course_completion_rejected',
+                        "Admin rejected course completion for student ID: {$student_id}",
+                        'admin',
+                        $_SESSION['user_id'],
+                        'student',
+                        $student_id
+                    );
+                    
                     $success_message = 'Course completion rejected successfully.';
                 } else {
                     // Regular student registration rejection
@@ -169,6 +204,16 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                     $stmt->bindParam(':id', $student_id);
                     
                     if ($stmt->execute()) {
+                        // Log student registration rejection
+                        $logger->log(
+                            'student_registration_rejected',
+                            "Admin rejected student registration for student ID: {$student_id}",
+                            'admin',
+                            $_SESSION['user_id'],
+                            'student',
+                            $student_id
+                        );
+                        
                         $success_message = 'Student registration rejected successfully.';
                     } else {
                         $error_message = 'Failed to reject student registration.';
@@ -562,24 +607,207 @@ try {
                                 </div>
                             </div>
                             
-                            <div class="text-center py-8 md:py-12">
-                                <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
-                                    <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
+                            <?php if (empty($recent_applications)): ?>
+                                <div class="text-center py-8 md:py-12">
+                                    <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
+                                        <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
+                                    </div>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">Course Applications</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
+                                        <?php if ($pending_applications == 0): ?>
+                                            No course applications are currently pending review.
+                                        <?php else: ?>
+                                            <?php echo $pending_applications; ?> course applications are pending review.
+                                        <?php endif; ?>
+                                    </p>
+                                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                        <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                            <i class="fas fa-list mr-2"></i>View All Applications
+                                        </a>
+                                    </div>
                                 </div>
-                                <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">Course Applications</h3>
-                                <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
-                                    <?php if ($pending_applications == 0): ?>
-                                        No course applications are currently pending review.
-                                    <?php else: ?>
-                                        <?php echo $pending_applications; ?> course applications are pending review.
-                                    <?php endif; ?>
-                                </p>
-                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                    <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                                        <i class="fas fa-list mr-2"></i>View All Applications
-                                    </a>
+                            <?php else: ?>
+                                <!-- Mobile Card View -->
+                                <div class="block md:hidden">
+                                    <div class="divide-y divide-gray-200">
+                                        <?php foreach ($recent_applications as $application): ?>
+                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
+                                                <div class="flex items-start justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center space-x-3 mb-2">
+                                                            <div class="bg-orange-600 rounded-full p-2">
+                                                                <i class="fas fa-graduation-cap text-white text-xs"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <p class="text-sm font-medium text-gray-900 truncate">
+                                                                    <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
+                                                                </p>
+                                                                <p class="text-xs text-gray-500 truncate">
+                                                                    <?php echo htmlspecialchars($application['email']); ?>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="space-y-1">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Course:</span>
+                                                                <span class="text-xs text-gray-900 font-medium">
+                                                                    <?php echo htmlspecialchars($application['course_name']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">ULI:</span>
+                                                                <span class="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                                    <?php echo htmlspecialchars($application['student_uli']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Applied:</span>
+                                                                <span class="text-xs text-gray-500">
+                                                                    <?php echo date('M j, Y', strtotime($application['applied_at'])); ?>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
+                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-1"></i>Review
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
-                            </div>
+                                
+                                <!-- Desktop Table View -->
+                                <div class="hidden md:block overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <?php foreach ($recent_applications as $application): ?>
+                                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="flex items-center">
+                                                            <div class="bg-orange-100 rounded-full p-2 mr-3">
+                                                                <i class="fas fa-graduation-cap text-orange-600 text-sm"></i>
+                                                            </div>
+                                                            <div>
+                                                                <div class="text-sm font-medium text-gray-900">
+                                                                    <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
+                                                                </div>
+                                                                <div class="text-sm text-gray-500">
+                                                                    <?php echo htmlspecialchars($application['email']); ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                                                            <?php echo htmlspecialchars($application['student_uli']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo htmlspecialchars($application['course_name']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        <div class="flex items-center space-x-3">
+                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                               class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-2"></i>Review
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination -->
+                                <?php if ($total_app_pages > 1): ?>
+                                    <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <div class="text-sm text-gray-700">
+                                                Showing <?php echo $app_offset + 1; ?> to <?php echo min($app_offset + $app_per_page, $total_applications_count); ?> of <?php echo $total_applications_count; ?> applications
+                                            </div>
+                                            
+                                            <div class="flex items-center space-x-2">
+                                                <!-- Previous Button -->
+                                                <?php if ($app_page > 1): ?>
+                                                    <a href="?app_page=<?php echo $app_page - 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </span>
+                                                <?php endif; ?>
+                                                
+                                                <!-- Page Numbers -->
+                                                <div class="hidden sm:flex items-center space-x-1">
+                                                    <?php
+                                                    $start_page = max(1, $app_page - 2);
+                                                    $end_page = min($total_app_pages, $app_page + 2);
+                                                    
+                                                    if ($start_page > 1): ?>
+                                                        <a href="?app_page=1" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">1</a>
+                                                        <?php if ($start_page > 2): ?>
+                                                            <span class="text-gray-500">...</span>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                        <?php if ($i == $app_page): ?>
+                                                            <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-900 rounded text-sm font-medium text-white bg-blue-900 shadow-md"><?php echo $i; ?></span>
+                                                        <?php else: ?>
+                                                            <a href="?app_page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
+                                                        <?php endif; ?>
+                                                    <?php endfor; ?>
+                                                    
+                                                    <?php if ($end_page < $total_app_pages): ?>
+                                                        <?php if ($end_page < $total_app_pages - 1): ?>
+                                                            <span class="text-gray-500">...</span>
+                                                        <?php endif; ?>
+                                                        <a href="?app_page=<?php echo $total_app_pages; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $total_app_pages; ?></a>
+                                                    <?php endif; ?>
+                                                </div>
+                                                
+                                                <!-- Mobile Page Info -->
+                                                <div class="sm:hidden text-sm text-gray-700">
+                                                    Page <?php echo $app_page; ?> of <?php echo $total_app_pages; ?>
+                                                </div>
+                                                
+                                                <!-- Next Button -->
+                                                <?php if ($app_page < $total_app_pages): ?>
+                                                    <a href="?app_page=<?php echo $app_page + 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                                                        <i class="fas fa-chevron-right"></i>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
+                                                        <i class="fas fa-chevron-right"></i>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Removed: Approved Course Applications section - now shown in Course Applications above -->
@@ -659,9 +887,9 @@ try {
                                                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
                                                                 <i class="fas fa-check mr-1"></i>Approve
                                                             </a>
-                                                            <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                            <a href="javascript:void(0)" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                                               onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                               onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                                 <i class="fas fa-times mr-1"></i>Reject
                                                             </a>
                                                         </div>
@@ -730,9 +958,9 @@ try {
                                                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
                                                             <i class="fas fa-check mr-2"></i>Approve
                                                         </a>
-                                                        <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                        <a href="javascript:void(0)" 
                                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                                           onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                           onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                             <i class="fas fa-times mr-2"></i>Reject
                                                         </a>
                                                     </div>
@@ -921,9 +1149,9 @@ try {
                                                                    class="text-green-600 hover:text-green-900 flex items-center text-xs">
                                                                     <i class="fas fa-check mr-1"></i>Approve
                                                                 </button>
-                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                <a href="javascript:void(0)" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center text-xs"
-                                                                   onclick="return confirm('Are you sure you want to reject this student registration?')">
+                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'registration')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
                                                             <?php elseif ($student['status'] === 'approved'): ?>
@@ -931,9 +1159,9 @@ try {
                                                                    class="text-green-600 hover:text-green-900 flex items-center text-xs">
                                                                     <i class="fas fa-check mr-1"></i>Approve
                                                                 </button>
-                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                <a href="javascript:void(0)" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center text-xs"
-                                                                   onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
                                                             <?php elseif ($student['status'] === 'completed'): ?>
@@ -1014,9 +1242,9 @@ try {
                                                                    class="text-green-600 hover:text-green-900 flex items-center">
                                                                     <i class="fas fa-check mr-1"></i>Approve
                                                                 </button>
-                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                <a href="javascript:void(0)" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center"
-                                                                   onclick="return confirm('Are you sure you want to reject this student registration?')">
+                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'registration')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
                                                             <?php elseif ($student['status'] === 'approved'): ?>
@@ -1024,9 +1252,9 @@ try {
                                                                    class="text-green-600 hover:text-green-900 flex items-center">
                                                                     <i class="fas fa-check mr-1"></i>Approve
                                                                 </button>
-                                                                <a href="?action=reject&id=<?php echo $student['id']; ?>" 
+                                                                <a href="javascript:void(0)" 
                                                                    class="text-red-600 hover:text-red-900 flex items-center"
-                                                                   onclick="return confirm('Are you sure you want to reject this course completion?')">
+                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                                     <i class="fas fa-times mr-1"></i>Reject
                                                                 </a>
                                                             <?php elseif ($student['status'] === 'completed'): ?>
@@ -1360,6 +1588,86 @@ try {
             }, 5000);
         }
     });
+    </script>
+    
+    <!-- Reject Confirmation Modal -->
+    <div id="rejectModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mt-4" id="rejectModalTitle">Confirm Rejection</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500" id="rejectModalMessage">
+                        Are you sure you want to reject this application? This action cannot be undone.
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <div class="flex justify-center space-x-3">
+                        <button id="confirmRejectBtn" 
+                                class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors duration-200">
+                            Reject
+                        </button>
+                        <button id="cancelRejectBtn" 
+                                class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-24 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Reject Modal Functionality
+        let rejectUrl = '';
+        
+        function showRejectModal(url, studentName, type) {
+            rejectUrl = url;
+            const modal = document.getElementById('rejectModal');
+            const title = document.getElementById('rejectModalTitle');
+            const message = document.getElementById('rejectModalMessage');
+            
+            if (type === 'completion') {
+                title.textContent = 'Reject Course Completion';
+                message.textContent = `Are you sure you want to reject the course completion for ${studentName}? This action cannot be undone.`;
+            } else {
+                title.textContent = 'Reject Student Registration';
+                message.textContent = `Are you sure you want to reject the registration for ${studentName}? This action cannot be undone.`;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function hideRejectModal() {
+            const modal = document.getElementById('rejectModal');
+            modal.classList.add('hidden');
+            rejectUrl = '';
+        }
+        
+        // Event listeners
+        document.getElementById('confirmRejectBtn').addEventListener('click', function() {
+            if (rejectUrl) {
+                window.location.href = rejectUrl;
+            }
+        });
+        
+        document.getElementById('cancelRejectBtn').addEventListener('click', hideRejectModal);
+        
+        // Close modal when clicking outside
+        document.getElementById('rejectModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideRejectModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideRejectModal();
+            }
+        });
     </script>
     
     <?php include 'components/admin-scripts.php'; ?>

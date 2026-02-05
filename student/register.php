@@ -1,9 +1,13 @@
 <?php
 session_start();
 require_once '../config/database.php';
+require_once '../includes/system_activity_logger.php';
 
 $errors = [];
 $success_message = '';
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Generate verification code for display
 if (!isset($_SESSION['verification_code'])) {
@@ -203,6 +207,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':verification_code', $_SESSION['verification_code']);
             
             if ($stmt->execute()) {
+                // Get the inserted student ID for logging
+                $inserted_student_id = $conn->lastInsertId();
+                
+                // Log student registration
+                $logger->log(
+                    'student_registration',
+                    "New student '{$_POST['first_name']} {$_POST['last_name']}' ({$_POST['email']}) registered with ULI: {$_POST['uli']}",
+                    'student',
+                    null,
+                    'student',
+                    $inserted_student_id
+                );
+                
                 // Save ULI for success message before clearing POST data
                 $submitted_uli = $_POST['uli'];
                 $success_message = 'Registration submitted successfully! Your registration is pending admin approval.';

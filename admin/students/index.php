@@ -2,6 +2,7 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
@@ -11,6 +12,9 @@ $page_title = 'Manage Students';
 $students = [];
 $error_message = '';
 $success_message = '';
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Handle delete action
 if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
@@ -29,6 +33,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
         $stmt->bindParam(':id', $_GET['id']);
         
         if ($stmt->execute()) {
+            // Log student deletion
+            if ($student) {
+                $logger->log(
+                    'student_deleted',
+                    "Admin deleted student '{$student['first_name']} {$student['last_name']}' (ID: {$_GET['id']})",
+                    'admin',
+                    $_SESSION['user_id'],
+                    'student',
+                    $_GET['id']
+                );
+            }
+            
             // Delete profile picture file if exists
             if ($student && !empty($student['profile_picture'])) {
                 $file_path = '';

@@ -2,6 +2,7 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
@@ -15,6 +16,7 @@ $breadcrumb_items = [
     ['title' => 'Add Course', 'icon' => 'fas fa-plus']
 ];
 
+// Initialize system activity logger
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $database = new Database();
@@ -26,6 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([
             $_POST['course_name']
         ]);
+        
+        // Get the inserted course ID for logging
+        $course_id = $conn->lastInsertId();
+        
+        // Log course creation
+        $logger->log(
+            'course_created',
+            "Admin created new course '{$_POST['course_name']}'",
+            'admin',
+            $_SESSION['user_id'],
+            'course',
+            $course_id
+        );
         
         // Redirect immediately to index.php with success parameter
         header("Location: index.php?success=created&course_name=" . urlencode($_POST['course_name']));

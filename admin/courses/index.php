@@ -2,6 +2,7 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
@@ -13,6 +14,9 @@ $page_title = 'Manage Courses';
 $breadcrumb_items = [
     ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap']
 ];
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Initialize variables to prevent undefined warnings
 $total_courses_count = 0;
@@ -60,6 +64,16 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $course = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($course) {
+            // Log course deletion before deleting
+            $logger->log(
+                'course_deleted',
+                "Admin deleted course '{$course['course_name']}' (ID: {$_GET['delete']})",
+                'admin',
+                $_SESSION['user_id'],
+                'course',
+                $_GET['delete']
+            );
+            
             $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
             $stmt->execute([$_GET['delete']]);
             

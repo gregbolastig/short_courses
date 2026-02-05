@@ -1,11 +1,15 @@
 <?php
 session_start();
 require_once '../../config/database.php';
+require_once '../../includes/system_activity_logger.php';
 
 $errors = [];
 $success_message = '';
 $student_profile = null;
 $available_courses = [];
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Handle course registration
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'register_course') {
@@ -72,6 +76,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmt->bindParam(':course_name', $_POST['course']);
                 
                 if ($stmt->execute()) {
+                    // Get the inserted application ID for logging
+                    $application_id = $conn->lastInsertId();
+                    
+                    // Log course application
+                    $logger->log(
+                        'course_application',
+                        "Student '{$student['first_name']} {$student['last_name']}' applied for course '{$_POST['course']}'",
+                        'student',
+                        null,
+                        'course_application',
+                        $application_id
+                    );
+                    
                     $success_message = 'Course application submitted successfully! Your application is now pending admin review.';
                 } else {
                     $errors[] = 'Failed to submit course application. Please try again.';
@@ -148,6 +165,12 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $pending_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Get rejected applications for display
+        $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id AND status = 'rejected' ORDER BY applied_at DESC");
+        $stmt->bindParam(':student_id', $student_profile['id']);
+        $stmt->execute();
+        $rejected_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get approved/completed applications for display
         // Show all applications that are approved or completed
@@ -243,6 +266,37 @@ include '../components/header.php';
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                             <i class="fas fa-clock mr-1"></i>Pending Review
                                         </span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <!-- Rejected Applications Display -->
+                    <?php if (!empty($rejected_applications)): ?>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <h4 class="text-sm font-semibold text-red-800 mb-2">
+                                <i class="fas fa-times-circle mr-2"></i>Rejected Course Applications
+                            </h4>
+                            <?php foreach ($rejected_applications as $app): ?>
+                                <div class="bg-white border border-red-200 rounded-lg p-3 mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="font-medium text-gray-900"><?php echo htmlspecialchars($app['course_name']); ?></p>
+                                            <p class="text-sm text-gray-600">Applied: <?php echo date('M j, Y', strtotime($app['applied_at'])); ?></p>
+                                            <?php if ($app['reviewed_at']): ?>
+                                                <p class="text-sm text-gray-600">Rejected: <?php echo date('M j, Y', strtotime($app['reviewed_at'])); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <i class="fas fa-times-circle mr-1"></i>Rejected
+                                        </span>
+                                    </div>
+                                    <div class="mt-2 pt-2 border-t border-red-100">
+                                        <p class="text-xs text-red-700 bg-red-50 rounded p-2">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Your application for this course was not approved. You may apply for other courses or reapply for this course later.
+                                        </p>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

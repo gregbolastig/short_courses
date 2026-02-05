@@ -2,6 +2,7 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
@@ -17,6 +18,9 @@ $breadcrumb_items = [
 $student = null;
 $errors = [];
 $success_message = '';
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header('Location: index.php');
@@ -153,6 +157,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':id', $student_id);
             
             if ($stmt->execute()) {
+                // Log student update
+                $logger->log(
+                    'student_updated',
+                    "Admin updated student information for '{$_POST['first_name']} {$_POST['last_name']}' (ID: {$student_id})",
+                    'admin',
+                    $_SESSION['user_id'],
+                    'student',
+                    $student_id
+                );
+                
                 $success_message = 'Student information updated successfully!';
             } else {
                 $errors[] = 'Update failed. Please try again.';

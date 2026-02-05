@@ -2,6 +2,7 @@
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
+require_once '../../includes/system_activity_logger.php';
 
 // Require admin authentication
 requireAdmin();
@@ -13,6 +14,9 @@ $page_title = 'Manage Advisers';
 $breadcrumb_items = [
     ['title' => 'Manage Advisers', 'icon' => 'fas fa-chalkboard-teacher']
 ];
+
+// Initialize system activity logger
+$logger = new SystemActivityLogger();
 
 // Initialize variables to prevent undefined warnings
 $total_advisers_count = 0;
@@ -27,8 +31,26 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $database = new Database();
         $conn = $database->getConnection();
         
+        // Get adviser info before deleting for logging
+        $stmt = $conn->prepare("SELECT adviser_name FROM advisers WHERE adviser_id = ?");
+        $stmt->execute([$_GET['delete']]);
+        $adviser = $stmt->fetch(PDO::FETCH_ASSOC);
+        
         $stmt = $conn->prepare("DELETE FROM advisers WHERE adviser_id = ?");
         $stmt->execute([$_GET['delete']]);
+        
+        // Log adviser deletion
+        if ($adviser) {
+            $logger->log(
+                'adviser_deleted',
+                "Admin deleted adviser '{$adviser['adviser_name']}' (ID: {$_GET['delete']})",
+                'admin',
+                $_SESSION['user_id'],
+                'adviser',
+                $_GET['delete']
+            );
+        }
+        
         $success_message = 'Adviser deleted successfully!';
     } catch (PDOException $e) {
         $error_message = 'Cannot delete adviser: ' . $e->getMessage();
