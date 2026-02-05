@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($student) {
             // Check if student has any pending course applications
+            // Note: Students CAN reapply for rejected courses - only pending applications block new applications
             $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
             $stmt->bindParam(':student_id', $student['id']);
             $stmt->execute();
@@ -41,19 +42,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             
             // Check if student has an active course that is not completed
-            // Students can only apply when their current course status is 'completed'
-            // If status is 'completed', they can apply again
+            // Students can apply when their status is 'completed' OR 'rejected'
+            // Rejected students should be able to apply for new courses
             $has_active_course = false;
-            if (!empty($student['course']) && $student['status'] !== 'completed') {
+            if (!empty($student['course']) && 
+                $student['status'] !== 'completed' && 
+                $student['status'] !== 'rejected') {
                 $has_active_course = true;
             }
             
             // Check if trying to apply for the same course that's already in students table
-            // Only block if the course is not completed
+            // Only block if the course is not completed AND not rejected
+            // Rejected students can apply for any course, including the one they were rejected from
             $duplicate_course = false;
             if (!empty($student['course']) && !empty($_POST['course']) && 
                 strtolower(trim($student['course'])) === strtolower(trim($_POST['course'])) && 
-                $student['status'] !== 'completed') {
+                $student['status'] !== 'completed' && 
+                $student['status'] !== 'rejected') {
                 $duplicate_course = true;
             }
             
@@ -89,7 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $application_id
                     );
                     
-                    $success_message = 'Course application submitted successfully! Your application is now pending admin review.';
+                    // Set flag to show success modal instead of alert message
+                    $show_success_modal = true;
+                    $applied_course_name = $_POST['course'];
+                    
+                    // Clear form data after successful submission
+                    $_POST = [];
                 } else {
                     $errors[] = 'Failed to submit course application. Please try again.';
                 }
@@ -127,6 +137,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         
         // Students can apply if their status is 'completed' or if they have no active course
         // Check for pending course applications
+        // Note: Students CAN reapply after rejection - only pending applications block new applications
         $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
@@ -142,10 +153,12 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
             $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
         }
         
-        // Check for active courses - students can only apply when status is 'completed'
-        // If status is 'completed', they can apply again
+        // Check for active courses - students can apply when status is 'completed' OR 'rejected'
+        // Rejected students should be able to apply for new courses
         $has_active_course = false;
-        if (!empty($student_profile['course']) && $student_profile['status'] !== 'completed') {
+        if (!empty($student_profile['course']) && 
+            $student_profile['status'] !== 'completed' && 
+            $student_profile['status'] !== 'rejected') {
             $has_active_course = true;
         }
         
@@ -278,6 +291,12 @@ include '../components/header.php';
                             <h4 class="text-sm font-semibold text-red-800 mb-2">
                                 <i class="fas fa-times-circle mr-2"></i>Rejected Course Applications
                             </h4>
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                <p class="text-xs text-blue-700 flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    <strong>Good news!</strong> You can reapply for these courses or apply for different ones. Click "Reapply" to quickly select a course below.
+                                </p>
+                            </div>
                             <?php foreach ($rejected_applications as $app): ?>
                                 <div class="bg-white border border-red-200 rounded-lg p-3 mb-2">
                                     <div class="flex items-center justify-between">
@@ -293,10 +312,16 @@ include '../components/header.php';
                                         </span>
                                     </div>
                                     <div class="mt-2 pt-2 border-t border-red-100">
-                                        <p class="text-xs text-red-700 bg-red-50 rounded p-2">
-                                            <i class="fas fa-info-circle mr-1"></i>
-                                            Your application for this course was not approved. You may apply for other courses or reapply for this course later.
-                                        </p>
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-xs text-red-700 bg-red-50 rounded p-2 flex-1 mr-3">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Your application was not approved. You can apply for other courses or reapply for this course.
+                                            </p>
+                                            <button onclick="reapplyForCourse('<?php echo htmlspecialchars($app['course_name']); ?>')" 
+                                                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                                <i class="fas fa-redo mr-1"></i>Reapply
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -465,6 +490,7 @@ include '../components/header.php';
                                     <li>• Your application will be reviewed by admin</li>
                                     <li>• Admin will assign NC Level and training schedule</li>
                                     <li>• You can only have one active course at a time</li>
+                                    <li>• If rejected, you can reapply for the same or different courses</li>
                                 </ul>
                             </div>
                             
@@ -557,6 +583,71 @@ include '../components/header.php';
         </div>
     </div>
     
+    <!-- Success Modal -->
+    <?php if (isset($show_success_modal) && $show_success_modal): ?>
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out">
+            <!-- Header Section -->
+            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-6 py-6 text-white relative overflow-hidden">
+                <div class="absolute inset-0 bg-black opacity-10"></div>
+                <div class="relative flex items-center justify-center">
+                    <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
+                        <i class="fas fa-check text-white text-xl"></i>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-xl font-bold mb-1">Application Submitted!</h3>
+                        <p class="text-green-100 text-sm opacity-90">Your course application was successful</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Section -->
+            <div class="px-6 py-6">
+                <div class="text-center mb-6">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-graduation-cap text-green-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-green-800"><?php echo htmlspecialchars($applied_course_name ?? 'Course'); ?></p>
+                                <p class="text-xs text-green-600">Application Submitted</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 text-sm text-gray-700">
+                        <p class="flex items-center justify-center">
+                            <i class="fas fa-clock text-orange-500 mr-2"></i>
+                            Your application is now <strong>pending admin review</strong>
+                        </p>
+                        <p class="flex items-center justify-center">
+                            <i class="fas fa-bell text-blue-500 mr-2"></i>
+                            You will be notified once it's reviewed
+                        </p>
+                        <p class="flex items-center justify-center">
+                            <i class="fas fa-info-circle text-gray-500 mr-2"></i>
+                            You can check your application status anytime
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex flex-col gap-3">
+                    <button type="button" onclick="closeSuccessModal()" 
+                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
+                        <i class="fas fa-check mr-2"></i>Got it, Thanks!
+                    </button>
+                    <a href="profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>" 
+                       class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <script>
         function showConfirmationModal() {
             const courseSelect = document.getElementById('course');
@@ -608,6 +699,74 @@ include '../components/header.php';
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 hideConfirmationModal();
+            }
+        });
+        
+        // Reapply for course function
+        function reapplyForCourse(courseName) {
+            // Set the course in the dropdown
+            const courseSelect = document.getElementById('course');
+            if (courseSelect) {
+                // Find the option with the matching course name
+                for (let i = 0; i < courseSelect.options.length; i++) {
+                    if (courseSelect.options[i].text === courseName) {
+                        courseSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+                
+                // Scroll to the form
+                courseSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Highlight the form briefly
+                const form = document.getElementById('courseApplicationForm');
+                if (form) {
+                    form.style.border = '2px solid #3b82f6';
+                    form.style.borderRadius = '8px';
+                    setTimeout(() => {
+                        form.style.border = '';
+                        form.style.borderRadius = '';
+                    }, 3000);
+                }
+                
+                // Focus on the course select
+                setTimeout(() => {
+                    courseSelect.focus();
+                }, 500);
+            }
+        }
+        
+        // Success Modal Functions
+        function closeSuccessModal() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
+        
+        // Auto-show success modal if it exists
+        document.addEventListener('DOMContentLoaded', function() {
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+                document.body.style.overflow = 'hidden';
+                
+                // Close modal when clicking outside
+                successModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeSuccessModal();
+                    }
+                });
+            }
+        });
+        
+        // Close success modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const successModal = document.getElementById('successModal');
+                if (successModal && !successModal.classList.contains('hidden')) {
+                    closeSuccessModal();
+                }
             }
         });
     </script>
