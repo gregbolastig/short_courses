@@ -133,6 +133,9 @@ try {
     $stmt = $conn->query("SELECT COUNT(*) as rejected FROM students WHERE status = 'rejected'");
     $rejected_count = $stmt->fetch(PDO::FETCH_ASSOC)['rejected'];
     
+    $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
+    $completed_count = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
+    
 } catch (PDOException $e) {
     $error_message = 'Database error: ' . $e->getMessage();
 }
@@ -209,6 +212,10 @@ try {
                                     <i class="fas fa-check-circle mr-2"></i>
                                     <span>Approved: <?php echo number_format($approved_count); ?></span>
                                 </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-graduation-cap mr-2"></i>
+                                    <span>Completed: <?php echo number_format($completed_count); ?></span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3">
@@ -241,7 +248,7 @@ try {
             <?php endif; ?>
 
             <!-- Enhanced Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                 <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
@@ -319,6 +326,26 @@ try {
                     </div>
                     <div class="mt-4 pt-4 border-t border-gray-100">
                         <p class="text-xs text-gray-500">Application rejected</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-graduation-cap text-white text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Completed</p>
+                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($completed_count); ?></p>
+                            </div>
+                        </div>
+                        <div class="text-blue-500">
+                            <i class="fas fa-certificate text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs text-gray-500">Course completed</p>
                     </div>
                 </div>
             </div>

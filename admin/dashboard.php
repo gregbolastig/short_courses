@@ -214,17 +214,15 @@ try {
     // Get course applications - includes:
     // 1. Student registrations (status='pending' - initial registrations)
     // 2. Approved course applications (status='approved' with course - from course_applications)
-    // 3. Completed students (status='completed' - keep visible for viewing)
+    // Note: Completed students are now only visible in students/index.php
     $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, training_start, training_end, approved_at, created_at 
                            FROM students 
                            WHERE status = 'pending' 
                               OR (status = 'approved' AND course IS NOT NULL)
-                              OR status = 'completed'
                            ORDER BY 
                                CASE 
                                    WHEN status = 'pending' THEN created_at 
                                    WHEN status = 'approved' THEN approved_at 
-                                   WHEN status = 'completed' THEN approved_at 
                                END DESC
                            LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
@@ -233,7 +231,7 @@ try {
     $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Update total count for pagination
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL) OR status = 'completed'");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
     $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages = ceil($total_students_count / $per_page);
     
@@ -541,7 +539,7 @@ try {
                         
                         </div>
 
-                        <!-- Course Applications Section -->
+                        <!-- Pending Course Applications Section - Simplified -->
                         <div id="course-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
@@ -549,226 +547,30 @@ try {
                                         <i class="fas fa-file-alt text-gray-500 mr-2"></i>
                                         Pending Course Applications
                                     </h3>
-                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                                        <!-- Search Bar -->
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-search text-gray-400"></i>
-                                            </div>
-                                            <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
-                                        </div>
-                                        <span class="text-sm text-gray-600">
-                                            <?php echo $pending_applications; ?> pending applications
-                                        </span>
-                                    </div>
+                                    <span class="text-sm text-gray-600">
+                                        <?php echo $pending_applications; ?> pending applications
+                                    </span>
                                 </div>
                             </div>
                             
-                            <?php if (empty($recent_applications)): ?>
-                                <div class="text-center py-8 md:py-12">
-                                    <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
-                                        <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
-                                    </div>
-                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No pending applications</h3>
-                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
-                                        <?php if ($pending_applications == 0): ?>
-                                            No course applications are currently pending review.
-                                        <?php else: ?>
-                                            All course applications have been reviewed.
-                                        <?php endif; ?>
-                                    </p>
-                                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                        <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                                            <i class="fas fa-list mr-2"></i>View All Applications
-                                        </a>
-                                        <a href="students/index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
-                                            <i class="fas fa-users mr-2"></i>Manage Students
-                                        </a>
-                                    </div>
+                            <div class="text-center py-8 md:py-12">
+                                <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
                                 </div>
-                            <?php else: ?>
-                                <!-- Mobile Card View -->
-                                <div class="block md:hidden">
-                                    <div class="divide-y divide-gray-200">
-                                        <?php foreach ($recent_applications as $application): ?>
-                                            <div class="p-4 hover:bg-gray-50 transition-colors duration-200">
-                                                <div class="flex items-start justify-between">
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="flex items-center space-x-3 mb-2">
-                                                            <div class="bg-orange-600 rounded-full p-2">
-                                                                <i class="fas fa-graduation-cap text-white text-xs"></i>
-                                                            </div>
-                                                            <div class="flex-1 min-w-0">
-                                                                <p class="text-sm font-medium text-gray-900 truncate">
-                                                                    <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
-                                                                </p>
-                                                                <p class="text-xs text-gray-500 truncate">
-                                                                    <?php echo htmlspecialchars($application['email']); ?>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="space-y-1">
-                                                            <div class="flex items-center justify-between">
-                                                                <span class="text-xs text-gray-500">Course:</span>
-                                                                <span class="text-xs text-gray-900 font-medium">
-                                                                    <?php echo htmlspecialchars($application['course_name']); ?>
-                                                                </span>
-                                                            </div>
-                                                            <div class="flex items-center justify-between">
-                                                                <span class="text-xs text-gray-500">ULI:</span>
-                                                                <span class="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
-                                                                    <?php echo htmlspecialchars($application['student_uli']); ?>
-                                                                </span>
-                                                            </div>
-                                                            <div class="flex items-center justify-between">
-                                                                <span class="text-xs text-gray-500">Applied:</span>
-                                                                <span class="text-xs text-gray-500">
-                                                                    <?php echo date('M j, Y', strtotime($application['applied_at'])); ?>
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
-                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
-                                                                <i class="fas fa-eye mr-1"></i>Review
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
+                                <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">Course Applications</h3>
+                                <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
+                                    <?php if ($pending_applications == 0): ?>
+                                        No course applications are currently pending review.
+                                    <?php else: ?>
+                                        <?php echo $pending_applications; ?> course applications are pending review.
+                                    <?php endif; ?>
+                                </p>
+                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                        <i class="fas fa-list mr-2"></i>View All Applications
+                                    </a>
                                 </div>
-                                
-                                <!-- Desktop Table View -->
-                                <div class="hidden md:block overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        <?php foreach ($recent_applications as $application): ?>
-                                            <tr class="hover:bg-gray-50 transition-colors duration-200">
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="flex items-center">
-                                                        <div class="bg-orange-100 rounded-full p-2 mr-3">
-                                                            <i class="fas fa-graduation-cap text-orange-600 text-sm"></i>
-                                                        </div>
-                                                        <div>
-                                                            <div class="text-sm font-medium text-gray-900">
-                                                                <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
-                                                            </div>
-                                                            <div class="text-sm text-gray-500">
-                                                                <?php echo htmlspecialchars($application['email']); ?>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
-                                                        <?php echo htmlspecialchars($application['student_uli']); ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo htmlspecialchars($application['course_name']); ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <div class="flex items-center space-x-3">
-                                                        <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
-                                                           class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
-                                                            <i class="fas fa-eye mr-2"></i>Review
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
                             </div>
-                            
-                            <?php endif; ?>
-                            
-                            <!-- Pagination -->
-                            <?php if ($total_app_pages > 1): ?>
-                                <div class="px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
-                                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <div class="text-sm text-gray-700">
-                                            Showing <?php echo $app_offset + 1; ?> to <?php echo min($app_offset + $app_per_page, $total_applications_count); ?> of <?php echo $total_applications_count; ?> applications
-                                        </div>
-                                        
-                                        <div class="flex items-center space-x-2">
-                                            <!-- Previous Button -->
-                                            <?php if ($app_page > 1): ?>
-                                                <a href="?app_page=<?php echo $app_page - 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                                                    <i class="fas fa-chevron-left"></i>
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                                    <i class="fas fa-chevron-left"></i>
-                                                </span>
-                                            <?php endif; ?>
-                                            
-                                            <!-- Page Numbers -->
-                                            <div class="hidden sm:flex items-center space-x-1">
-                                                <?php
-                                                $start_page = max(1, $app_page - 2);
-                                                $end_page = min($total_app_pages, $app_page + 2);
-                                                
-                                                if ($start_page > 1): ?>
-                                                    <a href="?app_page=1" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">1</a>
-                                                    <?php if ($start_page > 2): ?>
-                                                        <span class="text-gray-500">...</span>
-                                                    <?php endif; ?>
-                                                <?php endif; ?>
-                                                
-                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                    <?php if ($i == $app_page): ?>
-                                                        <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-900 rounded text-sm font-medium text-white bg-blue-900 shadow-md"><?php echo $i; ?></span>
-                                                    <?php else: ?>
-                                                        <a href="?app_page=<?php echo $i; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $i; ?></a>
-                                                    <?php endif; ?>
-                                                <?php endfor; ?>
-                                                
-                                                <?php if ($end_page < $total_app_pages): ?>
-                                                    <?php if ($end_page < $total_app_pages - 1): ?>
-                                                        <span class="text-gray-500">...</span>
-                                                    <?php endif; ?>
-                                                    <a href="?app_page=<?php echo $total_app_pages; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"><?php echo $total_app_pages; ?></a>
-                                                <?php endif; ?>
-                                            </div>
-                                            
-                                            <!-- Mobile Page Info -->
-                                            <div class="sm:hidden text-sm text-gray-700">
-                                                Page <?php echo $app_page; ?> of <?php echo $total_app_pages; ?>
-                                            </div>
-                                            
-                                            <!-- Next Button -->
-                                            <?php if ($app_page < $total_app_pages): ?>
-                                                <a href="?app_page=<?php echo $app_page + 1; ?>" class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-                                                    <i class="fas fa-chevron-right"></i>
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-lg text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                                    <i class="fas fa-chevron-right"></i>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
                         </div>
 
                         <!-- Removed: Approved Course Applications section - now shown in Course Applications above -->
