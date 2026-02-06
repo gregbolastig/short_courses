@@ -73,12 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } else {
                 // Insert new course application into course_applications table
                 $stmt = $conn->prepare("INSERT INTO course_applications 
-                    (student_id, student_uli, course_name, status, applied_at) 
-                    VALUES (:student_id, :student_uli, :course_name, 'pending', NOW())");
+                    (student_id, course_id, nc_level, status, applied_at) 
+                    VALUES (:student_id, :course_id, :nc_level, 'pending', NOW())");
                 
-                $stmt->bindParam(':student_id', $student['id']);
-                $stmt->bindParam(':student_uli', $student['uli']);
-                $stmt->bindParam(':course_name', $_POST['course']);
+                // Store values in variables for bindParam
+                $student_id = $student['id'];
+                $course_id = $_POST['course'];
+                $nc_level = $_POST['nc_level'] ?? 'NC II';
+                
+                $stmt->bindParam(':student_id', $student_id);
+                $stmt->bindParam(':course_id', $course_id);
+                $stmt->bindParam(':nc_level', $nc_level);
                 
                 if ($stmt->execute()) {
                     // Get the inserted application ID for logging
@@ -174,21 +179,30 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         }
         
         // Get pending applications for display
-        $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id AND status = 'pending' ORDER BY applied_at DESC");
+        $stmt = $conn->prepare("SELECT ca.*, c.course_name 
+                                FROM course_applications ca 
+                                LEFT JOIN courses c ON ca.course_id = c.course_id 
+                                WHERE ca.student_id = :student_id AND ca.status = 'pending' 
+                                ORDER BY ca.applied_at DESC");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $pending_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get rejected applications for display
-        $stmt = $conn->prepare("SELECT * FROM course_applications WHERE student_id = :student_id AND status = 'rejected' ORDER BY applied_at DESC");
+        $stmt = $conn->prepare("SELECT ca.*, c.course_name 
+                                FROM course_applications ca 
+                                LEFT JOIN courses c ON ca.course_id = c.course_id 
+                                WHERE ca.student_id = :student_id AND ca.status = 'rejected' 
+                                ORDER BY ca.applied_at DESC");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $rejected_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get approved/completed applications for display
         // Show all applications that are approved or completed
-        $stmt = $conn->prepare("SELECT ca.* 
+        $stmt = $conn->prepare("SELECT ca.*, c.course_name
                                FROM course_applications ca
+                               LEFT JOIN courses c ON ca.course_id = c.course_id
                                WHERE ca.student_id = :student_id 
                                AND (ca.status = 'approved' OR ca.status = 'completed')
                                ORDER BY ca.applied_at DESC");
@@ -475,7 +489,7 @@ include '../components/header.php';
                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors duration-200">
                                     <option value="">Choose a course...</option>
                                     <?php foreach ($available_courses as $course): ?>
-                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                        <option value="<?php echo htmlspecialchars($course['course_id']); ?>">
                                             <?php echo htmlspecialchars($course['course_name']); ?>
                                         </option>
                                     <?php endforeach; ?>

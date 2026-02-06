@@ -22,15 +22,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
         $database = new Database();
         $conn = $database->getConnection();
         
-        // Get student info for file cleanup
-        $stmt = $conn->prepare("SELECT profile_picture FROM students WHERE id = :id");
+        // Get student info before soft delete
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, profile_picture FROM students WHERE id = :id");
         $stmt->bindParam(':id', $_GET['id']);
         $stmt->execute();
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // Delete student record
-        $stmt = $conn->prepare("DELETE FROM students WHERE id = :id");
+        // Soft delete student record (set deleted_at timestamp)
+        $stmt = $conn->prepare("UPDATE students SET deleted_at = NOW(), deleted_by = :admin_id WHERE id = :id");
         $stmt->bindParam(':id', $_GET['id']);
+        $stmt->bindParam(':admin_id', $_SESSION['user_id']);
         
         if ($stmt->execute()) {
             // Log student deletion
@@ -83,6 +84,22 @@ $offset = ($page - 1) * $limit;
 $where_conditions = [];
 $params = [];
 
+// Check if deleted_at column exists
+$database = new Database();
+$conn = $database->getConnection();
+$has_soft_delete = false;
+try {
+    $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'deleted_at'");
+    $has_soft_delete = $stmt->rowCount() > 0;
+} catch (PDOException $e) {
+    $has_soft_delete = false;
+}
+
+// Filter out soft-deleted records if column exists
+if ($has_soft_delete) {
+    $where_conditions[] = "deleted_at IS NULL";
+}
+
 if (!empty($search)) {
     $where_conditions[] = "(first_name LIKE :search OR last_name LIKE :search OR email LIKE :search OR uli LIKE :search OR student_id LIKE :search)";
     $params[':search'] = '%' . $search . '%';
@@ -100,9 +117,18 @@ if (!empty($filter_status)) {
 
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
+// Initialize default values
+$total_students = 0;
+$total_pages = 1;
+$students = [];
+$courses = [];
+$total_students_count = 0;
+$pending_count = 0;
+$approved_count = 0;
+$rejected_count = 0;
+$completed_count = 0;
+
 try {
-    $database = new Database();
-    $conn = $database->getConnection();
     
     // Get total count for pagination
     $count_sql = "SELECT COUNT(*) as total FROM students $where_clause";
@@ -137,28 +163,36 @@ try {
     }
     
     // Get statistics
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
-    $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $soft_delete_filter = $has_soft_delete ? " AND deleted_at IS NULL" : "";
     
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
-    $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
-    
-    $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'");
-    $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
-    
-    $stmt = $conn->query("SELECT COUNT(*) as rejected FROM students WHERE status = 'rejected'");
-    $rejected_count = $stmt->fetch(PDO::FETCH_ASSOC)['rejected'];
-    
-    $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
-    $completed_count = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
+    try {
+        $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE 1=1{$soft_delete_filter}");
+        $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        
+        $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'{$soft_delete_filter}");
+        $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+        
+        $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'{$soft_delete_filter}");
+        $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
+        
+        $stmt = $conn->query("SELECT COUNT(*) as rejected FROM students WHERE status = 'rejected'{$soft_delete_filter}");
+        $rejected_count = $stmt->fetch(PDO::FETCH_ASSOC)['rejected'];
+        
+        $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'{$soft_delete_filter}");
+        $completed_count = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
+    } catch (PDOException $e) {
+        // Keep default values of 0
+    }
     
 } catch (PDOException $e) {
     $error_message = 'Database error: ' . $e->getMessage();
 }
 
 // Get pending approvals count for sidebar
+$pending_approvals = 0;
 try {
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $soft_delete_filter = $has_soft_delete ? " AND deleted_at IS NULL" : "";
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'{$soft_delete_filter}");
     $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
 } catch (PDOException $e) {
     $pending_approvals = 0;

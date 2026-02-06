@@ -46,12 +46,12 @@ try {
     }
     
     if (!empty($course_filter)) {
-        $where_conditions[] = "ca.course_name = :course_name";
+        $where_conditions[] = "c.course_name = :course_name";
         $params[':course_name'] = $course_filter;
     }
     
     if (!empty($search)) {
-        $where_conditions[] = "(s.first_name LIKE :search OR s.last_name LIKE :search OR s.email LIKE :search OR s.uli LIKE :search OR ca.course_name LIKE :search)";
+        $where_conditions[] = "(s.first_name LIKE :search OR s.last_name LIKE :search OR s.email LIKE :search OR s.uli LIKE :search OR c.course_name LIKE :search)";
         $params[':search'] = '%' . $search . '%';
     }
     
@@ -60,7 +60,7 @@ try {
     // Get total count
     $count_sql = "SELECT COUNT(*) as total FROM course_applications ca 
                   INNER JOIN students s ON ca.student_id = s.id 
-                  LEFT JOIN courses c ON ca.course_name = c.course_name 
+                  LEFT JOIN courses c ON ca.course_id = c.course_id 
                   $where_clause";
     $stmt = $conn->prepare($count_sql);
     foreach ($params as $key => $value) {
@@ -72,10 +72,11 @@ try {
     
     // Get applications
     $sql = "SELECT ca.*, s.first_name, s.last_name, s.middle_name, s.extension_name, s.email, s.uli, s.contact_number,
-                   ca.course_name, ca.adviser, ca.nc_level, ca.training_start, ca.training_end,
+                   c.course_name, ca.nc_level,
                    u.username as reviewed_by_name
             FROM course_applications ca
             INNER JOIN students s ON ca.student_id = s.id
+            LEFT JOIN courses c ON ca.course_id = c.course_id
             LEFT JOIN users u ON ca.reviewed_by = u.id
             $where_clause
             ORDER BY ca.applied_at DESC
@@ -469,18 +470,10 @@ try {
                                                         <?php if ($app['nc_level']): ?>
                                                             <div class="text-sm text-gray-500">NC Level: <?php echo htmlspecialchars($app['nc_level']); ?></div>
                                                         <?php endif; ?>
-                                                        <?php if ($app['adviser']): ?>
-                                                            <div class="text-sm text-blue-600">Adviser: <?php echo htmlspecialchars($app['adviser']); ?></div>
-                                                        <?php endif; ?>
                                                     </td>
                                                     <td class="px-6 py-4">
                                                         <div class="text-sm text-gray-900">Applied: <?php echo date('M j, Y', strtotime($app['applied_at'])); ?></div>
                                                         <div class="text-sm text-gray-500"><?php echo date('g:i A', strtotime($app['applied_at'])); ?></div>
-                                                        <?php if ($app['training_start'] && $app['training_end']): ?>
-                                                            <div class="text-sm text-green-600 mt-1">
-                                                                Training: <?php echo date('M j', strtotime($app['training_start'])); ?> - <?php echo date('M j, Y', strtotime($app['training_end'])); ?>
-                                                            </div>
-                                                        <?php endif; ?>
                                                     </td>
                                                     <td class="px-6 py-4">
                                                         <?php

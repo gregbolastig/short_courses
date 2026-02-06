@@ -115,7 +115,9 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_advisers);
         
-        // Create course_applications table
+        // Create course_applications table - DISABLED: Use schema.sql instead
+        // This table structure is now managed by schema.sql
+        /*
         $sql_course_applications = "CREATE TABLE IF NOT EXISTS course_applications (
             application_id INT AUTO_INCREMENT PRIMARY KEY,
             student_id INT NOT NULL,
@@ -139,6 +141,7 @@ function createDatabaseAndTable() {
         )";
         
         $pdo->exec($sql_course_applications);
+        */
         
         // Don't insert sample courses - let users add them manually
         // Don't insert sample advisers - let users add them manually

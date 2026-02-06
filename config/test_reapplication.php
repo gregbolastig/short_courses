@@ -14,9 +14,10 @@ try {
     // Check if we have any students with rejected applications
     $stmt = $conn->query("
         SELECT s.id, s.first_name, s.last_name, s.uli, s.status,
-               ca.course_name, ca.status as app_status, ca.applied_at, ca.reviewed_at
+               c.course_name, ca.status as app_status, ca.applied_at, ca.reviewed_at
         FROM students s 
         JOIN course_applications ca ON s.id = ca.student_id 
+        JOIN courses c ON ca.course_id = c.course_id 
         WHERE ca.status = 'rejected' 
         LIMIT 1
     ");

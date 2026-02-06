@@ -303,9 +303,10 @@ try {
     $total_app_pages = ceil($total_applications_count / $app_per_page);
     
     // Get recent course applications with pagination
-    $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.email 
+    $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.email, s.uli as student_uli, c.course_name
                            FROM course_applications ca 
                            JOIN students s ON ca.student_id = s.id 
+                           LEFT JOIN courses c ON ca.course_id = c.course_id
                            WHERE ca.status = 'pending' 
                            ORDER BY ca.applied_at DESC 
                            LIMIT :limit OFFSET :offset");
@@ -1451,7 +1452,7 @@ try {
                                 <select name="course" id="course" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
                                     <option value="">Select Course</option>
                                     <?php foreach ($active_courses as $course): ?>
-                                        <option value="<?php echo htmlspecialchars($course['course_name']); ?>">
+                                        <option value="<?php echo htmlspecialchars($course['course_id']); ?>">
                                             <?php echo htmlspecialchars($course['course_name']); ?>
                                         </option>
                                     <?php endforeach; ?>

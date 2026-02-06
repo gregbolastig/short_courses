@@ -50,70 +50,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update course application with approval and details
                 $stmt = $conn->prepare("UPDATE course_applications SET 
                     status = 'approved',
-                    course_name = :course_name,
+                    course_id = :course_id,
                     nc_level = :nc_level,
-                    adviser = :adviser,
-                    training_start = :training_start,
-                    training_end = :training_end,
                     reviewed_by = :admin_id,
                     reviewed_at = NOW(),
                     notes = :notes
                     WHERE application_id = :id");
                 
-                $stmt->bindParam(':course_name', $_POST['course_name']);
-                $stmt->bindParam(':nc_level', $_POST['nc_level']);
-                $stmt->bindParam(':adviser', $_POST['adviser']);
-                $stmt->bindParam(':training_start', $_POST['training_start']);
-                $stmt->bindParam(':training_end', $_POST['training_end']);
-                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                $stmt->bindParam(':notes', $_POST['notes']);
+                $course_id = $_POST['course_name']; // Form field is named course_name but contains course_id
+                $nc_level = $_POST['nc_level'];
+                $notes = $_POST['notes'];
+                $admin_id = $_SESSION['user_id'];
+                
+                $stmt->bindParam(':course_id', $course_id);
+                $stmt->bindParam(':nc_level', $nc_level);
+                $stmt->bindParam(':admin_id', $admin_id);
+                $stmt->bindParam(':notes', $notes);
                 $stmt->bindParam(':id', $application_id);
                 
                 if (!$stmt->execute()) {
                     throw new Exception('Failed to update course application');
                 }
                 
-                // Get the student ID from the course application
-                $stmt = $conn->prepare("SELECT student_id FROM course_applications WHERE application_id = :id");
-                $stmt->bindParam(':id', $application_id);
-                $stmt->execute();
-                $student_id = $stmt->fetch(PDO::FETCH_ASSOC)['student_id'];
-                
-                // Update the student record with course details from application approval
-                // Status is set to 'approved' - course completion approval is separate
-                $stmt = $conn->prepare("UPDATE students SET 
-                    status = 'approved',
-                    course = :course_name,
-                    nc_level = :nc_level,
-                    adviser = :adviser,
-                    training_start = :training_start,
-                    training_end = :training_end,
-                    approved_by = :admin_id,
-                    approved_at = NOW()
-                    WHERE id = :student_id");
-                
-                $stmt->bindParam(':course_name', $_POST['course_name']);
-                $stmt->bindParam(':nc_level', $_POST['nc_level']);
-                $stmt->bindParam(':adviser', $_POST['adviser']);
-                $stmt->bindParam(':training_start', $_POST['training_start']);
-                $stmt->bindParam(':training_end', $_POST['training_end']);
-                $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                $stmt->bindParam(':student_id', $student_id);
-                
-                if (!$stmt->execute()) {
-                    throw new Exception('Failed to update student record');
-                }
-                
                 // Commit the transaction
                 $conn->commit();
                 
-                $success_message = 'Course application approved successfully! Student data has been moved to the students table with status "approved". Course completion approval is separate.';
-                // Redirect after 3 seconds to allow user to read the message
-                header("refresh:3;url=dashboard.php");
+                // Log the activity
+                if (file_exists(__DIR__ . '/../includes/system_activity_logger.php')) {
+                    require_once __DIR__ . '/../includes/system_activity_logger.php';
+                    $logger = new SystemActivityLogger($conn);
+                    $logger->log(
+                        'course_application_approved',
+                        'Approved course application ID: ' . $application_id,
+                        'admin',
+                        $_SESSION['user_id'],
+                        'course_application',
+                        $application_id
+                    );
+                }
+                
+                $success_message = 'Course application approved successfully!';
+                // Redirect after 2 seconds to allow user to read the message
+                header("refresh:2;url=dashboard.php");
                 
             } catch (Exception $e) {
                 // Rollback the transaction on error
-                $conn->rollback();
+                if ($conn->inTransaction()) {
+                    $conn->rollback();
+                }
                 $error_message = 'Database error: ' . $e->getMessage();
             }
         }
@@ -152,9 +136,14 @@ try {
     $conn = $database->getConnection();
     
     // Get application with student details
-    $stmt = $conn->prepare("SELECT ca.*, s.* 
+    $stmt = $conn->prepare("SELECT ca.*, s.*, 
+                           COALESCE(c.course_name, ca.course_id) as course_name,
+                           c.course_name as application_course_name,
+                           c2.course_name as student_course_name
                            FROM course_applications ca 
                            JOIN students s ON ca.student_id = s.id 
+                           LEFT JOIN courses c ON ca.course_id = c.course_id
+                           LEFT JOIN courses c2 ON s.course = c2.course_id
                            WHERE ca.application_id = :id AND ca.status = 'pending'");
     $stmt->bindParam(':id', $application_id);
     $stmt->execute();
@@ -167,81 +156,77 @@ try {
     
     $student = $application; // Student data is included in the application
     
-    // Get all completed courses from course_applications table
-    $stmt = $conn->prepare("SELECT ca.*, 
-                           ca.course_name,
+    // Initialize student_courses array
+    $student_courses = [];
+    
+    // PRIORITY 1: Get course data from students table (has complete info: training dates, adviser, certificate)
+    if (!empty($student['student_course_name']) && $student['status'] === 'completed') {
+        $student_courses[] = [
+            'course_name' => $student['student_course_name'],
+            'nc_level' => $student['nc_level'] ?? 'Not specified',
+            'training_start' => $student['training_start'] ?? null,
+            'training_end' => $student['training_end'] ?? null,
+            'adviser' => $student['adviser'] ?? 'Not assigned',
+            'status' => 'completed',
+            'approved_at' => $student['approved_at'] ?? null,
+            'applied_at' => $student['created_at'] ?? null
+        ];
+    } elseif (!empty($student['student_course_name']) && $student['status'] === 'approved') {
+        $student_courses[] = [
+            'course_name' => $student['student_course_name'],
+            'nc_level' => $student['nc_level'] ?? 'Not specified',
+            'training_start' => $student['training_start'] ?? null,
+            'training_end' => $student['training_end'] ?? null,
+            'adviser' => $student['adviser'] ?? 'Not assigned',
+            'status' => 'approved',
+            'approved_at' => $student['approved_at'] ?? null
+        ];
+    }
+    
+    // PRIORITY 2: Get additional courses from course_applications table (if any)
+    // Only include if not already in student_courses from students table
+    $stmt = $conn->prepare("SELECT ca.application_id,
+                           ca.student_id,
+                           ca.course_id,
                            ca.nc_level,
-                           ca.training_start,
-                           ca.training_end,
-                           ca.adviser,
                            ca.status,
                            ca.reviewed_at as approved_at,
-                           ca.applied_at
+                           ca.applied_at,
+                           COALESCE(c.course_name, ca.course_id) as course_name
                            FROM course_applications ca 
+                           LEFT JOIN courses c ON ca.course_id = c.course_id
                            WHERE ca.student_id = :student_id 
-                           AND ca.status = 'completed'
+                           AND ca.status = 'approved'
                            ORDER BY ca.reviewed_at DESC, ca.applied_at DESC");
     $stmt->bindParam(':student_id', $student['id']);
     $stmt->execute();
     $completed_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get student's current course from students table (if exists and not completed)
-    // Only add if it's not already in the completed applications
-    $current_course_in_completed = false;
-    if (!empty($student['course'])) {
-        // Check if this course is already in completed applications
-        foreach ($completed_applications as $comp_app) {
-            if (strtolower(trim($comp_app['course_name'])) === strtolower(trim($student['course']))) {
-                $current_course_in_completed = true;
-                break;
-            }
-        }
-        
-        // If current course is completed, it should be in completed_applications
-        // If current course is approved (not completed), add it separately
-        if ($student['status'] === 'completed' && !$current_course_in_completed) {
-            // Add completed course from students table if not in course_applications
-            $completed_applications[] = [
-                'course_name' => $student['course'],
-                'nc_level' => $student['nc_level'] ?: 'Not specified',
-                'training_start' => $student['training_start'],
-                'training_end' => $student['training_end'],
-                'adviser' => $student['adviser'],
-                'status' => 'completed',
-                'approved_at' => $student['approved_at'],
-                'applied_at' => $student['created_at']
-            ];
-        } elseif ($student['status'] === 'approved') {
-            // Current course is approved (not completed), add to student_courses
-            $student_courses[] = [
-                'course_name' => $student['course'],
-                'nc_level' => $student['nc_level'] ?: 'Not specified',
-                'training_start' => $student['training_start'],
-                'training_end' => $student['training_end'],
-                'adviser' => $student['adviser'],
-                'status' => $student['status'],
-                'approved_at' => $student['approved_at']
-            ];
-        }
-    }
-    
-    // Add all completed applications to student_courses for display
+    // Add courses from course_applications only if not already in student_courses
+    $existing_courses = array_column($student_courses, 'course_name');
     foreach ($completed_applications as $comp_app) {
-        $student_courses[] = [
-            'course_name' => $comp_app['course_name'],
-            'nc_level' => $comp_app['nc_level'] ?: 'Not specified',
-            'training_start' => $comp_app['training_start'],
-            'training_end' => $comp_app['training_end'],
-            'adviser' => $comp_app['adviser'] ?: 'Not assigned',
-            'status' => 'completed',
-            'approved_at' => $comp_app['approved_at'] ?: $comp_app['applied_at']
-        ];
+        $course_name = $comp_app['course_name'] ?? 'Course ID: ' . ($comp_app['course_id'] ?? 'Unknown');
+        
+        // Only add if this course isn't already in the list
+        if (!in_array($course_name, $existing_courses)) {
+            $student_courses[] = [
+                'course_name' => $course_name,
+                'nc_level' => $comp_app['nc_level'] ?? 'Not specified',
+                'training_start' => $comp_app['training_start'] ?? null,
+                'training_end' => $comp_app['training_end'] ?? null,
+                'adviser' => $comp_app['adviser'] ?? 'Not assigned',
+                'status' => 'completed',
+                'approved_at' => $comp_app['approved_at'] ?? $comp_app['applied_at'] ?? null
+            ];
+        }
     }
     
     // Get other course applications (pending, approved, rejected) excluding current application
-    $stmt = $conn->prepare("SELECT ca.*, c.course_name as course_display_name 
+    $stmt = $conn->prepare("SELECT ca.*, 
+                           COALESCE(c.course_name, ca.course_id) as course_display_name,
+                           c.course_name as course_name
                            FROM course_applications ca 
-                           LEFT JOIN courses c ON ca.course_name = c.course_name
+                           LEFT JOIN courses c ON ca.course_id = c.course_id
                            WHERE ca.student_id = :student_id 
                            AND ca.application_id != :current_id
                            AND ca.status != 'completed'
@@ -596,7 +581,14 @@ try {
                                             <tr class="hover:bg-gray-50">
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo htmlspecialchars($app['course_name']); ?>
+                                                        <?php 
+                                                        $display_name = !empty($app['course_display_name']) 
+                                                            ? $app['course_display_name'] 
+                                                            : (!empty($app['course_name']) 
+                                                                ? $app['course_name'] 
+                                                                : 'Course ID: ' . htmlspecialchars($app['course_id'] ?? 'Unknown'));
+                                                        echo htmlspecialchars($display_name); 
+                                                        ?>
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -648,7 +640,16 @@ try {
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h4 class="font-semibold text-blue-800 text-lg"><?php echo htmlspecialchars($application['course_name']); ?></h4>
+                                <h4 class="font-semibold text-blue-800 text-lg">
+                                    <?php 
+                                    $display_course_name = !empty($application['course_name']) 
+                                        ? $application['course_name'] 
+                                        : (!empty($application['application_course_name']) 
+                                            ? $application['application_course_name'] 
+                                            : 'Course ID: ' . htmlspecialchars($application['course_id'] ?? 'Unknown'));
+                                    echo htmlspecialchars($display_course_name); 
+                                    ?>
+                                </h4>
                                 <p class="text-blue-600 text-sm">Applied on <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?></p>
                             </div>
                             <div class="text-right">
@@ -676,8 +677,8 @@ try {
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900">
                                         <option value="">Select Course</option>
                                         <?php foreach ($available_courses as $course): ?>
-                                            <option value="<?php echo htmlspecialchars($course['course_name']); ?>" 
-                                                    <?php echo ($course['course_name'] === $application['course_name']) ? 'selected' : ''; ?>>
+                                            <option value="<?php echo htmlspecialchars($course['course_id']); ?>" 
+                                                    <?php echo ($course['course_id'] == $application['course_id']) ? 'selected' : ''; ?>>
                                                 <?php echo htmlspecialchars($course['course_name']); ?>
                                             </option>
                                         <?php endforeach; ?>

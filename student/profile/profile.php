@@ -75,12 +75,18 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
         $database = new Database();
         $conn = $database->getConnection();
         
-        // Determine lookup method
+        // Determine lookup method - join with courses to get course name
         if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
-            $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+            $stmt = $conn->prepare("SELECT s.*, c.course_name as course_display_name 
+                                   FROM students s 
+                                   LEFT JOIN courses c ON s.course = c.course_id 
+                                   WHERE s.id = :id");
             $stmt->bindParam(':id', $_GET['student_id']);
         } else {
-            $stmt = $conn->prepare("SELECT * FROM students WHERE uli = :uli");
+            $stmt = $conn->prepare("SELECT s.*, c.course_name as course_display_name 
+                                   FROM students s 
+                                   LEFT JOIN courses c ON s.course = c.course_id 
+                                   WHERE s.uli = :uli");
             $stmt->bindParam(':uli', $_GET['uli']);
         }
         
@@ -95,8 +101,9 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             
             // Get all course applications with their current status
             $stmt = $conn->prepare("
-                SELECT ca.* 
+                SELECT ca.*, COALESCE(c.course_name, ca.course_id) as course_name
                 FROM course_applications ca
+                LEFT JOIN courses c ON ca.course_id = c.course_id
                 WHERE ca.student_id = :student_id 
                 ORDER BY ca.applied_at DESC
             ");
@@ -112,9 +119,9 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             if ($enrollments_table_exists) {
                 // Get all student enrollments (approved applications that became enrollments)
                 $stmt = $conn->prepare("
-                    SELECT se.*, c.course_name, a.adviser_name, ca.applied_at
+                    SELECT se.*, COALESCE(c.course_name, se.course_id) as course_name, a.adviser_name, ca.applied_at
                     FROM student_enrollments se
-                    INNER JOIN courses c ON se.course_id = c.course_id
+                    LEFT JOIN courses c ON se.course_id = c.course_id
                     LEFT JOIN advisers a ON se.adviser_id = a.adviser_id
                     LEFT JOIN course_applications ca ON se.application_id = ca.application_id
                     WHERE se.student_id = :student_id 
@@ -146,19 +153,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 } elseif ($app['status'] === 'approved') {
                     // In single-stage system, approved means enrolled
                     if (!$enrollments_table_exists) {
-                        // Check training dates to determine actual status
-                        $today = date('Y-m-d');
-                        if (!empty($app['training_start']) && !empty($app['training_end'])) {
-                            if ($today < $app['training_start']) {
-                                $app_status = 'pending_start';
-                            } elseif ($today >= $app['training_start'] && $today <= $app['training_end']) {
-                                $app_status = 'in_progress';
-                            } else {
-                                $app_status = 'training_ended';
-                            }
-                        } else {
-                            $app_status = 'enrolled';
-                        }
+                        // Without training dates in course_applications, just mark as enrolled
+                        $app_status = 'enrolled';
                     } else {
                         $app_status = 'approved';
                     }
@@ -168,11 +164,12 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 
                 $student_courses[] = [
                     'id' => 'app_' . $app['application_id'],
-                    'course_name' => $app['course_name'],
+                    'course_id' => $app['course_id'],
+                    'course_name' => $app['course_name'] ?: ('Course ID: ' . $app['course_id']),
                     'nc_level' => $app['nc_level'] ?: 'Pending Assignment',
-                    'training_start' => $app['training_start'],
-                    'training_end' => $app['training_end'],
-                    'adviser' => $app['adviser'] ?: 'Not Assigned',
+                    'training_start' => null, // Not in course_applications table
+                    'training_end' => null, // Not in course_applications table
+                    'adviser' => 'Not Assigned', // Not in course_applications table
                     'status' => $app_status,
                     'completion_date' => $completion_date,
                     'certificate_number' => $certificate_number,
@@ -217,7 +214,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     
                     $student_courses[] = [
                         'id' => 'enroll_' . $enrollment['enrollment_id'],
-                        'course_name' => $enrollment['course_name'],
+                        'course_id' => $enrollment['course_id'],
+                        'course_name' => $enrollment['course_name'] ?: ('Course ID: ' . $enrollment['course_id']),
                         'nc_level' => $enrollment['nc_level'] ?: 'Not specified',
                         'training_start' => $enrollment['training_start'],
                         'training_end' => $enrollment['training_end'],
@@ -235,8 +233,13 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
                 // Check if this course is already shown from applications/enrollments
                 $course_already_shown = false;
+                $legacy_course_id = $student_profile['course'];
                 foreach ($student_courses as $existing_course) {
-                    if ($existing_course['course_name'] === $student_profile['course']) {
+                    // Compare by course_id if available, otherwise by course_name
+                    if (isset($existing_course['course_id']) && $existing_course['course_id'] == $legacy_course_id) {
+                        $course_already_shown = true;
+                        break;
+                    } elseif (!isset($existing_course['course_id']) && isset($existing_course['course_name']) && $existing_course['course_name'] === $student_profile['course_display_name']) {
                         $course_already_shown = true;
                         break;
                     }
@@ -269,9 +272,17 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                         }
                     }
                     
+                    // Get course name - use course_display_name if available, otherwise fallback to course_id
+                    $legacy_course_name = !empty($student_profile['course_display_name']) 
+                        ? $student_profile['course_display_name'] 
+                        : (!empty($student_profile['course']) 
+                            ? 'Course ID: ' . $student_profile['course'] 
+                            : 'Unknown Course');
+                    
                     $student_courses[] = [
                         'id' => 'legacy_1',
-                        'course_name' => $student_profile['course'],
+                        'course_id' => $student_profile['course'],
+                        'course_name' => $legacy_course_name,
                         'nc_level' => $student_profile['nc_level'] ?: 'Not specified',
                         'training_start' => $student_profile['training_start'],
                         'training_end' => $student_profile['training_end'],
