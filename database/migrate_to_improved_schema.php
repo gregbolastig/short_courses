@@ -295,9 +295,10 @@ class SchemaMigration {
                 ['Lisa Brown', 'lisa.brown@tesda.gov.ph', '09123456793', 'Food Service', 'Culinary Arts']
             ];
             
-            $stmt = $this->conn->prepare("INSERT INTO advisers (adviser_name, email, phone, department, specialization) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $this->conn->prepare("INSERT INTO advisers (adviser_name) VALUES (?)");
             
             foreach ($advisers as $adviser) {
+                $stmt->execute([$adviser[0]]); // Only use the name
                 $stmt->execute($adviser);
             }
             

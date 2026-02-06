@@ -704,9 +704,6 @@ try {
                                         <?php foreach ($advisers as $adviser): ?>
                                             <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
                                                 <?php echo htmlspecialchars($adviser['adviser_name']); ?>
-                                                <?php if ($adviser['specialization']): ?>
-                                                    - <?php echo htmlspecialchars($adviser['specialization']); ?>
-                                                <?php endif; ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

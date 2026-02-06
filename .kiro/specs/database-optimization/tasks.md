@@ -19,7 +19,9 @@
   - Create migration script to transform current schema to optimized schema using schema.sql
   - Implement data mapping from old structure to new normalized structure
   - Add rollback capability for safe migration reversal
-  - Remove unused adviser fields (email, phone, department, specialization) during migration
+  - Remove unused adviser fields (email, phone, department, specialization) from all schema files
+  - Update admin interface to remove specialization display in dropdowns
+  - Clean up migration scripts to use simplified adviser structure
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
 - [ ]* 2.1 Write property test for migration data integrity

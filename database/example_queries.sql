@@ -194,7 +194,7 @@ FROM advisers a
 LEFT JOIN student_enrollments se ON a.adviser_id = se.adviser_id
 LEFT JOIN courses c ON se.course_id = c.course_id
 WHERE a.is_active = TRUE
-GROUP BY a.adviser_id, a.adviser_name, a.department
+GROUP BY a.adviser_id, a.adviser_name
 ORDER BY total_students DESC;
 
 -- ============================================================================

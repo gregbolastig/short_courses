@@ -104,14 +104,10 @@ function createDatabaseAndTable() {
         
         $pdo->exec($sql_courses);
         
-        // Create advisers table
+        // Create advisers table (simplified - only name is used)
         $sql_advisers = "CREATE TABLE IF NOT EXISTS advisers (
             adviser_id INT AUTO_INCREMENT PRIMARY KEY,
             adviser_name VARCHAR(200) NOT NULL,
-            email VARCHAR(150) UNIQUE,
-            phone VARCHAR(20),
-            department VARCHAR(100),
-            specialization VARCHAR(200),
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
