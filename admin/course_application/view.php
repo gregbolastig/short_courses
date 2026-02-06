@@ -32,9 +32,12 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
                                        s.guardian_first_name, s.guardian_middle_name, s.guardian_last_name, 
                                        s.guardian_extension, s.parent_contact, s.last_school, s.school_province, 
                                        s.school_city, s.profile_picture,
+                                       s.adviser, s.training_start, s.training_end,
+                                       COALESCE(c.course_name, ca.course_id) as course_name,
                                        u.username as reviewed_by_name
                                FROM course_applications ca
                                INNER JOIN students s ON ca.student_id = s.id
+                               LEFT JOIN courses c ON ca.course_id = c.course_id
                                LEFT JOIN users u ON ca.reviewed_by = u.id
                                WHERE ca.application_id = :id");
         $stmt->bindParam(':id', $_GET['id']);
@@ -274,24 +277,33 @@ try {
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Course Name</label>
-                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['course_name']); ?></p>
+                                <p class="text-sm text-gray-900">
+                                    <?php 
+                                    $course_name = !empty($application['course_name']) 
+                                        ? $application['course_name'] 
+                                        : (!empty($application['course_id']) 
+                                            ? 'Course ID: ' . htmlspecialchars($application['course_id']) 
+                                            : 'Not specified');
+                                    echo htmlspecialchars($course_name); 
+                                    ?>
+                                </p>
                             </div>
                             
-                            <?php if ($application['nc_level']): ?>
+                            <?php if (!empty($application['nc_level'])): ?>
                             <div>
                                 <label class="block text-sm font-medium text-gray-500 mb-1">NC Level</label>
                                 <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['nc_level']); ?></p>
                             </div>
                             <?php endif; ?>
                             
-                            <?php if ($application['adviser']): ?>
+                            <?php if (!empty($application['adviser'])): ?>
                             <div>
                                 <label class="block text-sm font-medium text-gray-500 mb-1">Assigned Adviser</label>
                                 <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['adviser']); ?></p>
                             </div>
                             <?php endif; ?>
                             
-                            <?php if ($application['training_start'] && $application['training_end']): ?>
+                            <?php if (!empty($application['training_start']) && !empty($application['training_end'])): ?>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-500 mb-1">Training Start</label>
