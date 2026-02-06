@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } elseif ($duplicate_course) {
                 $errors[] = 'You are already enrolled in this course. You can only apply for a new course after completing your current course.';
             } else {
-                // Insert new course application into course_applications table
+                // Insert new course application (duplicates allowed)
                 $stmt = $conn->prepare("INSERT INTO course_applications 
                     (student_id, course_id, nc_level, status, applied_at) 
                     VALUES (:student_id, :course_id, :nc_level, 'pending', NOW())");
@@ -426,10 +426,10 @@ include '../components/header.php';
                                         <div class="flex items-center justify-between">
                                             <div>
                                                 <p class="font-medium text-gray-900"><?php echo htmlspecialchars($app['course_name']); ?></p>
-                                                <?php if ($app['nc_level']): ?>
+                                                <?php if (!empty($app['nc_level'])): ?>
                                                     <p class="text-sm text-gray-600">NC Level: <?php echo htmlspecialchars($app['nc_level']); ?></p>
                                                 <?php endif; ?>
-                                                <?php if ($app['adviser']): ?>
+                                                <?php if (!empty($app['adviser'])): ?>
                                                     <p class="text-sm text-gray-600">Adviser: <?php echo htmlspecialchars($app['adviser']); ?></p>
                                                 <?php endif; ?>
                                                 <p class="text-sm text-gray-600">Approved: <?php echo $app['reviewed_at'] ? date('M j, Y', strtotime($app['reviewed_at'])) : date('M j, Y', strtotime($app['applied_at'])); ?></p>

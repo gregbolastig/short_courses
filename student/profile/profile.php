@@ -142,6 +142,9 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 $app_status = 'pending';
                 $completion_date = null;
                 $certificate_number = null;
+                $training_start = null;
+                $training_end = null;
+                $adviser = 'Not Assigned';
                 
                 if ($app['status'] === 'rejected') {
                     $app_status = 'rejected';
@@ -150,13 +153,21 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     $app_status = 'completed';
                     $completion_date = $app['reviewed_at'];
                     $certificate_number = 'CERT-' . date('Y', strtotime($app['reviewed_at'])) . '-' . str_pad($student_profile['id'], 6, '0', STR_PAD_LEFT);
+                    // Get training dates and adviser from students table for completed courses
+                    $training_start = $student_profile['training_start'] ?? null;
+                    $training_end = $student_profile['training_end'] ?? null;
+                    $adviser = $student_profile['adviser'] ?? 'Not Assigned';
                 } elseif ($app['status'] === 'approved') {
                     // In single-stage system, approved means enrolled
                     if (!$enrollments_table_exists) {
-                        // Without training dates in course_applications, just mark as enrolled
+                        // Get training dates and adviser from students table
                         $app_status = 'enrolled';
+                        $training_start = $student_profile['training_start'] ?? null;
+                        $training_end = $student_profile['training_end'] ?? null;
+                        $adviser = $student_profile['adviser'] ?? 'Not Assigned';
                     } else {
                         $app_status = 'approved';
+                        // For two-stage system, data might be in enrollments (handled separately)
                     }
                 } elseif ($app['status'] === 'pending') {
                     $app_status = 'pending';
@@ -167,9 +178,9 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     'course_id' => $app['course_id'],
                     'course_name' => $app['course_name'] ?: ('Course ID: ' . $app['course_id']),
                     'nc_level' => $app['nc_level'] ?: 'Pending Assignment',
-                    'training_start' => null, // Not in course_applications table
-                    'training_end' => null, // Not in course_applications table
-                    'adviser' => 'Not Assigned', // Not in course_applications table
+                    'training_start' => $training_start,
+                    'training_end' => $training_end,
+                    'adviser' => $adviser,
                     'status' => $app_status,
                     'completion_date' => $completion_date,
                     'certificate_number' => $certificate_number,

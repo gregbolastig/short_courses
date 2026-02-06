@@ -47,6 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Start transaction to ensure both updates succeed
                 $conn->beginTransaction();
                 
+                // Get student_id and course name first
+                $stmt = $conn->prepare("SELECT student_id FROM course_applications WHERE application_id = :app_id");
+                $stmt->bindParam(':app_id', $application_id);
+                $stmt->execute();
+                $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                $student_id = $app_data['student_id'];
+                
+                // Get course name for students table
+                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                $stmt->bindParam(':course_id', $_POST['course_name']);
+                $stmt->execute();
+                $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                $course_name = $course_data['course_name'] ?? $_POST['course_name'];
+                
                 // Update course application with approval and details
                 $stmt = $conn->prepare("UPDATE course_applications SET 
                     status = 'approved',
@@ -70,6 +84,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (!$stmt->execute()) {
                     throw new Exception('Failed to update course application');
+                }
+                
+                // Update students table with course details (training dates, adviser, course name)
+                $stmt = $conn->prepare("UPDATE students SET 
+                    course = :course_name,
+                    nc_level = :nc_level,
+                    adviser = :adviser,
+                    training_start = :training_start,
+                    training_end = :training_end,
+                    status = 'approved',
+                    approved_by = :admin_id,
+                    approved_at = NOW()
+                    WHERE id = :student_id");
+                
+                $adviser = $_POST['adviser'];
+                $training_start = $_POST['training_start'];
+                $training_end = $_POST['training_end'];
+                
+                $stmt->bindParam(':course_name', $course_name);
+                $stmt->bindParam(':nc_level', $nc_level);
+                $stmt->bindParam(':adviser', $adviser);
+                $stmt->bindParam(':training_start', $training_start);
+                $stmt->bindParam(':training_end', $training_end);
+                $stmt->bindParam(':admin_id', $admin_id);
+                $stmt->bindParam(':student_id', $student_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to update student record');
                 }
                 
                 // Commit the transaction

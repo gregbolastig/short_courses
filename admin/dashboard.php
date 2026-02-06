@@ -315,8 +315,8 @@ try {
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get approved course applications (students with status='approved' - awaiting completion approval)
-    $stmt = $conn->query("SELECT COUNT(*) as approved_applications FROM students WHERE status = 'approved' AND course IS NOT NULL");
+    // Get approved course applications (from course_applications table with status='approved')
+    $stmt = $conn->query("SELECT COUNT(*) as approved_applications FROM course_applications WHERE status = 'approved'");
     $approved_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_applications'];
     
     // Pagination for approved applications
@@ -325,15 +325,19 @@ try {
     $approved_offset = ($approved_page - 1) * $approved_per_page;
     
     // Get total count for pagination
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'approved' AND course IS NOT NULL");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'approved'");
     $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_approved_pages = ceil($total_approved_count / $approved_per_page);
     
-    // Get approved applications (students with status='approved')
-    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, course, nc_level, adviser, training_start, training_end, status, approved_at 
-                           FROM students 
-                           WHERE status = 'approved' AND course IS NOT NULL 
-                           ORDER BY approved_at DESC 
+    // Get approved applications (from course_applications with JOIN to get course name)
+    $stmt = $conn->prepare("SELECT ca.application_id, ca.student_id, ca.nc_level, ca.reviewed_at as approved_at,
+                                   s.uli, s.first_name, s.last_name, s.email,
+                                   c.course_name as course
+                           FROM course_applications ca
+                           JOIN students s ON ca.student_id = s.id
+                           LEFT JOIN courses c ON ca.course_id = c.course_id
+                           WHERE ca.status = 'approved'
+                           ORDER BY ca.reviewed_at DESC 
                            LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $approved_per_page, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $approved_offset, PDO::PARAM_INT);
@@ -880,17 +884,17 @@ try {
                                                         </div>
                                                         
                                                         <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="students/view.php?id=<?php echo $student['student_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
-                                                            <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="approve_student.php?id=<?php echo $student['student_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
                                                                 <i class="fas fa-check mr-1"></i>Approve
                                                             </a>
                                                             <a href="javascript:void(0)" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                                               onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
+                                                               onclick="showRejectModal('?action=reject&id=<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                                 <i class="fas fa-times mr-1"></i>Reject
                                                             </a>
                                                         </div>
@@ -951,17 +955,17 @@ try {
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div class="flex items-center space-x-3">
-                                                        <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                        <a href="students/view.php?id=<?php echo $student['student_id']; ?>" 
                                                            class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                             <i class="fas fa-eye mr-2"></i>View
                                                         </a>
-                                                        <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                                        <a href="approve_student.php?id=<?php echo $student['student_id']; ?>" 
                                                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
                                                             <i class="fas fa-check mr-2"></i>Approve
                                                         </a>
                                                         <a href="javascript:void(0)" 
                                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                                           onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
+                                                           onclick="showRejectModal('?action=reject&id=<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
                                                             <i class="fas fa-times mr-2"></i>Reject
                                                         </a>
                                                     </div>

@@ -24,6 +24,15 @@
 --
 -- NOTE: No seed data is included. All data should be entered through the application.
 --
+-- UPDATING EXISTING DATABASE:
+-- If you have an existing database and need to update the unique constraints to allow
+-- same course with different NC levels, run these commands:
+--
+-- ALTER TABLE course_applications DROP INDEX unique_student_course;
+-- ALTER TABLE course_applications ADD UNIQUE KEY unique_student_course_nc (student_id, course_id, nc_level);
+-- ALTER TABLE student_enrollments DROP INDEX unique_student_course_enrollment;
+-- ALTER TABLE student_enrollments ADD UNIQUE KEY unique_student_course_enrollment (student_id, course_id, nc_level);
+--
 -- ============================================================================
 
 -- Create database
@@ -236,10 +245,9 @@ CREATE TABLE course_applications (
     
     -- Composite indexes for common query patterns
     INDEX idx_status_applied (status, applied_at),
-    INDEX idx_student_status (student_id, status),
+    INDEX idx_student_status (student_id, status)
     
-    -- Unique constraint to prevent duplicate applications
-    UNIQUE KEY unique_student_course (student_id, course_id)
+    -- Note: No unique constraint - allows duplicate applications
 ) COMMENT='Course applications before enrollment (normalized with foreign keys)';
 
 -- Student Enrollments table - Active enrollments created from approved applications
@@ -299,10 +307,9 @@ CREATE TABLE student_enrollments (
     -- Composite indexes for common query patterns
     INDEX idx_status_enrolled (enrollment_status, enrolled_at),
     INDEX idx_completion_status_completed (completion_status, completed_at),
-    INDEX idx_student_status (student_id, enrollment_status),
+    INDEX idx_student_status (student_id, enrollment_status)
     
-    -- Unique constraint to prevent duplicate enrollments
-    UNIQUE KEY unique_student_course_enrollment (student_id, course_id)
+    -- Note: No unique constraint - allows duplicate enrollments
 ) COMMENT='Active student enrollments with two-stage approval and certificate management';
 
 -- ============================================================================
@@ -419,4 +426,27 @@ CREATE TABLE IF NOT EXISTS system_activities (
 -- ⚠️  Marked as DEPRECATED in comments
 -- 
 -- DATABASE RATING: 9.5/10 (Production-ready with optimized indexing)
+-- ============================================================================
+
+-- ============================================================================
+-- MIGRATION SECTION: Update Existing Databases
+-- ============================================================================
+-- 
+-- If you have an EXISTING database and need to update constraints to allow
+-- same course with different NC levels, run the commands below.
+-- 
+-- For NEW databases: Skip this section (constraints are already correct in CREATE TABLE above).
+-- 
+-- ============================================================================
+-- NOTE: No unique constraints on applications/enrollments
+-- ============================================================================
+-- 
+-- Duplicate applications are allowed to support:
+-- ✅ Reapplication for same course
+-- ✅ Multiple attempts at same NC level
+-- ✅ Flexible enrollment management
+-- 
+-- ============================================================================
+-- ✅ Still prevents duplicates with same course + same NC level
+-- 
 -- ============================================================================

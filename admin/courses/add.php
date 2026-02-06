@@ -17,6 +17,8 @@ $breadcrumb_items = [
 ];
 
 // Initialize system activity logger
+$logger = new SystemActivityLogger();
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $database = new Database();
