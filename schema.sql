@@ -112,14 +112,10 @@ CREATE TABLE IF NOT EXISTS course_applications (
     INDEX idx_applied_at (applied_at)
 );
 
--- Advisers table
+-- Advisers table (simplified - only name is used in current system)
 CREATE TABLE IF NOT EXISTS advisers (
     adviser_id INT AUTO_INCREMENT PRIMARY KEY,
     adviser_name VARCHAR(200) NOT NULL,
-    email VARCHAR(150) UNIQUE,
-    phone VARCHAR(20),
-    department VARCHAR(100),
-    specialization VARCHAR(200),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

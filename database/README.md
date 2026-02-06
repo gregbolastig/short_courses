@@ -280,11 +280,12 @@ php database/migrate_to_two_stage_approval.php
 
 ## Files in this Directory
 
-- `improved_schema.sql` - Complete two-stage approval database schema
 - `example_queries.sql` - SQL queries for two-stage approval system
 - `two_stage_approval_examples.php` - PHP class with methods for both stages
 - `migrate_to_two_stage_approval.php` - Migration script from single-stage system
 - `README.md` - This documentation file
+
+**Note**: The official database schema is located in the root `schema.sql` file.
 
 ## Support
 
