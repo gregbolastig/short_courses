@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 // Store values in variables for bindParam
                 $student_id = $student['id'];
                 $course_id = $_POST['course'];
-                $nc_level = $_POST['nc_level'] ?? 'NC II';
+                $nc_level = $_POST['nc_level'] ?? null;
                 
                 $stmt->bindParam(':student_id', $student_id);
                 $stmt->bindParam(':course_id', $course_id);
@@ -602,7 +602,7 @@ include '../components/header.php';
     <div id="successModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out">
             <!-- Header Section -->
-            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-t-2xl px-6 py-6 text-white relative overflow-hidden">
+            <div class="bg-gradient-to-r from-red-900 to-red-800 rounded-t-2xl px-6 py-6 text-white relative overflow-hidden">
                 <div class="absolute inset-0 bg-black opacity-10"></div>
                 <div class="relative flex items-center justify-center">
                     <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
@@ -610,7 +610,7 @@ include '../components/header.php';
                     </div>
                     <div class="text-center">
                         <h3 class="text-xl font-bold mb-1">Application Submitted!</h3>
-                        <p class="text-green-100 text-sm opacity-90">Your course application was successful</p>
+                        <p class="text-red-100 text-sm opacity-90">Your course application was successful</p>
                     </div>
                 </div>
             </div>
@@ -618,14 +618,14 @@ include '../components/header.php';
             <!-- Content Section -->
             <div class="px-6 py-6">
                 <div class="text-center mb-6">
-                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                         <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                <i class="fas fa-graduation-cap text-green-600 text-sm"></i>
+                            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-graduation-cap text-red-900 text-sm"></i>
                             </div>
                             <div>
-                                <p class="font-semibold text-green-800"><?php echo htmlspecialchars($applied_course_name ?? 'Course'); ?></p>
-                                <p class="text-xs text-green-600">Application Submitted</p>
+                                <p class="font-semibold text-red-900"><?php echo htmlspecialchars($applied_course_name ?? 'Course'); ?></p>
+                                <p class="text-xs text-red-700">Application Submitted</p>
                             </div>
                         </div>
                     </div>
@@ -649,7 +649,7 @@ include '../components/header.php';
                 <!-- Action Buttons -->
                 <div class="flex flex-col gap-3">
                     <button type="button" onclick="closeSuccessModal()" 
-                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
+                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-red-900 text-white text-sm font-semibold rounded-lg hover:bg-red-800 transition-colors duration-200">
                         <i class="fas fa-check mr-2"></i>Got it, Thanks!
                     </button>
                     <a href="profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>" 

@@ -374,43 +374,44 @@ initializeStudentSearch();
 
 // Approval Modal Functions
 function openApprovalModal(studentId, studentName, course = '', ncLevel = '', adviser = '', trainingStart = '', trainingEnd = '') {
+    console.log('openApprovalModal called', studentId, studentName, course, ncLevel);
     document.getElementById('modalStudentId').value = studentId;
     document.getElementById('modalStudentName').textContent = studentName;
     
-    // Pre-fill form fields if provided (for approved students)
+    // Pre-fill form fields if provided (for approved students) - keep fields enabled/clickable
     if (course) {
         const courseSelect = document.getElementById('course');
         if (courseSelect) {
             courseSelect.value = course;
-            courseSelect.disabled = true; // Disable for approved students
+            // Keep field enabled so it's still clickable
         }
     }
     if (ncLevel) {
         const ncLevelSelect = document.getElementById('nc_level');
         if (ncLevelSelect) {
             ncLevelSelect.value = ncLevel;
-            ncLevelSelect.disabled = true;
+            // Keep field enabled so it's still clickable
         }
     }
     if (adviser) {
         const adviserSelect = document.getElementById('adviser');
         if (adviserSelect) {
             adviserSelect.value = adviser;
-            adviserSelect.disabled = true;
+            // Keep field enabled so it's still clickable
         }
     }
     if (trainingStart) {
         const trainingStartInput = document.getElementById('training_start');
         if (trainingStartInput) {
             trainingStartInput.value = trainingStart;
-            trainingStartInput.disabled = true;
+            // Keep field enabled so it's still clickable
         }
     }
     if (trainingEnd) {
         const trainingEndInput = document.getElementById('training_end');
         if (trainingEndInput) {
             trainingEndInput.value = trainingEnd;
-            trainingEndInput.disabled = true;
+            // Keep field enabled so it's still clickable
         }
     }
     

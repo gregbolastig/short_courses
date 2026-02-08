@@ -198,6 +198,29 @@ try {
         exit;
     }
     
+    // If student status is 'approved', fetch course details from course_applications
+    if ($student['status'] === 'approved') {
+        $stmt = $conn->prepare("SELECT ca.*, c.course_name, c.course_code, c.description as course_description
+                               FROM course_applications ca
+                               LEFT JOIN courses c ON ca.course_id = c.course_id
+                               WHERE ca.student_id = :id AND ca.status = 'approved'
+                               ORDER BY ca.reviewed_at DESC
+                               LIMIT 1");
+        $stmt->bindParam(':id', $student_id);
+        $stmt->execute();
+        $course_application = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Merge course application data into student array for display
+        if ($course_application) {
+            $student['course'] = $course_application['course_name'];
+            $student['nc_level'] = $course_application['nc_level'];
+            $student['course_code'] = $course_application['course_code'] ?? '';
+            $student['course_description'] = $course_application['course_description'] ?? '';
+            // Note: adviser, training_start, training_end are not in course_applications table
+            // They would need to be added if required for display
+        }
+    }
+    
     // Get available courses
     $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);

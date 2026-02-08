@@ -21,6 +21,153 @@ $total_pages = 0;
 $error_message = '';
 $success_message = '';
 
+// Handle approval/rejection actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+    $application_id = $_POST['application_id'] ?? '';
+    
+    if ($action === 'approve' && !empty($application_id)) {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            // Validate required fields for approval
+            $required_fields = ['course_name', 'nc_level', 'adviser', 'training_start', 'training_end'];
+            $missing_fields = [];
+            
+            foreach ($required_fields as $field) {
+                if (empty($_POST[$field])) {
+                    $missing_fields[] = ucfirst(str_replace('_', ' ', $field));
+                }
+            }
+            
+            if (!empty($missing_fields)) {
+                $error_message = 'Please fill in all required fields: ' . implode(', ', $missing_fields);
+            } else {
+                // Start transaction to ensure both updates succeed
+                $conn->beginTransaction();
+                
+                // Get student_id and course name first
+                $stmt = $conn->prepare("SELECT student_id FROM course_applications WHERE application_id = :app_id");
+                $stmt->bindParam(':app_id', $application_id);
+                $stmt->execute();
+                $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                $student_id = $app_data['student_id'];
+                
+                // Get course name for students table
+                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                $stmt->bindParam(':course_id', $_POST['course_name']);
+                $stmt->execute();
+                $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                $course_name = $course_data['course_name'] ?? $_POST['course_name'];
+
+                // Update course application with approval and details
+                $stmt = $conn->prepare("UPDATE course_applications SET 
+                    status = 'approved',
+                    course_id = :course_id,
+                    nc_level = :nc_level,
+                    reviewed_by = :admin_id,
+                    reviewed_at = NOW(),
+                    notes = :notes
+                    WHERE application_id = :id");
+                
+                $course_id = $_POST['course_name']; // Form field is named course_name but contains course_id
+                $nc_level = $_POST['nc_level'];
+                $notes = $_POST['notes'] ?? '';
+                $admin_id = $_SESSION['user_id'];
+                
+                $stmt->bindParam(':course_id', $course_id);
+                $stmt->bindParam(':nc_level', $nc_level);
+                $stmt->bindParam(':admin_id', $admin_id);
+                $stmt->bindParam(':notes', $notes);
+                $stmt->bindParam(':id', $application_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to update course application');
+                }
+                
+                // Update students table with course details (training dates, adviser, course name)
+                $stmt = $conn->prepare("UPDATE students SET 
+                    course = :course_name,
+                    nc_level = :nc_level,
+                    adviser = :adviser,
+                    training_start = :training_start,
+                    training_end = :training_end,
+                    status = 'approved',
+                    approved_by = :admin_id,
+                    approved_at = NOW()
+                    WHERE id = :student_id");
+                
+                $adviser = $_POST['adviser'];
+                $training_start = $_POST['training_start'];
+                $training_end = $_POST['training_end'];
+                
+                $stmt->bindParam(':course_name', $course_name);
+                $stmt->bindParam(':nc_level', $nc_level);
+                $stmt->bindParam(':adviser', $adviser);
+                $stmt->bindParam(':training_start', $training_start);
+                $stmt->bindParam(':training_end', $training_end);
+                $stmt->bindParam(':admin_id', $admin_id);
+                $stmt->bindParam(':student_id', $student_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to update student record');
+                }
+                
+                // Commit the transaction
+                $conn->commit();
+                
+                // Log the activity
+                if (file_exists(__DIR__ . '/../../includes/system_activity_logger.php')) {
+                    require_once __DIR__ . '/../../includes/system_activity_logger.php';
+                    $logger = new SystemActivityLogger($conn);
+                    $logger->log(
+                        'course_application_approved',
+                        'Approved course application ID: ' . $application_id,
+                        'admin',
+                        $_SESSION['user_id'],
+                        'course_application',
+                        $application_id
+                    );
+                }
+                
+                $success_message = 'Course application approved successfully!';
+                
+            }
+        } catch (Exception $e) {
+            // Rollback the transaction on error
+            if ($conn->inTransaction()) {
+                $conn->rollback();
+            }
+            $error_message = 'Database error: ' . $e->getMessage();
+        }
+    } elseif ($action === 'reject' && !empty($application_id)) {
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            
+            $stmt = $conn->prepare("UPDATE course_applications SET 
+                status = 'rejected',
+                reviewed_by = :admin_id,
+                reviewed_at = NOW(),
+                notes = :notes
+                WHERE application_id = :id");
+            
+            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+            $stmt->bindParam(':notes', $_POST['notes'] ?? '');
+            $stmt->bindParam(':id', $application_id);
+            
+            if ($stmt->execute()) {
+                $success_message = 'Course application rejected.';
+            } else {
+                $error_message = 'Failed to reject course application.';
+            }
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
+        }
+    }
+}
+
 // Get applications with pagination and filtering
 try {
     $database = new Database();
@@ -70,8 +217,9 @@ try {
     $total_applications = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages = ceil($total_applications / $per_page);
     
-    // Get applications
-    $sql = "SELECT ca.*, s.first_name, s.last_name, s.middle_name, s.extension_name, s.email, s.uli, s.contact_number,
+    // Get applications with additional data for modal
+    $sql = "SELECT ca.*, s.first_name, s.last_name, s.middle_name, s.extension_name, s.uli, s.contact_number,
+                   s.email, s.age, s.sex, s.civil_status, s.province, s.city, s.barangay,
                    c.course_name, ca.nc_level,
                    u.username as reviewed_by_name
             FROM course_applications ca
@@ -91,9 +239,13 @@ try {
     $stmt->execute();
     $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get courses from courses table for filter dropdown
-    $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+    // Get courses from courses table for filter dropdown and modal
+    $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Get available advisers for modal
+    $stmt = $conn->query("SELECT adviser_name FROM advisers WHERE is_active = 1 ORDER BY adviser_name");
+    $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get statistics
     $stmt = $conn->query("SELECT 
@@ -110,6 +262,7 @@ try {
     $total_applications = 0;
     $total_pages = 0;
     $courses = [];
+    $advisers = [];
     $stats = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0];
 }
 ?>
@@ -459,9 +612,6 @@ try {
                                                                 <div class="text-sm font-medium text-gray-900">
                                                                     <?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>
                                                                 </div>
-                                                                <div class="text-sm text-gray-500">
-                                                                    <?php echo htmlspecialchars($app['email']); ?>
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -494,10 +644,24 @@ try {
                                                         </span>
                                                     </td>
                                                     <td class="px-6 py-4 text-center">
-                                                        <a href="view.php?id=<?php echo $app['application_id']; ?>" 
-                                                           class="inline-flex items-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                                                            <i class="fas fa-eye mr-2"></i>View Details
-                                                        </a>
+                                                        <div class="flex items-center justify-center space-x-2">
+                                                            <a href="view.php?id=<?php echo $app['application_id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-xs font-semibold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                                                                <i class="fas fa-eye mr-1"></i>View
+                                                            </a>
+                                                            
+                                                            <?php if ($app['status'] === 'pending'): ?>
+                                                                <button onclick="openApprovalModal(<?php echo htmlspecialchars(json_encode($app)); ?>)" 
+                                                                        class="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-semibold rounded-md text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
+                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                </button>
+                                                                
+                                                                <button onclick="openRejectionModal(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
+                                                                        class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
+                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                </button>
+                                                            <?php endif; ?>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -520,7 +684,6 @@ try {
                                                         <h4 class="text-lg font-semibold text-gray-900">
                                                             <?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>
                                                         </h4>
-                                                        <p class="text-sm text-gray-500"><?php echo htmlspecialchars($app['email']); ?></p>
                                                         <p class="text-sm font-medium text-gray-700 mt-1">
                                                             <?php echo htmlspecialchars($app['course_name']); ?>
                                                             <?php if ($app['nc_level']): ?>
@@ -562,11 +725,23 @@ try {
                                                 </div>
                                             </div>
                                             
-                                            <div class="flex items-center justify-center mt-4">
+                                            <div class="flex items-center justify-center space-x-2 mt-4">
                                                 <a href="view.php?id=<?php echo $app['application_id']; ?>" 
-                                                   class="inline-flex items-center justify-center px-6 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                                                   class="inline-flex items-center justify-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                                                     <i class="fas fa-eye mr-2"></i>View Details
                                                 </a>
+                                                
+                                                <?php if ($app['status'] === 'pending'): ?>
+                                                    <button onclick="openApprovalModal(<?php echo htmlspecialchars(json_encode($app)); ?>)" 
+                                                            class="inline-flex items-center justify-center px-4 py-2 border border-green-300 text-sm font-semibold rounded-lg text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
+                                                        <i class="fas fa-check mr-2"></i>Approve
+                                                    </button>
+                                                    
+                                                    <button onclick="openRejectionModal(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
+                                                            class="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-semibold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
+                                                        <i class="fas fa-times mr-2"></i>Reject
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -619,6 +794,280 @@ try {
             </main>
         </div>
     </div>
+
+    <!-- Approval Modal -->
+    <div id="approvalModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <form method="POST" id="approvalForm">
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="application_id" id="modal_application_id">
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-check text-green-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                    Approve Course Application
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500" id="modal_student_info">
+                                        <!-- Student info will be populated here -->
+                                    </p>
+                                </div>
+                                
+                                <!-- Form Fields -->
+                                <div class="mt-4 space-y-4">
+                                    <!-- Course Selection -->
+                                    <div>
+                                        <label for="modal_course_name" class="block text-sm font-medium text-gray-700 mb-1">
+                                            <i class="fas fa-book text-blue-600 mr-2"></i>Course *
+                                        </label>
+                                        <select id="modal_course_name" name="course_name" required 
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                            <option value="">Select a course</option>
+                                            <?php foreach ($courses as $course): ?>
+                                                <option value="<?php echo htmlspecialchars($course['course_id']); ?>">
+                                                    <?php echo htmlspecialchars($course['course_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- NC Level -->
+                                    <div>
+                                        <label for="modal_nc_level" class="block text-sm font-medium text-gray-700 mb-1">
+                                            <i class="fas fa-certificate text-blue-600 mr-2"></i>NC Level *
+                                        </label>
+                                        <select id="modal_nc_level" name="nc_level" required 
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                            <option value="">Select NC Level</option>
+                                            <option value="NC I">NC I</option>
+                                            <option value="NC II">NC II</option>
+                                            <option value="NC III">NC III</option>
+                                            <option value="NC IV">NC IV</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Adviser Selection -->
+                                    <div>
+                                        <label for="modal_adviser" class="block text-sm font-medium text-gray-700 mb-1">
+                                            <i class="fas fa-user-tie text-blue-600 mr-2"></i>Assigned Adviser *
+                                        </label>
+                                        <select id="modal_adviser" name="adviser" required 
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                            <option value="">Select an adviser</option>
+                                            <?php foreach ($advisers as $adviser): ?>
+                                                <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                                    <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- Training Period -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="modal_training_start" class="block text-sm font-medium text-gray-700 mb-1">
+                                                <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>Training Start Date *
+                                            </label>
+                                            <input type="date" id="modal_training_start" name="training_start" required 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                        </div>
+
+                                        <div>
+                                            <label for="modal_training_end" class="block text-sm font-medium text-gray-700 mb-1">
+                                                <i class="fas fa-calendar-check text-blue-600 mr-2"></i>Training End Date *
+                                            </label>
+                                            <input type="date" id="modal_training_end" name="training_end" required 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                        </div>
+                                    </div>
+
+                                    <!-- Notes -->
+                                    <div>
+                                        <label for="modal_notes" class="block text-sm font-medium text-gray-700 mb-1">
+                                            <i class="fas fa-sticky-note text-blue-600 mr-2"></i>Notes (Optional)
+                                        </label>
+                                        <textarea id="modal_notes" name="notes" rows="3" 
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                                  placeholder="Add any additional notes..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            <i class="fas fa-check mr-2"></i>Approve Application
+                        </button>
+                        <button type="button" onclick="closeApprovalModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rejection Modal -->
+    <div id="rejectionModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="rejection-modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <form method="POST" id="rejectionForm">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="application_id" id="reject_application_id">
+                    
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-times text-red-600"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="rejection-modal-title">
+                                    Reject Course Application
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500" id="reject_student_info">
+                                        <!-- Student info will be populated here -->
+                                    </p>
+                                </div>
+                                
+                                <!-- Notes -->
+                                <div class="mt-4">
+                                    <label for="reject_notes" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Reason for Rejection *
+                                    </label>
+                                    <textarea id="reject_notes" name="notes" rows="4" required
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                              placeholder="Please provide a reason for rejecting this application..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            <i class="fas fa-times mr-2"></i>Reject Application
+                        </button>
+                        <button type="button" onclick="closeRejectionModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal functions
+        function openApprovalModal(application) {
+            // Populate modal with application data
+            document.getElementById('modal_application_id').value = application.application_id;
+            document.getElementById('modal_student_info').textContent = 
+                `Approving application for ${application.first_name} ${application.last_name} (ULI: ${application.uli})`;
+            
+            // Pre-fill form fields if data exists
+            if (application.course_id) {
+                document.getElementById('modal_course_name').value = application.course_id;
+            }
+            if (application.nc_level) {
+                document.getElementById('modal_nc_level').value = application.nc_level;
+            }
+            
+            // Show modal
+            document.getElementById('approvalModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeApprovalModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            // Reset form
+            document.getElementById('approvalForm').reset();
+        }
+
+        function openRejectionModal(applicationId, studentName) {
+            document.getElementById('reject_application_id').value = applicationId;
+            document.getElementById('reject_student_info').textContent = 
+                `Are you sure you want to reject the application for ${studentName}?`;
+            
+            // Show modal
+            document.getElementById('rejectionModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeRejectionModal() {
+            document.getElementById('rejectionModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            // Reset form
+            document.getElementById('rejectionForm').reset();
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function(event) {
+            const approvalModal = document.getElementById('approvalModal');
+            const rejectionModal = document.getElementById('rejectionModal');
+            
+            if (event.target === approvalModal) {
+                closeApprovalModal();
+            }
+            if (event.target === rejectionModal) {
+                closeRejectionModal();
+            }
+        });
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeApprovalModal();
+                closeRejectionModal();
+            }
+        });
+
+        // Form validation
+        document.getElementById('approvalForm').addEventListener('submit', function(e) {
+            const requiredFields = ['course_name', 'nc_level', 'adviser', 'training_start', 'training_end'];
+            let isValid = true;
+            
+            requiredFields.forEach(function(fieldName) {
+                const field = document.getElementById('modal_' + fieldName);
+                if (!field.value.trim()) {
+                    field.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
+
+        // Date validation
+        document.getElementById('modal_training_start').addEventListener('change', function() {
+            const startDate = this.value;
+            const endDateField = document.getElementById('modal_training_end');
+            
+            if (startDate) {
+                endDateField.min = startDate;
+                if (endDateField.value && endDateField.value < startDate) {
+                    endDateField.value = '';
+                }
+            }
+        });
+    </script>
 
     <?php include '../components/admin-scripts.php'; ?>
 </body>

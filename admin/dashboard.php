@@ -93,53 +93,65 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             } elseif ($current_student['status'] === 'pending' && empty($current_student['course'])) {
                 // Student registration approval (status: pending -> completed)
                 // Initial student registration - goes directly to completed
-                $course = $_POST['course'] ?? '';
+                $course_id = $_POST['course'] ?? '';
                 $nc_level = $_POST['nc_level'] ?? '';
                 $training_start = $_POST['training_start'] ?? '';
                 $training_end = $_POST['training_end'] ?? '';
                 $adviser = $_POST['adviser'] ?? '';
                 
                 // Validate required fields
-                if (empty($course) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
+                if (empty($course_id) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
                     $error_message = 'Please fill in all required fields.';
                 } else {
-                    // Update student with approval and course details (status: pending -> completed)
-                    $stmt = $conn->prepare("UPDATE students SET 
-                        status = 'completed',
-                        approved_by = :admin_id,
-                        approved_at = NOW(),
-                        course = :course,
-                        nc_level = :nc_level,
-                        training_start = :training_start,
-                        training_end = :training_end,
-                        adviser = :adviser
-                        WHERE id = :id");
+                    // Get course name from course_id
+                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt->bindParam(':course_id', $course_id);
+                    $stmt->execute();
+                    $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
                     
-                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                    $stmt->bindParam(':course', $course);
-                    $stmt->bindParam(':nc_level', $nc_level);
-                    $stmt->bindParam(':training_start', $training_start);
-                    $stmt->bindParam(':training_end', $training_end);
-                    $stmt->bindParam(':adviser', $adviser);
-                    $stmt->bindParam(':id', $student_id);
-                    
-                    if ($stmt->execute()) {
-                        // Log student registration approval
-                        $logger->log(
-                            'student_registration_approved',
-                            "Admin approved student registration for '{$current_student['first_name']} {$current_student['last_name']}' with course '{$course}'",
-                            'admin',
-                            $_SESSION['user_id'],
-                            'student',
-                            $student_id
-                        );
-                        
-                        $success_message = 'Student registration approved successfully! Status updated from "pending" to "completed". Course completion has been recorded.';
-                        // Redirect to refresh and show updated status
-                        header("Location: dashboard.php?approved=" . $student_id);
-                        exit;
+                    if (!$course_data) {
+                        $error_message = 'Invalid course selected.';
                     } else {
-                        $error_message = 'Failed to approve student registration.';
+                        $course_name = $course_data['course_name'];
+                        
+                        // Update student with approval and course details (status: pending -> completed)
+                        $stmt = $conn->prepare("UPDATE students SET 
+                            status = 'completed',
+                            approved_by = :admin_id,
+                            approved_at = NOW(),
+                            course = :course,
+                            nc_level = :nc_level,
+                            training_start = :training_start,
+                            training_end = :training_end,
+                            adviser = :adviser
+                            WHERE id = :id");
+                        
+                        $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                        $stmt->bindParam(':course', $course_name);
+                        $stmt->bindParam(':nc_level', $nc_level);
+                        $stmt->bindParam(':training_start', $training_start);
+                        $stmt->bindParam(':training_end', $training_end);
+                        $stmt->bindParam(':adviser', $adviser);
+                        $stmt->bindParam(':id', $student_id);
+                        
+                        if ($stmt->execute()) {
+                            // Log student registration approval
+                            $logger->log(
+                                'student_registration_approved',
+                                "Admin approved student registration for '{$current_student['first_name']} {$current_student['last_name']}' with course '{$course_name}'",
+                                'admin',
+                                $_SESSION['user_id'],
+                                'student',
+                                $student_id
+                            );
+                            
+                            $success_message = 'Student registration approved successfully! Status updated from "pending" to "completed". Course completion has been recorded.';
+                            // Redirect to refresh and show updated status
+                            header("Location: dashboard.php?approved=" . $student_id);
+                            exit;
+                        } else {
+                            $error_message = 'Failed to approve student registration.';
+                        }
                     }
                 }
             } else {
@@ -260,14 +272,16 @@ try {
     // 1. Student registrations (status='pending' - initial registrations)
     // 2. Approved course applications (status='approved' with course - from course_applications)
     // Note: Completed students are now only visible in students/index.php
-    $stmt = $conn->prepare("SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, training_start, training_end, approved_at, created_at 
-                           FROM students 
-                           WHERE status = 'pending' 
-                              OR (status = 'approved' AND course IS NOT NULL)
+    $stmt = $conn->prepare("SELECT s.id, s.uli, s.first_name, s.last_name, s.email, s.status, s.course, s.nc_level, s.adviser, s.training_start, s.training_end, s.approved_at, s.created_at,
+                                   c.course_id
+                           FROM students s
+                           LEFT JOIN courses c ON s.course = c.course_name
+                           WHERE s.status = 'pending' 
+                              OR (s.status = 'approved' AND s.course IS NOT NULL)
                            ORDER BY 
                                CASE 
-                                   WHEN status = 'pending' THEN created_at 
-                                   WHEN status = 'approved' THEN approved_at 
+                                   WHEN s.status = 'pending' THEN s.created_at 
+                                   WHEN s.status = 'approved' THEN s.approved_at 
                                END DESC
                            LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
@@ -297,17 +311,19 @@ try {
     $app_per_page = 10; // Show 10 applications per page
     $app_offset = ($app_page - 1) * $app_per_page;
     
-    // Get total count for pagination
+    // Get total count for pagination (pending only)
     $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'pending'");
     $total_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_app_pages = ceil($total_applications_count / $app_per_page);
     
-    // Get recent course applications with pagination
-    $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.email, s.uli as student_uli, c.course_name
+    // Get recent course applications with pagination (pending only)
+    $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.uli as student_uli, s.adviser, s.training_start, s.training_end, c.course_name,
+                                  -- Check if student has any completed courses (indicates reapplication)
+                                  (SELECT COUNT(*) FROM course_applications ca2 WHERE ca2.student_id = ca.student_id AND ca2.status = 'completed') as completed_courses_count
                            FROM course_applications ca 
                            JOIN students s ON ca.student_id = s.id 
                            LEFT JOIN courses c ON ca.course_id = c.course_id
-                           WHERE ca.status = 'pending' 
+                           WHERE ca.status = 'pending'
                            ORDER BY ca.applied_at DESC 
                            LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $app_per_page, PDO::PARAM_INT);
@@ -329,9 +345,9 @@ try {
     $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_approved_pages = ceil($total_approved_count / $approved_per_page);
     
-    // Get approved applications (from course_applications with JOIN to get course name)
-    $stmt = $conn->prepare("SELECT ca.application_id, ca.student_id, ca.nc_level, ca.reviewed_at as approved_at,
-                                   s.uli, s.first_name, s.last_name, s.email,
+    // Get approved applications (from course_applications with JOIN to get course name and training details from students table)
+    $stmt = $conn->prepare("SELECT ca.application_id, ca.student_id, ca.course_id, ca.nc_level, ca.reviewed_at as approved_at,
+                                   s.uli, s.first_name, s.last_name, s.email, s.adviser, s.training_start, s.training_end,
                                    c.course_name as course
                            FROM course_applications ca
                            JOIN students s ON ca.student_id = s.id
@@ -512,18 +528,18 @@ try {
                                 </div>
                             </div>
 
-                            <!-- Course Applications Card -->
+                            <!-- Student Applications Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
                                         <div class="flex-shrink-0">
                                             <div class="bg-orange-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-file-alt text-orange-600 text-xl md:text-2xl"></i>
+                                                <i class="fas fa-user-graduate text-orange-600 text-xl md:text-2xl"></i>
                                             </div>
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Course Applications</dt>
+                                                <dt class="text-sm font-medium text-gray-500 truncate">Student Applications</dt>
                                                 <dd class="text-2xl md:text-3xl font-bold text-orange-600 animate-pulse"><?php echo $pending_applications; ?></dd>
                                                 <?php if ($pending_applications > 0): ?>
                                                     <dd class="text-xs text-red-600 flex items-center mt-1 animate-attention-pulse">
@@ -542,7 +558,7 @@ try {
                                 </div>
                                 <div class="bg-orange-50 px-4 md:px-6 py-3 border-t border-orange-100">
                                     <a href="course_application/index.php" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
-                                        View course applications
+                                        View student applications
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
@@ -589,12 +605,12 @@ try {
                         
                         </div>
 
-                        <!-- Pending Course Applications Section - Simplified -->
+                        <!-- Pending Course Applications Section -->
                         <div id="course-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
                                     <h3 class="text-base md:text-lg font-semibold text-gray-900">
-                                        <i class="fas fa-file-alt text-gray-500 mr-2"></i>
+                                        <i class="fas fa-user-graduate text-gray-500 mr-2"></i>
                                         Pending Course Applications
                                     </h3>
                                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -606,7 +622,7 @@ try {
                                             <input type="text" id="applicationSearch" placeholder="Search applications..." class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-900 focus:border-blue-900 text-sm">
                                         </div>
                                         <span class="text-sm text-gray-600">
-                                            <?php echo $pending_applications; ?> pending applications
+                                            <?php echo $pending_applications; ?> pending application<?php echo $pending_applications != 1 ? 's' : ''; ?>
                                         </span>
                                     </div>
                                 </div>
@@ -617,13 +633,9 @@ try {
                                     <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
                                         <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
                                     </div>
-                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">Course Applications</h3>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">Pending Course Applications</h3>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">
-                                        <?php if ($pending_applications == 0): ?>
-                                            No course applications are currently pending review.
-                                        <?php else: ?>
-                                            <?php echo $pending_applications; ?> course applications are pending review.
-                                        <?php endif; ?>
+                                        No course applications are currently pending review.
                                     </p>
                                     <div class="flex flex-col sm:flex-row gap-3 justify-center">
                                         <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
@@ -647,9 +659,6 @@ try {
                                                                 <p class="text-sm font-medium text-gray-900 truncate">
                                                                     <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
                                                                 </p>
-                                                                <p class="text-xs text-gray-500 truncate">
-                                                                    <?php echo htmlspecialchars($application['email']); ?>
-                                                                </p>
                                                             </div>
                                                         </div>
                                                         
@@ -667,6 +676,19 @@ try {
                                                                 </span>
                                                             </div>
                                                             <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-gray-500">Status:</span>
+                                                                <?php
+                                                                $status_classes = [
+                                                                    'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                    'approved' => 'bg-green-100 text-green-800 border-green-200'
+                                                                ];
+                                                                $status_class = $status_classes[$application['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                                                                ?>
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                                                    <?php echo ucfirst($application['status']); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
                                                                 <span class="text-xs text-gray-500">Applied:</span>
                                                                 <span class="text-xs text-gray-500">
                                                                     <?php echo date('M j, Y', strtotime($application['applied_at'])); ?>
@@ -679,6 +701,13 @@ try {
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>Review
                                                             </a>
+                                                            
+                                                            <?php if ($application['status'] === 'approved'): ?>
+                                                                <button onclick='openCompletionApprovalModal(<?php echo (int)$application['student_id']; ?>, <?php echo json_encode($application['first_name'] . ' ' . $application['last_name']); ?>, <?php echo json_encode($application['course_name']); ?>, <?php echo json_encode($application['nc_level'] ?? ''); ?>, <?php echo json_encode($application['adviser'] ?? ''); ?>, <?php echo json_encode($application['training_start'] ?? ''); ?>, <?php echo json_encode($application['training_end'] ?? ''); ?>)'
+                                                                        class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                                                    <i class="fas fa-check mr-1"></i>Approve & Complete Course
+                                                                </button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -695,6 +724,7 @@ try {
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                             </tr>
@@ -711,9 +741,6 @@ try {
                                                                 <div class="text-sm font-medium text-gray-900">
                                                                     <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>
                                                                 </div>
-                                                                <div class="text-sm text-gray-500">
-                                                                    <?php echo htmlspecialchars($application['email']); ?>
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -727,14 +754,26 @@ try {
                                                             <?php echo htmlspecialchars($application['course_name']); ?>
                                                         </div>
                                                     </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <?php
+                                                        $status_classes = [
+                                                            'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                            'approved' => 'bg-green-100 text-green-800 border-green-200'
+                                                        ];
+                                                        $status_class = $status_classes[$application['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                                                        ?>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
+                                                            <?php echo ucfirst($application['status']); ?>
+                                                        </span>
+                                                    </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         <?php echo date('M j, Y g:i A', strtotime($application['applied_at'])); ?>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div class="flex items-center space-x-3">
                                                             <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
-                                                               class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
-                                                                <i class="fas fa-eye mr-2"></i>Review
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-1"></i>Review
                                                             </a>
                                                         </div>
                                                     </td>
@@ -815,7 +854,7 @@ try {
                             <?php endif; ?>
                         </div>
 
-                        <!-- Removed: Approved Course Applications section - now shown in Course Applications above -->
+                        <!-- Approved Course Applications section - Disabled since now shown in Course Applications above -->
                         <?php if (false && $approved_applications_count > 0): ?>
                         <div id="approved-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100 mb-6 md:mb-8">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -854,10 +893,7 @@ try {
                                                             </div>
                                                             <div class="flex-1 min-w-0">
                                                                 <p class="text-sm font-medium text-gray-900 truncate">
-                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
-                                                                </p>
-                                                                <p class="text-xs text-gray-500 truncate">
-                                                                    <?php echo htmlspecialchars($student['email']); ?>
+                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -888,13 +924,13 @@ try {
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
-                                                            <a href="approve_student.php?id=<?php echo $student['student_id']; ?>" 
+                                                            <button onclick='openCourseCompletionModal(<?php echo (int)$student['student_id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode($student['course']); ?>)'
                                                                class="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
-                                                                <i class="fas fa-check mr-1"></i>Approve
-                                                            </a>
+                                                                <i class="fas fa-check mr-1"></i>Approve & Complete Course
+                                                            </button>
                                                             <a href="javascript:void(0)" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                                               onclick="showRejectModal('?action=reject&id=<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
+                                                               onclick="showRejectModal('?action=reject&id=<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>', 'completion')">
                                                                 <i class="fas fa-times mr-1"></i>Reject
                                                             </a>
                                                         </div>
@@ -927,7 +963,7 @@ try {
                                                         </div>
                                                         <div>
                                                             <div class="text-sm font-medium text-gray-900">
-                                                                <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                                <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>
                                                             </div>
                                                             <div class="text-sm text-gray-500">
                                                                 <?php echo htmlspecialchars($student['email']); ?>
@@ -959,10 +995,10 @@ try {
                                                            class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                             <i class="fas fa-eye mr-2"></i>View
                                                         </a>
-                                                        <a href="approve_student.php?id=<?php echo $student['student_id']; ?>" 
+                                                        <button onclick='openCourseCompletionModal(<?php echo (int)$student['student_id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode($student['course']); ?>)'
                                                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
-                                                            <i class="fas fa-check mr-2"></i>Approve
-                                                        </a>
+                                                            <i class="fas fa-check mr-2"></i>Approve & Complete Course
+                                                        </button>
                                                         <a href="javascript:void(0)" 
                                                            class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
                                                            onclick="showRejectModal('?action=reject&id=<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
@@ -1053,8 +1089,8 @@ try {
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
                                     <h3 class="text-base md:text-lg font-semibold text-gray-900">
-                                        <i class="fas fa-file-alt text-gray-500 mr-2"></i>
-                                        Course Applications
+                                        <i class="fas fa-user-graduate text-gray-500 mr-2"></i>
+                                        Student Applications
                                     </h3>
                                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                                         <!-- Search Bar -->
@@ -1075,8 +1111,8 @@ try {
                                     <div class="bg-gray-100 rounded-full w-12 h-12 md:w-16 md:h-16 flex items-center justify-center mx-auto mb-4">
                                         <i class="fas fa-file-alt text-gray-400 text-xl md:text-2xl"></i>
                                     </div>
-                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No course applications</h3>
-                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">No pending student registrations or approved course applications at this time.</p>
+                                    <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No student applications</h3>
+                                    <p class="text-sm md:text-base text-gray-500 mb-4 px-4">No pending student registrations or approved student applications at this time.</p>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">Get started by having students register through the student portal.</p>
                                     <a href="students/index.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
                                         <i class="fas fa-users mr-2"></i>
@@ -1097,7 +1133,7 @@ try {
                                                             </div>
                                                             <div class="flex-1 min-w-0">
                                                                 <p class="text-sm font-medium text-gray-900 truncate">
-                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                                    <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>
                                                                 </p>
                                                                 <p class="text-xs text-gray-500 truncate">
                                                                     <?php echo htmlspecialchars($student['email']); ?>
@@ -1143,35 +1179,34 @@ try {
                                                             </div>
                                                         </div>
                                                         
-                                                        <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
+                                                        <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
                                                             <a href="students/view.php?id=<?php echo $student['id']; ?>" 
-                                                               class="text-blue-900 hover:text-blue-800 flex items-center text-xs">
-                                                                <i class="fas fa-eye mr-1"></i>View
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-1.5"></i>View
                                                             </a>
                                                             
                                                             <?php if ($student['status'] === 'pending'): ?>
-                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
-                                                                   class="text-green-600 hover:text-green-900 flex items-center text-xs">
-                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                <button onclick='openApprovalModal(<?php echo (int)$student['id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>)' 
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-check mr-1.5"></i>Approve
                                                                 </button>
-                                                                <a href="javascript:void(0)" 
-                                                                   class="text-red-600 hover:text-red-900 flex items-center text-xs"
-                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'registration')">
-                                                                    <i class="fas fa-times mr-1"></i>Reject
-                                                                </a>
+                                                                <button onclick='showRejectModal(<?php echo json_encode('?action=reject&id=' . $student['id']); ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode('registration'); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-times mr-1.5"></i>Reject
+                                                                </button>
                                                             <?php elseif ($student['status'] === 'approved'): ?>
-                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', '<?php echo htmlspecialchars($student['course'] ?? ''); ?>', '<?php echo htmlspecialchars($student['nc_level'] ?? ''); ?>', '<?php echo htmlspecialchars($student['adviser'] ?? ''); ?>', '<?php echo $student['training_start'] ?? ''; ?>', '<?php echo $student['training_end'] ?? ''; ?>')" 
-                                                                   class="text-green-600 hover:text-green-900 flex items-center text-xs">
-                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                <button onclick='openApprovalModal(<?php echo (int)$student['id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode($student['course_id'] ?? ''); ?>, <?php echo json_encode($student['nc_level'] ?? ''); ?>, <?php echo json_encode($student['adviser'] ?? ''); ?>, <?php echo json_encode($student['training_start'] ?? ''); ?>, <?php echo json_encode($student['training_end'] ?? ''); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-check mr-1.5"></i>Approve
                                                                 </button>
-                                                                <a href="javascript:void(0)" 
-                                                                   class="text-red-600 hover:text-red-900 flex items-center text-xs"
-                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
-                                                                    <i class="fas fa-times mr-1"></i>Reject
-                                                                </a>
+                                                                <button onclick='showRejectModal(<?php echo json_encode('?action=reject&id=' . $student['id']); ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode('completion'); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-times mr-1.5"></i>Reject
+                                                                </button>
                                                             <?php elseif ($student['status'] === 'completed'): ?>
-                                                                <!-- Completed - only View action, no Approve/Reject -->
-                                                                <span class="text-xs text-gray-500 italic">Completed</span>
+                                                                <span class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">
+                                                                    <i class="fas fa-check-circle mr-1.5"></i>Completed
+                                                                </span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </div>
@@ -1188,7 +1223,6 @@ try {
                                             <tr>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ULI</th>
-                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved Date</th>
@@ -1199,18 +1233,13 @@ try {
                                             <?php foreach ($recent_students as $student): ?>
                                                 <tr id="student-row-<?php echo $student['id']; ?>" class="hover:bg-gray-50 transition-colors duration-200 <?php echo (isset($_GET['approved']) && $_GET['approved'] == $student['id']) ? 'bg-green-50 animate-pulse' : ''; ?>">
                                                     <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm font-medium text-gray-900">
-                                                            <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
+                                                            <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <div class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
                                                             <?php echo htmlspecialchars($student['uli']); ?>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <div class="text-sm text-gray-500">
-                                                            <?php echo htmlspecialchars($student['email']); ?>
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -1236,35 +1265,35 @@ try {
                                                         <?php echo $student['approved_at'] ? date('M j, Y g:i A', strtotime($student['approved_at'])) : date('M j, Y g:i A', strtotime($student['created_at'])); ?>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <div class="flex items-center space-x-3">
+                                                        <div class="flex items-center gap-2">
                                                             <a href="students/view.php?id=<?php echo $student['id']; ?>" 
-                                                               class="text-blue-900 hover:text-blue-800 flex items-center">
-                                                                <i class="fas fa-eye mr-1"></i>View
+                                                               class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                <i class="fas fa-eye mr-1.5"></i>View
                                                             </a>
                                                             
                                                             <?php if ($student['status'] === 'pending'): ?>
-                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
-                                                                   class="text-green-600 hover:text-green-900 flex items-center">
-                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                <button onclick='openApprovalModal(<?php echo (int)$student['id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>)' 
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-check mr-1.5"></i>Approve
                                                                 </button>
-                                                                <a href="javascript:void(0)" 
-                                                                   class="text-red-600 hover:text-red-900 flex items-center"
-                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'registration')">
-                                                                    <i class="fas fa-times mr-1"></i>Reject
-                                                                </a>
+                                                                <button onclick='showRejectModal(<?php echo json_encode('?action=reject&id=' . $student['id']); ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode('registration'); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-times mr-1.5"></i>Reject
+                                                                </button>
                                                             <?php elseif ($student['status'] === 'approved'): ?>
-                                                                <button onclick="openApprovalModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', '<?php echo htmlspecialchars($student['course'] ?? ''); ?>', '<?php echo htmlspecialchars($student['nc_level'] ?? ''); ?>', '<?php echo htmlspecialchars($student['adviser'] ?? ''); ?>', '<?php echo $student['training_start'] ?? ''; ?>', '<?php echo $student['training_end'] ?? ''; ?>')" 
-                                                                   class="text-green-600 hover:text-green-900 flex items-center">
-                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                <button onclick='openApprovalModal(<?php echo (int)$student['id']; ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode($student['course_id'] ?? ''); ?>, <?php echo json_encode($student['nc_level'] ?? ''); ?>, <?php echo json_encode($student['adviser'] ?? ''); ?>, <?php echo json_encode($student['training_start'] ?? ''); ?>, <?php echo json_encode($student['training_end'] ?? ''); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-check mr-1.5"></i>Approve
                                                                 </button>
-                                                                <a href="javascript:void(0)" 
-                                                                   class="text-red-600 hover:text-red-900 flex items-center"
-                                                                   onclick="showRejectModal('?action=reject&id=<?php echo $student['id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>', 'completion')">
-                                                                    <i class="fas fa-times mr-1"></i>Reject
-                                                                </a>
+                                                                <button onclick='showRejectModal(<?php echo json_encode('?action=reject&id=' . $student['id']); ?>, <?php echo json_encode($student['first_name'] . ' ' . $student['last_name']); ?>, <?php echo json_encode('completion'); ?>)'
+                                                                    class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
+                                                                    <i class="fas fa-times mr-1.5"></i>Reject
+                                                                </button>
                                                             <?php elseif ($student['status'] === 'completed'): ?>
                                                                 <!-- Completed - only View action, no Approve/Reject -->
-                                                                <span class="text-xs text-gray-500 italic">Completed</span>
+                                                                <span class="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-md">
+                                                                    <i class="fas fa-check-circle mr-1.5"></i>Completed
+                                                                </span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </td>
@@ -1623,6 +1652,99 @@ try {
             </div>
         </div>
     </div>
+
+    <!-- Course Completion Confirmation Modal -->
+    <div id="courseCompletionModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                    <i class="fas fa-graduation-cap text-green-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mt-4" id="completionModalTitle">Approve Course Completion</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500" id="completionModalMessage">
+                        Are you sure you want to approve the course completion for this student? This will mark their course as completed and allow them to apply for new courses.
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <div class="flex justify-center space-x-3">
+                        <button id="confirmCompletionBtn" 
+                                class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300 transition-colors duration-200">
+                            <i class="fas fa-check mr-2"></i>Approve & Complete
+                        </button>
+                        <button id="cancelCompletionBtn" 
+                                class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Course Completion Modal Functionality
+        let completionStudentId = null;
+        
+        function openCourseCompletionModal(studentId, studentName, courseName) {
+            completionStudentId = studentId;
+            const modal = document.getElementById('courseCompletionModal');
+            const title = document.getElementById('completionModalTitle');
+            const message = document.getElementById('completionModalMessage');
+            
+            title.textContent = 'Approve Course Completion';
+            message.innerHTML = `Are you sure you want to approve the course completion for <strong>${studentName}</strong> in <strong>${courseName}</strong>?<br><br>This student has completed courses before. Approving this will mark their current course as completed and allow them to apply for new courses.`;
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function closeCourseCompletionModal() {
+            const modal = document.getElementById('courseCompletionModal');
+            modal.classList.add('hidden');
+            completionStudentId = null;
+        }
+        
+        // Event listeners for course completion modal
+        document.getElementById('confirmCompletionBtn').addEventListener('click', function() {
+            if (completionStudentId) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '';
+                
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'approve';
+                form.appendChild(actionInput);
+                
+                const studentIdInput = document.createElement('input');
+                studentIdInput.type = 'hidden';
+                studentIdInput.name = 'student_id';
+                studentIdInput.value = completionStudentId;
+                form.appendChild(studentIdInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+        
+        document.getElementById('cancelCompletionBtn').addEventListener('click', closeCourseCompletionModal);
+        
+        // Close modal when clicking outside
+        document.getElementById('courseCompletionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCourseCompletionModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCourseCompletionModal();
+            }
+        });
+    </script>
 
     <script>
         // Reject Modal Functionality

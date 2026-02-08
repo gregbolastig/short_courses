@@ -60,8 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
                 $course_name = $course_data['course_name'] ?? $_POST['course_name'];
+
+                // Allow reapplication for the same course after completion
+                // Students should be able to take the same course multiple times (different NC levels, refresher, etc.)
+                // Remove the restriction that prevents approving the same course twice
                 
-                // Update course application with approval and details
+                // Note: The original logic prevented duplicate course approvals, but this is too restrictive
+                // Students may need to retake courses for different NC levels or as refresher training
+                
+                // Update course application with approved status (first approval)
                 $stmt = $conn->prepare("UPDATE course_applications SET 
                     status = 'approved',
                     course_id = :course_id,
@@ -86,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception('Failed to update course application');
                 }
                 
-                // Update students table with course details (training dates, adviser, course name)
+                // Update students table with course details and approved status (first approval)
                 $stmt = $conn->prepare("UPDATE students SET 
                     course = :course_name,
                     nc_level = :nc_level,
@@ -123,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $logger = new SystemActivityLogger($conn);
                     $logger->log(
                         'course_application_approved',
-                        'Approved course application ID: ' . $application_id,
+                        'Approved course application ID: ' . $application_id . ' (first approval)',
                         'admin',
                         $_SESSION['user_id'],
                         'course_application',
@@ -131,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
                 
-                $success_message = 'Course application approved successfully!';
+                $success_message = 'Course application approved successfully! The student can now proceed with the course.';
                 // Redirect after 2 seconds to allow user to read the message
                 header("refresh:2;url=dashboard.php");
                 
@@ -254,16 +261,16 @@ try {
             $student_courses[] = [
                 'course_name' => $course_name,
                 'nc_level' => $comp_app['nc_level'] ?? 'Not specified',
-                'training_start' => $comp_app['training_start'] ?? null,
-                'training_end' => $comp_app['training_end'] ?? null,
-                'adviser' => $comp_app['adviser'] ?? 'Not assigned',
+                'training_start' => null, // Not available in course_applications table
+                'training_end' => null,   // Not available in course_applications table
+                'adviser' => 'Not assigned', // Not available in course_applications table
                 'status' => 'completed',
                 'approved_at' => $comp_app['approved_at'] ?? $comp_app['applied_at'] ?? null
             ];
         }
     }
     
-    // Get other course applications (pending, approved, rejected) excluding current application
+    // Get other PENDING course applications only (excluding current application and approved/rejected/completed)
     $stmt = $conn->prepare("SELECT ca.*, 
                            COALESCE(c.course_name, ca.course_id) as course_display_name,
                            c.course_name as course_name
@@ -271,7 +278,7 @@ try {
                            LEFT JOIN courses c ON ca.course_id = c.course_id
                            WHERE ca.student_id = :student_id 
                            AND ca.application_id != :current_id
-                           AND ca.status != 'completed'
+                           AND ca.status = 'pending'
                            ORDER BY ca.applied_at DESC");
     $stmt->bindParam(':student_id', $student['id']);
     $stmt->bindParam(':current_id', $application_id);
@@ -608,7 +615,9 @@ try {
 
                     <?php if (!empty($other_applications)): ?>
                         <div>
-                            <h4 class="font-medium text-gray-900 mb-3">Other Course Applications</h4>
+                            <h4 class="font-medium text-gray-900 mb-3">
+                                <i class="fas fa-clock mr-2 text-yellow-600"></i>Pending Course Applications
+                            </h4>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
@@ -639,21 +648,8 @@ try {
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
-                                                    <?php
-                                                    $app_status_class = '';
-                                                    switch ($app['status']) {
-                                                        case 'approved':
-                                                            $app_status_class = 'bg-green-100 text-green-800';
-                                                            break;
-                                                        case 'rejected':
-                                                            $app_status_class = 'bg-red-100 text-red-800';
-                                                            break;
-                                                        default:
-                                                            $app_status_class = 'bg-yellow-100 text-yellow-800';
-                                                    }
-                                                    ?>
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $app_status_class; ?>">
-                                                        <?php echo ucfirst($app['status']); ?>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        <i class="fas fa-clock mr-1"></i>Pending
                                                     </span>
                                                 </td>
                                             </tr>
@@ -732,10 +728,10 @@ try {
                                     <select id="nc_level" name="nc_level" required 
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900">
                                         <option value="">Select NC Level</option>
-                                        <option value="NC I">NC I</option>
-                                        <option value="NC II">NC II</option>
-                                        <option value="NC III">NC III</option>
-                                        <option value="NC IV">NC IV</option>
+                                        <option value="NC I" <?php echo ($application['nc_level'] === 'NC I') ? 'selected' : ''; ?>>NC I</option>
+                                        <option value="NC II" <?php echo ($application['nc_level'] === 'NC II') ? 'selected' : ''; ?>>NC II</option>
+                                        <option value="NC III" <?php echo ($application['nc_level'] === 'NC III') ? 'selected' : ''; ?>>NC III</option>
+                                        <option value="NC IV" <?php echo ($application['nc_level'] === 'NC IV') ? 'selected' : ''; ?>>NC IV</option>
                                     </select>
                                 </div>
 
@@ -774,8 +770,9 @@ try {
                                 </div>
 
                                 <button type="submit" 
-                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
-                                    <i class="fas fa-check mr-2"></i>Approve Application
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                        onclick="return confirm('Are you sure you want to approve this course application?')">
+                                    <i class="fas fa-check mr-2"></i>Approve Course
                                 </button>
                             </form>
                         </div>
