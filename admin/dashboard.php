@@ -289,20 +289,25 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    // Total students
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    // Total students (exclude rejected)
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status != 'rejected'");
     $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Pending approvals
+    // Pending approvals (pending registrations + pending course applications)
     $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
-    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    $pending_students = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM course_applications WHERE status = 'pending'");
+    $pending_courses = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    
+    $pending_approvals = $pending_students + $pending_courses;
     
     // Completed students
     $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
     $completed_students = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
     
     // Recent registrations (last 7 days)
-    $stmt = $conn->query("SELECT COUNT(*) as recent FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $stmt = $conn->query("SELECT COUNT(*) as recent FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status != 'rejected'");
     $recent_registrations = $stmt->fetch(PDO::FETCH_ASSOC)['recent'];
     
     // Pagination for recent students
@@ -325,7 +330,7 @@ try {
                                CASE 
                                    WHEN s.status = 'pending' THEN s.created_at 
                                    WHEN s.status = 'approved' THEN s.approved_at 
-                               END DESC
+                               END ASC
                            LIMIT :limit OFFSET :offset");
     $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -1600,18 +1605,62 @@ try {
     </div>
     
     <script>
-    // Handle approval form submission with dynamic status update
+    // Handle approval form submission with toast notification
     document.getElementById('approvalForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         const submitBtn = document.getElementById('approveSubmitBtn');
         const btnText = document.getElementById('approveBtnText');
+        
+        // Show toast notification
+        showApprovalToast();
         
         if (submitBtn && btnText) {
             submitBtn.disabled = true;
             btnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
         }
         
-        // Form will submit normally, page will refresh and show updated status
+        // Submit form after showing toast
+        setTimeout(() => {
+            this.submit();
+        }, 800);
     });
+    
+    // Toast notification function
+    function showApprovalToast() {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]';
+        toast.innerHTML = `
+            <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check-circle text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm mb-1">Course Approved!</p>
+                        <p class="text-xs text-green-100">The course has been marked as completed successfully.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Trigger animation
+        setTimeout(() => {
+            toast.classList.add('opacity-100', 'translate-y-0');
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        }, 10);
+        
+        // Remove toast after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
     
     // Update status display dynamically after page load (if coming from approval)
     window.addEventListener('load', function() {
@@ -1663,6 +1712,24 @@ try {
                 successMsg.style.opacity = '0';
                 setTimeout(() => successMsg.remove(), 500);
             }, 5000);
+        }
+        
+        // Search functionality for Pending Course Applications
+        const applicationSearch = document.getElementById('applicationSearch');
+        if (applicationSearch) {
+            applicationSearch.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                const applicationRows = document.querySelectorAll('#course-applications tbody tr, #course-applications .p-4');
+                
+                applicationRows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
         }
     });
     </script>

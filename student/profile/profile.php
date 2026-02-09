@@ -325,7 +325,27 @@ include '../components/header.php';
         include '../components/navigation.php'; 
         ?>
         
-        <?php include '../components/alerts.php'; ?>
+        <?php 
+        // Display only error messages as banners (success will be toast)
+        if (!empty($errors)): ?>
+            <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-slide-up">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-red-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <ul class="list-disc list-inside space-y-1">
+                                <?php foreach ($errors as $error): ?>
+                                    <li><?php echo htmlspecialchars($error); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
         
         <?php if ($student_profile): ?>
             <!-- Student Profile Display -->
@@ -741,11 +761,25 @@ include '../components/header.php';
                                     $country_code = '';
                                     $phone_number = '';
                                     
-                                    // Check if it starts with a country code (+ followed by digits)
-                                    if (preg_match('/^(\+\d{1,4})(\d+)$/', $stored_contact, $matches)) {
+                                    // List of known country codes to match against
+                                    $known_codes = ['+63', '+1', '+44', '+86', '+81', '+82', '+65'];
+                                    
+                                    // Try to match known country codes first
+                                    $matched = false;
+                                    foreach ($known_codes as $code) {
+                                        if (strpos($stored_contact, $code) === 0) {
+                                            $country_code = $code;
+                                            $phone_number = substr($stored_contact, strlen($code));
+                                            $matched = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // If no known code matched, try generic pattern
+                                    if (!$matched && preg_match('/^(\+\d{1,4})(\d+)$/', $stored_contact, $matches)) {
                                         $country_code = $matches[1];
                                         $phone_number = $matches[2];
-                                    } else {
+                                    } elseif (!$matched) {
                                         // If no country code found, assume it's just the number
                                         $phone_number = $stored_contact;
                                         $country_code = '+63'; // Default to Philippines
@@ -1146,5 +1180,63 @@ include '../components/header.php';
             </div>
         </div>
     </div>
+    
+    <!-- Success Toast Notification -->
+    <div id="successToast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Success!</p>
+                    <p class="text-xs text-green-100">
+                        Profile updated successfully!
+                    </p>
+                </div>
+                <button onclick="closeSuccessToast()" class="flex-shrink-0 text-white hover:text-green-100 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        #successToast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+    
+    <script>
+        <?php if (!empty($success_message)): ?>
+        // Show success toast on page load and auto-dismiss after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            showSuccessToast();
+            setTimeout(function() {
+                closeSuccessToast();
+            }, 3000);
+        });
+        <?php endif; ?>
+        
+        function showSuccessToast() {
+            const toast = document.getElementById('successToast');
+            toast.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+        }
+        
+        function closeSuccessToast() {
+            const toast = document.getElementById('successToast');
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 300);
+        }
+    </script>
     
     <?php include '../components/footer.php'; ?> 

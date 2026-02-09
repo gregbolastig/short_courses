@@ -893,11 +893,41 @@ try {
         }
         
         function confirmAction() {
+            const confirmBtn = document.getElementById('confirmButton');
+            
+            // Show loading spinner
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            
             if (currentAction === 'approve') {
-                document.getElementById('approveForm').submit();
+                closeConfirmModal();
+                showApprovalToast();
+                setTimeout(function() {
+                    document.getElementById('approveForm').submit();
+                }, 800);
             } else if (currentAction === 'reject') {
-                document.getElementById('rejectForm').submit();
+                closeConfirmModal();
+                showRejectionToast();
+                setTimeout(function() {
+                    document.getElementById('rejectForm').submit();
+                }, 800);
             }
+        }
+        
+        function showApprovalToast() {
+            const notification = document.getElementById('successNotification');
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+        }
+        
+        function showRejectionToast() {
+            const notification = document.getElementById('rejectionNotification');
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
         }
         
         // Close modal on Escape key

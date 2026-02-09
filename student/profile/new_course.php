@@ -515,11 +515,7 @@ include '../components/header.php';
                                 </ul>
                             </div>
                             
-                            <div class="flex items-center justify-between pt-4">
-                                <a href="profile.php?uli=<?php echo urlencode($student_profile['uli']); ?>" 
-                                   class="inline-flex items-center px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors duration-200">
-                                    <i class="fas fa-arrow-left mr-2"></i>Cancel
-                                </a>
+                            <div class="flex items-center justify-end pt-4">
                                 <button type="button" onclick="showApplicationModal()" 
                                         class="inline-flex items-center px-6 py-3 bg-red-800 text-white font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
                                     <i class="fas fa-paper-plane mr-2"></i>Submit Application
