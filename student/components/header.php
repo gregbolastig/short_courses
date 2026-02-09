@@ -105,7 +105,7 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
                             $logo_path = '../../assets/images/Logo.png';
                         }
                         ?>
-                        <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-14 w-14 sm:h-20 sm:w-20 object-cover rounded-full shadow-lg mb-3 sm:mb-0 sm:mr-5">
+                        <img src="<?php echo $logo_path; ?>" alt="School Logo" class="h-14 w-14 sm:h-20 sm:w-20 object-cover rounded-fulls mb-3 sm:mb-0 sm:mr-5">
                         <?php endif; ?>
                         <div class="text-center sm:text-left">
                             <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight"><?php echo htmlspecialchars($page_title); ?></h1>

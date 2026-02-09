@@ -684,9 +684,9 @@ include 'components/header.php';
                     </div> 
                    
                     <!-- Profile Picture Upload -->
-                    <div class="form-group mb-8">
+                    <div id="profile-picture-section" class="form-group mb-8">
                         <label class="block text-sm font-semibold text-gray-700 mb-3">
-                            <i class="fas fa-camera text-primary-500 mr-2"></i>Profile Picture
+                            <i class="fas fa-camera text-primary-500 mr-2"></i>Profile Picture *
                         </label>
                         <div class="flex flex-col lg:flex-row items-center space-y-6 lg:space-y-0 lg:space-x-8">
                             <!-- Profile Picture Preview -->
@@ -739,6 +739,19 @@ include 'components/header.php';
                                     
                                     <!-- File Input -->
                                     <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png" class="hidden" required>
+                                    
+                                    <!-- Photo Status Indicator (Hidden by default, shown on validation error) -->
+                                    <div id="photo-status" class="bg-red-50 border border-red-200 rounded-xl p-4 hidden">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-sm font-semibold text-red-900">Profile picture is required</p>
+                                                <p class="text-xs text-red-700 mt-1">Please take a photo or upload an image file before submitting</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                     
                                     <!-- Requirements -->
                                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -1230,6 +1243,7 @@ include 'components/header.php';
             const file = input.files[0];
             const preview = document.getElementById('profile-preview');
             const qualityIndicator = document.getElementById('photo-quality');
+            const photoStatus = document.getElementById('photo-status');
             
             if (file) {
                 // Validate file type
@@ -1257,6 +1271,11 @@ include 'components/header.php';
                     if (qualityIndicator) {
                         qualityIndicator.classList.remove('hidden');
                         qualityIndicator.classList.add('photo-quality-badge');
+                    }
+                    
+                    // Hide error status if it was shown
+                    if (photoStatus) {
+                        photoStatus.classList.add('hidden');
                     }
                     
                     // Show success notification
@@ -1518,6 +1537,35 @@ include 'components/header.php';
                         }
                     }
                 }
+            }
+            
+            // Special validation for profile picture
+            const profileInput = document.getElementById('profile_picture');
+            const photoStatus = document.getElementById('photo-status');
+            const profileSection = document.getElementById('profile-picture-section');
+            
+            if (profileInput && !profileInput.files.length) {
+                isValid = false;
+                console.log('Profile picture validation failed: no file selected');
+                
+                // Show error status
+                if (photoStatus) {
+                    photoStatus.classList.remove('hidden');
+                }
+                
+                // Scroll to the profile picture section with smooth animation
+                if (profileSection) {
+                    profileSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Add a pulsing animation to draw attention
+                    profileSection.classList.add('ring-4', 'ring-red-300', 'ring-opacity-50', 'rounded-lg');
+                    setTimeout(() => {
+                        profileSection.classList.remove('ring-4', 'ring-red-300', 'ring-opacity-50');
+                    }, 3000);
+                }
+            } else if (photoStatus) {
+                // Hide error status if photo is uploaded
+                photoStatus.classList.add('hidden');
             }
             
             console.log('Form validation result:', isValid); // Debug log
@@ -1914,14 +1962,25 @@ include 'components/header.php';
                     // Small delay to ensure formatting is complete
                     setTimeout(() => {
                         if (!validateForm()) {
-                            alert('Please fill in all required fields correctly.');
+                            // Check if profile picture is the issue
+                            const profileInput = document.getElementById('profile_picture');
+                            const profileSection = document.getElementById('profile-picture-section');
                             
-                            // Scroll to first error
-                            const firstError = document.querySelector('.border-red-500');
-                            if (firstError) {
-                                console.log('First error field:', firstError.name || firstError.id);
-                                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                firstError.focus();
+                            if (profileInput && !profileInput.files.length && profileSection) {
+                                // Profile picture is missing - scroll to it specifically
+                                alert('Please upload a profile picture before submitting.');
+                                profileSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            } else {
+                                // Other validation errors
+                                alert('Please fill in all required fields correctly.');
+                                
+                                // Scroll to first error
+                                const firstError = document.querySelector('.border-red-500');
+                                if (firstError) {
+                                    console.log('First error field:', firstError.name || firstError.id);
+                                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    firstError.focus();
+                                }
                             }
                         } else {
                             // Show confirmation modal
