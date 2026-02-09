@@ -8,6 +8,7 @@ requireAdmin();
 
 $success_message = '';
 $error_message = '';
+$is_rejection = false;
 $application = null;
 $student = null;
 $student_courses = [];
@@ -173,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if ($stmt->execute()) {
                 $success_message = 'Course application rejected.';
+                $is_rejection = true;
                 // Redirect after 2 seconds
                 header("refresh:2;url=dashboard.php");
             } else {
@@ -933,10 +935,17 @@ try {
         <?php if ($success_message): ?>
         // Show success notification on page load and auto-dismiss after 3 seconds
         document.addEventListener('DOMContentLoaded', function() {
+            <?php if (isset($is_rejection) && $is_rejection): ?>
+            showRejectionNotification();
+            setTimeout(function() {
+                closeRejectionNotification();
+            }, 3000);
+            <?php else: ?>
             showSuccessNotification();
             setTimeout(function() {
                 closeSuccessNotification();
             }, 3000);
+            <?php endif; ?>
         });
         <?php endif; ?>
         
@@ -968,6 +977,23 @@ try {
         
         function closeSuccessNotification() {
             const notification = document.getElementById('successNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
+        
+        function showRejectionNotification() {
+            const notification = document.getElementById('rejectionNotification');
+            notification.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+        }
+        
+        function closeRejectionNotification() {
+            const notification = document.getElementById('rejectionNotification');
             notification.classList.remove('show');
             setTimeout(() => {
                 notification.classList.add('hidden');
@@ -1012,9 +1038,29 @@ try {
         </div>
     </div>
     
+    <!-- Rejection Notification Toast -->
+    <div id="rejectionNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-orange-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-times-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Application Rejected</p>
+                    <p class="text-xs text-orange-100">
+                        The course application has been rejected successfully.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <style>
         #errorNotification.show,
-        #successNotification.show {
+        #successNotification.show,
+        #rejectionNotification.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
