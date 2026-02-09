@@ -44,51 +44,94 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                 $error_message = 'Student not found.';
             } elseif ($current_student['status'] === 'approved' && !empty($current_student['course'])) {
                 // Course application completion approval (status: approved -> completed)
-                // Student already has approved course application from course_applications table
-                $conn->beginTransaction();
+                // Get the training data that admin entered in the approval modal
+                $course_id = $_POST['course'] ?? '';
+                $nc_level = $_POST['nc_level'] ?? '';
+                $training_start = $_POST['training_start'] ?? '';
+                $training_end = $_POST['training_end'] ?? '';
+                $adviser = $_POST['adviser'] ?? '';
                 
-                try {
-                    // Update students table
-                    $stmt = $conn->prepare("UPDATE students SET 
-                        status = 'completed',
-                        approved_by = :admin_id,
-                        approved_at = NOW()
-                        WHERE id = :id AND status = 'approved'");
+                // Validate required fields
+                if (empty($course_id) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
+                    $error_message = 'Please fill in all required fields.';
+                } else {
+                    $conn->beginTransaction();
                     
-                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                    $stmt->bindParam(':id', $student_id);
-                    $stmt->execute();
-                    
-                    // Also update course_applications table to mark as completed
-                    $stmt = $conn->prepare("UPDATE course_applications SET 
-                        status = 'completed',
-                        reviewed_by = :admin_id,
-                        reviewed_at = NOW()
-                        WHERE student_id = :id AND status = 'approved'");
-                    
-                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                    $stmt->bindParam(':id', $student_id);
-                    $stmt->execute();
-                    
-                    $conn->commit();
-                    
-                    // Log course completion approval
-                    $logger->log(
-                        'course_completion_approved',
-                        "Admin approved course completion for student '{$current_student['first_name']} {$current_student['last_name']}' in course '{$current_student['course']}'",
-                        'admin',
-                        $_SESSION['user_id'],
-                        'student',
-                        $student_id
-                    );
-                    
-                    $success_message = 'Course completion approved successfully! Status updated from "approved" to "completed". Student can now apply for new courses.';
-                    // Redirect to refresh and show updated status
-                    header("Location: dashboard.php?approved=" . $student_id);
-                    exit;
-                } catch (PDOException $e) {
-                    $conn->rollBack();
-                    $error_message = 'Failed to approve course completion: ' . $e->getMessage();
+                    try {
+                        // Get course name from course_id
+                        $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                        $stmt->bindParam(':course_id', $course_id);
+                        $stmt->execute();
+                        $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if (!$course_data) {
+                            $error_message = 'Invalid course selected.';
+                        } else {
+                            $course_name = $course_data['course_name'];
+                            
+                            // Update students table with completion and training data
+                            $stmt = $conn->prepare("UPDATE students SET 
+                                status = 'completed',
+                                approved_by = :admin_id,
+                                approved_at = NOW(),
+                                course = :course,
+                                nc_level = :nc_level,
+                                training_start = :training_start,
+                                training_end = :training_end,
+                                adviser = :adviser
+                                WHERE id = :id AND status = 'approved'");
+                            
+                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                            $stmt->bindParam(':course', $course_name);
+                            $stmt->bindParam(':nc_level', $nc_level);
+                            $stmt->bindParam(':training_start', $training_start);
+                            $stmt->bindParam(':training_end', $training_end);
+                            $stmt->bindParam(':adviser', $adviser);
+                            $stmt->bindParam(':id', $student_id);
+                            $stmt->execute();
+                            
+                            // Also update course_applications table with the same data to mark as completed
+                            $stmt = $conn->prepare("UPDATE course_applications SET 
+                                status = 'completed',
+                                course_id = :course_id,
+                                nc_level = :nc_level,
+                                training_start = :training_start,
+                                training_end = :training_end,
+                                adviser = :adviser,
+                                reviewed_by = :admin_id,
+                                reviewed_at = NOW()
+                                WHERE student_id = :id AND status = 'approved'");
+                            
+                            $stmt->bindParam(':course_id', $course_id);
+                            $stmt->bindParam(':nc_level', $nc_level);
+                            $stmt->bindParam(':training_start', $training_start);
+                            $stmt->bindParam(':training_end', $training_end);
+                            $stmt->bindParam(':adviser', $adviser);
+                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                            $stmt->bindParam(':id', $student_id);
+                            $stmt->execute();
+                            
+                            $conn->commit();
+                            
+                            // Log course completion approval
+                            $logger->log(
+                                'course_completion_approved',
+                                "Admin approved course completion for student ID: {$student_id} in course '{$course_name}'",
+                                'admin',
+                                $_SESSION['user_id'],
+                                'student',
+                                $student_id
+                            );
+                            
+                            $success_message = 'Course completion approved successfully! Status updated from "approved" to "completed". Student can now apply for new courses.';
+                            // Redirect to refresh and show updated status
+                            header("Location: dashboard.php?approved=" . $student_id);
+                            exit;
+                        }
+                    } catch (PDOException $e) {
+                        $conn->rollBack();
+                        $error_message = 'Failed to approve course completion: ' . $e->getMessage();
+                    }
                 }
             } elseif ($current_student['status'] === 'pending' && empty($current_student['course'])) {
                 // Student registration approval (status: pending -> completed)

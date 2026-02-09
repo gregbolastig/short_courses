@@ -142,9 +142,10 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 $app_status = 'pending';
                 $completion_date = null;
                 $certificate_number = null;
-                $training_start = null;
-                $training_end = null;
-                $adviser = 'Not Assigned';
+                // Get training data from course_applications table (each course has its own data)
+                $training_start = $app['training_start'] ?? null;
+                $training_end = $app['training_end'] ?? null;
+                $adviser = $app['adviser'] ?? 'Not Assigned';
                 
                 if ($app['status'] === 'rejected') {
                     $app_status = 'rejected';
@@ -153,18 +154,12 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     $app_status = 'completed';
                     $completion_date = $app['reviewed_at'];
                     $certificate_number = 'CERT-' . date('Y', strtotime($app['reviewed_at'])) . '-' . str_pad($student_profile['id'], 6, '0', STR_PAD_LEFT);
-                    // Get training dates and adviser from students table for completed courses
-                    $training_start = $student_profile['training_start'] ?? null;
-                    $training_end = $student_profile['training_end'] ?? null;
-                    $adviser = $student_profile['adviser'] ?? 'Not Assigned';
+                    // Training data is already in $app from course_applications table
                 } elseif ($app['status'] === 'approved') {
                     // In single-stage system, approved means enrolled
                     if (!$enrollments_table_exists) {
-                        // Get training dates and adviser from students table
+                        // Training data is in course_applications, not students table
                         $app_status = 'enrolled';
-                        $training_start = $student_profile['training_start'] ?? null;
-                        $training_end = $student_profile['training_end'] ?? null;
-                        $adviser = $student_profile['adviser'] ?? 'Not Assigned';
                     } else {
                         $app_status = 'approved';
                         // For two-stage system, data might be in enrollments (handled separately)
@@ -558,6 +553,11 @@ include '../components/header.php';
                                                         $status_class = 'bg-orange-100 text-orange-800';
                                                         $status_icon = 'fas fa-hourglass-half';
                                                         $status_text = 'Application Pending';
+                                                        break;
+                                                    case 'approved':
+                                                        $status_class = 'bg-green-100 text-green-800';
+                                                        $status_icon = 'fas fa-check';
+                                                        $status_text = 'Approved';
                                                         break;
                                                     case 'rejected':
                                                         $status_class = 'bg-red-100 text-red-800';

@@ -95,12 +95,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute();
                     
                     // Also update course_applications table to mark as completed
+                    // Copy adviser and training dates from students table for historical record
                     $stmt = $conn->prepare("UPDATE course_applications SET 
                         status = 'completed',
+                        adviser = :adviser,
+                        training_start = :training_start,
+                        training_end = :training_end,
                         reviewed_by = :admin_id,
                         reviewed_at = NOW()
                         WHERE student_id = :id AND status = 'approved'");
                     
+                    $stmt->bindParam(':adviser', $current_student['adviser']);
+                    $stmt->bindParam(':training_start', $current_student['training_start']);
+                    $stmt->bindParam(':training_end', $current_student['training_end']);
                     $stmt->bindParam(':admin_id', $_SESSION['user_id']);
                     $stmt->bindParam(':id', $student_id);
                     $stmt->execute();

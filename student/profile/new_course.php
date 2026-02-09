@@ -89,10 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // Get the inserted application ID for logging
                     $application_id = $conn->lastInsertId();
                     
+                    // Get the course name from the courses table
+                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt->bindParam(':course_id', $course_id);
+                    $stmt->execute();
+                    $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $course_name = $course_data['course_name'] ?? $_POST['course'];
+                    
                     // Log course application
                     $logger->log(
                         'course_application',
-                        "Student '{$student['first_name']} {$student['last_name']}' applied for course '{$_POST['course']}'",
+                        "Student '{$student['first_name']} {$student['last_name']}' applied for course '{$course_name}'",
                         'student',
                         null,
                         'course_application',
@@ -101,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     
                     // Set flag to show success modal instead of alert message
                     $show_success_modal = true;
-                    $applied_course_name = $_POST['course'];
+                    $applied_course_name = $course_name;
                     
                     // Clear form data after successful submission
                     $_POST = [];
@@ -513,7 +520,7 @@ include '../components/header.php';
                                    class="inline-flex items-center px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors duration-200">
                                     <i class="fas fa-arrow-left mr-2"></i>Cancel
                                 </a>
-                                <button type="button" onclick="showConfirmationModal()" 
+                                <button type="button" onclick="showApplicationModal()" 
                                         class="inline-flex items-center px-6 py-3 bg-red-800 text-white font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
                                     <i class="fas fa-paper-plane mr-2"></i>Submit Application
                                 </button>
@@ -539,7 +546,7 @@ include '../components/header.php';
     </main>
     
     <!-- Confirmation Modal -->
-    <div id="confirmationModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden flex items-center justify-center p-4">
+    <div id="applicationModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 hidden flex items-center justify-center p-4">
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out">
             <!-- Header Section -->
             <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-2xl px-6 py-6 text-white relative overflow-hidden">
@@ -582,13 +589,13 @@ include '../components/header.php';
                     </div>
                 </div>
                 
-                <!-- Action Buttons -->
+                <!-- Confirmation Buttons -->
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <button type="button" onclick="hideConfirmationModal()" 
+                    <button type="button" onclick="hideApplicationModal()" 
                             class="flex-1 inline-flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button type="button" onclick="submitApplication()" 
+                    <button type="button" id="confirmButton" onclick="submitApplication()" 
                             class="flex-1 inline-flex items-center justify-center px-4 py-3 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 transition-colors duration-200">
                         <i class="fas fa-check mr-2"></i>Confirm & Submit
                     </button>
@@ -597,73 +604,39 @@ include '../components/header.php';
         </div>
     </div>
     
-    <!-- Success Modal -->
-    <?php if (isset($show_success_modal) && $show_success_modal): ?>
-    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out">
-            <!-- Header Section -->
-            <div class="bg-gradient-to-r from-red-900 to-red-800 rounded-t-2xl px-6 py-6 text-white relative overflow-hidden">
-                <div class="absolute inset-0 bg-black opacity-10"></div>
-                <div class="relative flex items-center justify-center">
-                    <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
-                        <i class="fas fa-check text-white text-xl"></i>
-                    </div>
-                    <div class="text-center">
-                        <h3 class="text-xl font-bold mb-1">Application Submitted!</h3>
-                        <p class="text-red-100 text-sm opacity-90">Your course application was successful</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Content Section -->
-            <div class="px-6 py-6">
-                <div class="text-center mb-6">
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                                <i class="fas fa-graduation-cap text-red-900 text-sm"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-red-900"><?php echo htmlspecialchars($applied_course_name ?? 'Course'); ?></p>
-                                <p class="text-xs text-red-700">Application Submitted</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-3 text-sm text-gray-700">
-                        <p class="flex items-center justify-center">
-                            <i class="fas fa-clock text-orange-500 mr-2"></i>
-                            Your application is now <strong>pending admin review</strong>
-                        </p>
-                        <p class="flex items-center justify-center">
-                            <i class="fas fa-bell text-blue-500 mr-2"></i>
-                            You will be notified once it's reviewed
-                        </p>
-                        <p class="flex items-center justify-center">
-                            <i class="fas fa-info-circle text-gray-500 mr-2"></i>
-                            You can check your application status anytime
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div class="flex flex-col gap-3">
-                    <button type="button" onclick="closeSuccessModal()" 
-                            class="w-full inline-flex items-center justify-center px-4 py-3 bg-red-900 text-white text-sm font-semibold rounded-lg hover:bg-red-800 transition-colors duration-200">
-                        <i class="fas fa-check mr-2"></i>Got it, Thanks!
-                    </button>
-                    <a href="profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>" 
-                       class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Profile
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-    
     <script>
-        function showConfirmationModal() {
+        <?php if (isset($show_success_modal) && $show_success_modal): ?>
+        // Auto-show success toast on page load and auto-dismiss after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            showSuccessToast();
+            setTimeout(function() {
+                closeSuccessToast();
+                // Redirect to profile after toast closes
+                setTimeout(function() {
+                    window.location.href = 'profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>';
+                }, 500);
+            }, 3000);
+        });
+        <?php endif; ?>
+        
+        function showSuccessToast() {
+            const toast = document.getElementById('successToast');
+            toast.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+        }
+        
+        function closeSuccessToast() {
+            const toast = document.getElementById('successToast');
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 300);
+        }
+        
+        function showApplicationModal() {
             const courseSelect = document.getElementById('course');
             const selectedCourse = courseSelect.value;
             const selectedCourseName = courseSelect.options[courseSelect.selectedIndex].text;
@@ -678,41 +651,40 @@ include '../components/header.php';
             // Update modal with selected course
             document.getElementById('selectedCourseName').textContent = selectedCourseName;
             
-            // Show modal
-            document.getElementById('confirmationModal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            // Show modal in confirmation state
+            document.getElementById('applicationModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
         
-        function hideConfirmationModal() {
-            document.getElementById('confirmationModal').classList.add('hidden');
-            document.body.style.overflow = 'auto'; // Restore scrolling
+        function hideApplicationModal() {
+            document.getElementById('applicationModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
         }
         
         function submitApplication() {
-            // Hide modal
-            hideConfirmationModal();
-            
             // Show loading state
-            const submitBtn = document.querySelector('button[onclick="submitApplication()"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
-            submitBtn.disabled = true;
+            const confirmBtn = document.getElementById('confirmButton');
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+            confirmBtn.disabled = true;
+            
+            // Hide the modal before submitting to prevent double modal appearance
+            document.getElementById('applicationModal').classList.add('hidden');
             
             // Submit the form
             document.getElementById('courseApplicationForm').submit();
         }
         
         // Close modal when clicking outside
-        document.getElementById('confirmationModal').addEventListener('click', function(e) {
+        document.getElementById('applicationModal').addEventListener('click', function(e) {
             if (e.target === this) {
-                hideConfirmationModal();
+                hideApplicationModal();
             }
         });
         
         // Close modal with Escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                hideConfirmationModal();
+                hideApplicationModal();
             }
         });
         
@@ -749,40 +721,32 @@ include '../components/header.php';
                 }, 500);
             }
         }
-        
-        // Success Modal Functions
-        function closeSuccessModal() {
-            const modal = document.getElementById('successModal');
-            if (modal) {
-                modal.classList.add('hidden');
-                document.body.style.overflow = 'auto';
-            }
-        }
-        
-        // Auto-show success modal if it exists
-        document.addEventListener('DOMContentLoaded', function() {
-            const successModal = document.getElementById('successModal');
-            if (successModal) {
-                document.body.style.overflow = 'hidden';
-                
-                // Close modal when clicking outside
-                successModal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        closeSuccessModal();
-                    }
-                });
-            }
-        });
-        
-        // Close success modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const successModal = document.getElementById('successModal');
-                if (successModal && !successModal.classList.contains('hidden')) {
-                    closeSuccessModal();
-                }
-            }
-        });
     </script>
+    
+    <!-- Success Toast Notification -->
+    <div id="successToast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Application Submitted!</p>
+                    <p class="text-xs text-green-100">
+                        Your application for <strong><?php echo htmlspecialchars($applied_course_name ?? 'the course'); ?></strong> has been submitted successfully and is now pending admin review.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        #successToast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
     
     <?php include '../components/footer.php'; ?>

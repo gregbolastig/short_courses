@@ -1,8 +1,7 @@
 <?php
 /**
  * Migration: Add training fields to course_applications table
- * Purpose: Store training dates and adviser during course application approval
- * This allows pre-filling of approval form when students reapply
+ * This allows storing adviser and training dates for historical record keeping
  */
 
 require_once __DIR__ . '/database.php';
@@ -11,52 +10,51 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
+    echo "Adding training fields to course_applications table...\n";
+    
     // Check if columns already exist
-    $stmt = $conn->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-                         WHERE TABLE_NAME='course_applications' AND TABLE_SCHEMA=DATABASE()");
-    $columns = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $columns[] = $row['COLUMN_NAME'];
-    }
+    $stmt = $conn->query("SHOW COLUMNS FROM course_applications LIKE 'adviser'");
+    $adviser_exists = $stmt->rowCount() > 0;
     
-    $changes_made = false;
-    
-    // Add training_start if not exists
-    if (!in_array('training_start', $columns)) {
-        $conn->exec("ALTER TABLE course_applications ADD COLUMN training_start DATE NULL AFTER nc_level");
-        echo "✓ Added training_start column\n";
-        $changes_made = true;
+    if (!$adviser_exists) {
+        // Add adviser column
+        $conn->exec("ALTER TABLE course_applications 
+                     ADD COLUMN adviser VARCHAR(255) NULL AFTER nc_level");
+        echo "✓ Added 'adviser' column\n";
     } else {
-        echo "• training_start column already exists\n";
+        echo "- 'adviser' column already exists\n";
     }
     
-    // Add training_end if not exists
-    if (!in_array('training_end', $columns)) {
-        $conn->exec("ALTER TABLE course_applications ADD COLUMN training_end DATE NULL AFTER training_start");
-        echo "✓ Added training_end column\n";
-        $changes_made = true;
+    // Check if training_start exists
+    $stmt = $conn->query("SHOW COLUMNS FROM course_applications LIKE 'training_start'");
+    $training_start_exists = $stmt->rowCount() > 0;
+    
+    if (!$training_start_exists) {
+        // Add training_start column
+        $conn->exec("ALTER TABLE course_applications 
+                     ADD COLUMN training_start DATE NULL AFTER adviser");
+        echo "✓ Added 'training_start' column\n";
     } else {
-        echo "• training_end column already exists\n";
+        echo "- 'training_start' column already exists\n";
     }
     
-    // Add adviser if not exists
-    if (!in_array('adviser', $columns)) {
-        $conn->exec("ALTER TABLE course_applications ADD COLUMN adviser VARCHAR(255) NULL AFTER training_end");
-        echo "✓ Added adviser column\n";
-        $changes_made = true;
+    // Check if training_end exists
+    $stmt = $conn->query("SHOW COLUMNS FROM course_applications LIKE 'training_end'");
+    $training_end_exists = $stmt->rowCount() > 0;
+    
+    if (!$training_end_exists) {
+        // Add training_end column
+        $conn->exec("ALTER TABLE course_applications 
+                     ADD COLUMN training_end DATE NULL AFTER training_start");
+        echo "✓ Added 'training_end' column\n";
     } else {
-        echo "• adviser column already exists\n";
+        echo "- 'training_end' column already exists\n";
     }
     
-    if ($changes_made) {
-        echo "\n✓ Migration completed successfully!\n";
-        echo "course_applications table now stores training dates and adviser for reapplications.\n";
-    } else {
-        echo "\n✓ No changes needed - all columns already exist.\n";
-    }
+    echo "\n✅ Migration completed successfully!\n";
+    echo "The course_applications table now stores adviser and training dates for historical records.\n";
     
 } catch (PDOException $e) {
-    echo "✗ Migration failed: " . $e->getMessage() . "\n";
+    echo "❌ Error: " . $e->getMessage() . "\n";
     exit(1);
 }
-?>

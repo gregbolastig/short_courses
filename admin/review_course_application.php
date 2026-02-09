@@ -73,6 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     status = 'approved',
                     course_id = :course_id,
                     nc_level = :nc_level,
+                    adviser = :adviser,
+                    training_start = :training_start,
+                    training_end = :training_end,
                     reviewed_by = :admin_id,
                     reviewed_at = NOW(),
                     notes = :notes
@@ -80,11 +83,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $course_id = $_POST['course_name']; // Form field is named course_name but contains course_id
                 $nc_level = $_POST['nc_level'];
+                $adviser = $_POST['adviser'];
+                $training_start = $_POST['training_start'];
+                $training_end = $_POST['training_end'];
                 $notes = $_POST['notes'];
                 $admin_id = $_SESSION['user_id'];
                 
                 $stmt->bindParam(':course_id', $course_id);
                 $stmt->bindParam(':nc_level', $nc_level);
+                $stmt->bindParam(':adviser', $adviser);
+                $stmt->bindParam(':training_start', $training_start);
+                $stmt->bindParam(':training_end', $training_end);
                 $stmt->bindParam(':admin_id', $admin_id);
                 $stmt->bindParam(':notes', $notes);
                 $stmt->bindParam(':id', $application_id);
@@ -104,10 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     approved_by = :admin_id,
                     approved_at = NOW()
                     WHERE id = :student_id");
-                
-                $adviser = $_POST['adviser'];
-                $training_start = $_POST['training_start'];
-                $training_end = $_POST['training_end'];
                 
                 $stmt->bindParam(':course_name', $course_name);
                 $stmt->bindParam(':nc_level', $nc_level);
@@ -232,58 +237,46 @@ try {
         ];
     }
     
-    // PRIORITY 2: Get additional courses from course_applications table (if any)
+    // PRIORITY 2: Get ALL courses from course_applications table (approved, rejected, completed, pending)
     // Only include if not already in student_courses from students table
     $stmt = $conn->prepare("SELECT ca.application_id,
                            ca.student_id,
                            ca.course_id,
                            ca.nc_level,
+                           ca.adviser,
+                           ca.training_start,
+                           ca.training_end,
                            ca.status,
-                           ca.reviewed_at as approved_at,
+                           ca.reviewed_at,
                            ca.applied_at,
+                           ca.notes,
                            COALESCE(c.course_name, ca.course_id) as course_name
                            FROM course_applications ca 
                            LEFT JOIN courses c ON ca.course_id = c.course_id
                            WHERE ca.student_id = :student_id 
-                           AND ca.status = 'approved'
-                           ORDER BY ca.reviewed_at DESC, ca.applied_at DESC");
-    $stmt->bindParam(':student_id', $student['id']);
-    $stmt->execute();
-    $completed_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Add courses from course_applications only if not already in student_courses
-    $existing_courses = array_column($student_courses, 'course_name');
-    foreach ($completed_applications as $comp_app) {
-        $course_name = $comp_app['course_name'] ?? 'Course ID: ' . ($comp_app['course_id'] ?? 'Unknown');
-        
-        // Only add if this course isn't already in the list
-        if (!in_array($course_name, $existing_courses)) {
-            $student_courses[] = [
-                'course_name' => $course_name,
-                'nc_level' => $comp_app['nc_level'] ?? 'Not specified',
-                'training_start' => null, // Not available in course_applications table
-                'training_end' => null,   // Not available in course_applications table
-                'adviser' => 'Not assigned', // Not available in course_applications table
-                'status' => 'completed',
-                'approved_at' => $comp_app['approved_at'] ?? $comp_app['applied_at'] ?? null
-            ];
-        }
-    }
-    
-    // Get other PENDING course applications only (excluding current application and approved/rejected/completed)
-    $stmt = $conn->prepare("SELECT ca.*, 
-                           COALESCE(c.course_name, ca.course_id) as course_display_name,
-                           c.course_name as course_name
-                           FROM course_applications ca 
-                           LEFT JOIN courses c ON ca.course_id = c.course_id
-                           WHERE ca.student_id = :student_id 
                            AND ca.application_id != :current_id
-                           AND ca.status = 'pending'
                            ORDER BY ca.applied_at DESC");
     $stmt->bindParam(':student_id', $student['id']);
     $stmt->bindParam(':current_id', $application_id);
     $stmt->execute();
-    $other_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $all_course_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add all course applications to student_courses
+    foreach ($all_course_applications as $app) {
+        $course_name = $app['course_name'] ?? 'Course ID: ' . ($app['course_id'] ?? 'Unknown');
+        
+        $student_courses[] = [
+            'course_name' => $course_name,
+            'nc_level' => $app['nc_level'] ?? 'Not specified',
+            'training_start' => $app['training_start'] ?? null,
+            'training_end' => $app['training_end'] ?? null,
+            'adviser' => $app['adviser'] ?? 'Not assigned',
+            'status' => $app['status'],
+            'approved_at' => $app['reviewed_at'] ?? null,
+            'applied_at' => $app['applied_at'] ?? null,
+            'notes' => $app['notes'] ?? null
+        ];
+    }
     
     // Get available courses
     $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
@@ -358,24 +351,6 @@ try {
             </div>
 
             <!-- Alert Messages -->
-            <?php if ($error_message): ?>
-                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($success_message): ?>
-                <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
             <?php if ($application): ?>
                 <!-- Student Profile Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
@@ -467,7 +442,7 @@ try {
                 </div>
 
                 <!-- Course History -->
-                <?php if (!empty($student_courses) || !empty($other_applications)): ?>
+                <?php if (!empty($student_courses)): ?>
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
                     <div class="flex items-center mb-6">
                         <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
@@ -475,20 +450,26 @@ try {
                         </div>
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900">Course History</h3>
-                            <p class="text-gray-600 text-sm">Previous and other course enrollments</p>
+                            <p class="text-gray-600 text-sm">All course applications and enrollments</p>
                         </div>
                     </div>
 
                     <?php 
-                    // Separate current enrolled (approved) and completed courses
+                    // Separate courses by status
                     $current_enrolled = [];
                     $completed_courses = [];
+                    $pending_courses = [];
+                    $rejected_courses = [];
                     
                     foreach ($student_courses as $course) {
                         if ($course['status'] === 'completed') {
                             $completed_courses[] = $course;
                         } elseif ($course['status'] === 'approved') {
                             $current_enrolled[] = $course;
+                        } elseif ($course['status'] === 'pending') {
+                            $pending_courses[] = $course;
+                        } elseif ($course['status'] === 'rejected') {
+                            $rejected_courses[] = $course;
                         }
                     }
                     ?>
@@ -613,10 +594,10 @@ try {
                         </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($other_applications)): ?>
-                        <div>
+                    <?php if (!empty($pending_courses)): ?>
+                        <div class="mb-6">
                             <h4 class="font-medium text-gray-900 mb-3">
-                                <i class="fas fa-clock mr-2 text-yellow-600"></i>Pending Course Applications
+                                <i class="fas fa-clock mr-2 text-yellow-600"></i>Other Pending Applications (<?php echo count($pending_courses); ?>)
                             </h4>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
@@ -628,28 +609,67 @@ try {
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        <?php foreach ($other_applications as $app): ?>
+                                        <?php foreach ($pending_courses as $course): ?>
                                             <tr class="hover:bg-gray-50">
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm font-medium text-gray-900">
-                                                        <?php 
-                                                        $display_name = !empty($app['course_display_name']) 
-                                                            ? $app['course_display_name'] 
-                                                            : (!empty($app['course_name']) 
-                                                                ? $app['course_name'] 
-                                                                : 'Course ID: ' . htmlspecialchars($app['course_id'] ?? 'Unknown'));
-                                                        echo htmlspecialchars($display_name); 
-                                                        ?>
+                                                        <?php echo htmlspecialchars($course['course_name']); ?>
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm text-gray-900">
-                                                        <?php echo date('M j, Y', strtotime($app['applied_at'])); ?>
+                                                        <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                                         <i class="fas fa-clock mr-1"></i>Pending
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($rejected_courses)): ?>
+                        <div>
+                            <h4 class="font-medium text-gray-900 mb-3">
+                                <i class="fas fa-times-circle mr-2 text-red-600"></i>Rejected Applications (<?php echo count($rejected_courses); ?>)
+                            </h4>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <?php foreach ($rejected_courses as $course): ?>
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <?php echo htmlspecialchars($course['course_name']); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900">
+                                                        <?php echo $course['approved_at'] ? date('M j, Y', strtotime($course['approved_at'])) : '-'; ?>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        <i class="fas fa-times-circle mr-1"></i>Rejected
                                                     </span>
                                                 </td>
                                             </tr>
@@ -706,7 +726,7 @@ try {
                                 <i class="fas fa-check-circle mr-2"></i>Approve Application
                             </h4>
                             
-                            <form method="POST" class="space-y-4">
+                            <form method="POST" class="space-y-4" id="approveForm">
                                 <input type="hidden" name="action" value="approve">
                                 
                                 <div>
@@ -769,9 +789,9 @@ try {
                                               placeholder="Add any notes about the approval..."></textarea>
                                 </div>
 
-                                <button type="submit" 
-                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200"
-                                        onclick="return confirm('Are you sure you want to approve this course application?')">
+                                <button type="button" 
+                                        onclick="showConfirmModal('approve')"
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors duration-200">
                                     <i class="fas fa-check mr-2"></i>Approve Course
                                 </button>
                             </form>
@@ -783,7 +803,7 @@ try {
                                 <i class="fas fa-times-circle mr-2"></i>Reject Application
                             </h4>
                             
-                            <form method="POST" class="space-y-4">
+                            <form method="POST" class="space-y-4" id="rejectForm">
                                 <input type="hidden" name="action" value="reject">
                                 
                                 <div>
@@ -793,9 +813,9 @@ try {
                                               placeholder="Please provide a reason for rejecting this application..."></textarea>
                                 </div>
 
-                                <button type="submit" 
-                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                        onclick="return confirm('Are you sure you want to reject this application?')">
+                                <button type="button" 
+                                        onclick="showConfirmModal('reject')"
+                                        class="w-full inline-flex items-center justify-center px-4 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors duration-200">
                                     <i class="fas fa-times mr-2"></i>Reject Application
                                 </button>
                             </form>
@@ -806,7 +826,85 @@ try {
         </main>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full" id="modalIconContainer">
+                    <i id="modalIcon" class="text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 text-center mb-2" id="modalTitle"></h3>
+                <p class="text-gray-600 text-center mb-6" id="modalMessage"></p>
+                <div class="flex gap-3">
+                    <button type="button" 
+                            onclick="closeConfirmModal()"
+                            class="flex-1 px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors duration-200">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            onclick="confirmAction()"
+                            id="confirmButton"
+                            class="flex-1 px-4 py-2.5 text-white font-medium rounded-lg transition-colors duration-200">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentAction = '';
+        
+        function showConfirmModal(action) {
+            currentAction = action;
+            const modal = document.getElementById('confirmModal');
+            const iconContainer = document.getElementById('modalIconContainer');
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const message = document.getElementById('modalMessage');
+            const confirmBtn = document.getElementById('confirmButton');
+            
+            if (action === 'approve') {
+                iconContainer.className = 'flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-green-100';
+                icon.className = 'fas fa-check-circle text-2xl text-green-600';
+                title.textContent = 'Approve Course Application';
+                message.textContent = 'Are you sure you want to approve this course application? The student will be enrolled in the course.';
+                confirmBtn.className = 'flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200';
+                confirmBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Approve';
+            } else {
+                iconContainer.className = 'flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100';
+                icon.className = 'fas fa-times-circle text-2xl text-red-600';
+                title.textContent = 'Reject Course Application';
+                message.textContent = 'Are you sure you want to reject this course application? This action cannot be undone.';
+                confirmBtn.className = 'flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200';
+                confirmBtn.innerHTML = '<i class="fas fa-times mr-2"></i>Reject';
+            }
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            currentAction = '';
+        }
+        
+        function confirmAction() {
+            if (currentAction === 'approve') {
+                document.getElementById('approveForm').submit();
+            } else if (currentAction === 'reject') {
+                document.getElementById('rejectForm').submit();
+            }
+        }
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeConfirmModal();
+            }
+        });
+        
         // Set minimum date for training start to today
         document.getElementById('training_start').min = new Date().toISOString().split('T')[0];
         
@@ -821,6 +919,105 @@ try {
                 endDateInput.value = '';
             }
         });
+        
+        <?php if ($error_message): ?>
+        // Show error notification on page load and auto-dismiss after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            showErrorNotification();
+            setTimeout(function() {
+                closeErrorNotification();
+            }, 3000);
+        });
+        <?php endif; ?>
+        
+        <?php if ($success_message): ?>
+        // Show success notification on page load and auto-dismiss after 3 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            showSuccessNotification();
+            setTimeout(function() {
+                closeSuccessNotification();
+            }, 3000);
+        });
+        <?php endif; ?>
+        
+        function showErrorNotification() {
+            const notification = document.getElementById('errorNotification');
+            notification.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+        }
+        
+        function closeErrorNotification() {
+            const notification = document.getElementById('errorNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
+        
+        function showSuccessNotification() {
+            const notification = document.getElementById('successNotification');
+            notification.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+        }
+        
+        function closeSuccessNotification() {
+            const notification = document.getElementById('successNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
     </script>
+    
+    <!-- Error Notification Toast -->
+    <div id="errorNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-sm">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Success Notification Toast -->
+    <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Application Approved!</p>
+                    <p class="text-xs text-green-100">
+                        <?php echo htmlspecialchars($success_message); ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        #errorNotification.show,
+        #successNotification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
 </body>
 </html>
