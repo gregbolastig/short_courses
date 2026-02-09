@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - JZGMSAT</title>
+    <title>Admin Login - Jacobo Z. Gonzales Memorial School of Arts and Trades</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-shield-alt text-3xl text-white"></i>
                 </div>
                 <h1 class="mt-6 text-4xl font-bold text-white">Admin Portal</h1>
-                <p class="mt-2 text-lg text-white text-opacity-90">JZGMSAT Student Registration System</p>
+                <p class="mt-2 text-lg text-white text-opacity-90">Jacobo Z. Gonzales Memorial School of Arts and Trades Student Registration System</p>
                 <p class="mt-1 text-sm text-white text-opacity-70">Secure administrative access only</p>
             </div>
             
@@ -227,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="text-center">
                 <p class="text-sm text-white text-opacity-70">
                     <i class="fas fa-shield-alt mr-1"></i>
-                    Secure Admin Access • JZGMSAT Student Registration System
+                    Secure Admin Access • Jacobo Z. Gonzales Memorial School of Arts and Trades Student Registration System
                 </p>
             </div>
         </div>

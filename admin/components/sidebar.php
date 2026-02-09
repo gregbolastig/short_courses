@@ -13,7 +13,7 @@
                     <img src="/JZGMSAT/assets/images/logo.png" alt="Logo" class="w-6 h-6 md:w-8 md:h-8 object-contain" onerror="console.log('Logo failed to load')">
                 </div>
                 <div id="sidebar-text" class="transition-all duration-200 min-w-0 flex-1">
-                    <h1 class="text-lg md:text-xl font-bold text-white truncate">JZGMSAT</h1>
+                    <h1 class="text-lg md:text-xl font-bold text-white truncate">Jacobo Z. Gonzales Memorial School of Arts and Trades</h1>
                     <p class="text-blue-200 text-xs md:text-sm truncate">Student System</p>
                 </div>
             </div>

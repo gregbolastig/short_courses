@@ -1,6 +1,6 @@
 # API Integration Documentation
 
-This document outlines the APIs used in the JZGMSAT Student Portal for dynamic data loading.
+This document outlines the APIs used in the Jacobo Z. Gonzales Memorial School of Arts and Trades Student Portal for dynamic data loading.
 
 ## APIs Currently Implemented
 

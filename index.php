@@ -249,7 +249,7 @@ include 'student/components/header.php';
                         <div class="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                             <i class="fas fa-user-plus text-2xl text-red-800"></i>
                         </div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-2">New to JZGMSAT?</h3>
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">New to Jacobo Z. Gonzales Memorial School of Arts and Trades?</h3>
                         <p class="text-gray-600">Register as a new student to get started</p>
                     </div>
                     

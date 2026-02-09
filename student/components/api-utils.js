@@ -1,5 +1,5 @@
 /**
- * API Utilities for JZGMSAT Student Portal
+ * API Utilities for Jacobo Z. Gonzales Memorial School of Arts and Trades Student Portal
  * Shared functions for loading geographic and country data
  */
 

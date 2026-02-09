@@ -6,7 +6,7 @@
                     <div class="h-8 w-8 bg-red-800 rounded-full flex items-center justify-center mr-3">
                         <i class="fas fa-graduation-cap text-white"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-gray-900">JZGMSAT</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">Jacobo Z. Gonzales Memorial School of Arts and Trades</h3>
                 </div>
                
                 <div class="flex justify-center space-x-6 text-sm text-gray-500">
@@ -14,7 +14,7 @@
                 </div>
                 <div class="mt-4 pt-4 border-t border-gray-200">
                     <p class="text-xs text-gray-500">
-                        © <?php echo date('Y'); ?> JZGMSAT. All rights reserved.
+                        © <?php echo date('Y'); ?> Jacobo Z. Gonzales Memorial School of Arts and Trades. All rights reserved.
                     </p>
                 </div>
             </div>
