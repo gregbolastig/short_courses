@@ -2,16 +2,6 @@
     <footer class="bg-white border-t border-gray-200 mt-12">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="text-center">
-                <div class="flex items-center justify-center mb-4">
-                    <div class="h-8 w-8 bg-red-800 rounded-full flex items-center justify-center mr-3">
-                        <i class="fas fa-graduation-cap text-white"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900">Jacobo Z. Gonzales Memorial School of Arts and Trades</h3>
-                </div>
-               
-                <div class="flex justify-center space-x-6 text-sm text-gray-500">
-                    
-                </div>
                 <div class="mt-4 pt-4 border-t border-gray-200">
                     <p class="text-xs text-gray-500">
                         © <?php echo date('Y'); ?> Jacobo Z. Gonzales Memorial School of Arts and Trades. All rights reserved.

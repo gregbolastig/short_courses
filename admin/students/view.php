@@ -48,13 +48,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                 if (file_exists($file_path)) {
                     unlink($file_path);
                 }
-            }
             
             // Redirect to students list with success message
             header('Location: index.php?deleted=1');
             exit;
-        } else {
-            $error_message = 'Failed to delete student.';
         }
     } catch (PDOException $e) {
         $error_message = 'Database error: ' . $e->getMessage();
@@ -530,9 +527,38 @@ try {
 
     <script>
         function confirmDelete(studentId, studentName) {
-            if (confirm(`Are you sure you want to delete ${studentName}? This action cannot be undone.`)) {
-                window.location.href = `?action=delete&id=${studentId}`;
-            }
+            // Create modern confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-sm mx-4 transform transition-all">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                    </div>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900 text-center">Delete Student</h3>
+                    <p class="mt-2 text-sm text-gray-500 text-center">
+                        Are you sure you want to delete <strong>${studentName}</strong>? This action cannot be undone.
+                    </p>
+                    <div class="mt-6 flex flex-col-reverse sm:flex-row gap-2">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                            Cancel
+                        </button>
+                        <button onclick="window.location.href='?action=delete&id=${studentId}'" 
+                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
         }
     </script>
 </body>

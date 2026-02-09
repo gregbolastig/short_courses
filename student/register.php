@@ -116,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!in_array($file_type, $allowed_types)) {
             $errors[] = 'Profile picture must be JPG, JPEG, or PNG';
-        } elseif ($file_size > 2 * 1024 * 1024) {
-            $errors[] = 'Profile picture must be less than 2MB';
+        } elseif ($file_size > 10 * 1024 * 1024) {
+            $errors[] = 'Profile picture must be less than 10MB';
         } else {
             $upload_dir = '../uploads/profiles/';
             if (!is_dir($upload_dir)) {
@@ -136,6 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $profile_picture_path = 'uploads/profiles/' . $filename;
             }
         }
+    } else {
+        // Profile picture is required
+        $errors[] = 'Profile picture is required';
     }
     
     // If no errors, save to database
@@ -735,7 +738,7 @@ include 'components/header.php';
                                     </div>
                                     
                                     <!-- File Input -->
-                                    <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png" class="hidden">
+                                    <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png" class="hidden" required>
                                     
                                     <!-- Requirements -->
                                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -747,7 +750,7 @@ include 'components/header.php';
                                                 <h4 class="text-sm font-semibold text-blue-900 mb-2">Photo Requirements:</h4>
                                                 <ul class="text-xs text-blue-700 space-y-1">
                                                     <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Square format (1:1 ratio)</li>
-                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Maximum size: 2MB</li>
+                                                    <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Maximum size: 10MB</li>
                                                     <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Formats: JPG, JPEG, PNG</li>
                                                     <li class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i>Clear face visibility</li>
                                                 </ul>
@@ -1237,9 +1240,9 @@ include 'components/header.php';
                     return;
                 }
                 
-                // Validate file size (2MB)
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('File size must be less than 2MB');
+                // Validate file size (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size must be less than 10MB');
                     input.value = '';
                     return;
                 }
