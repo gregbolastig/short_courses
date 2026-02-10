@@ -330,44 +330,50 @@ function getStudentFullName($student) {
             <!-- Enhanced Students Table -->
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <!-- Table Header with Search Filters -->
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 md:px-8 py-6 border-b border-gray-200">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-4 sm:px-6 md:px-8 py-5 md:py-6 border-b border-gray-200">
+                    <!-- Header Row -->
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
                         <div class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
                                 <i class="fas fa-table text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-600 mt-1">
+                                <h2 class="text-base md:text-lg font-semibold text-gray-900">Student Records</h2>
+                                <p class="text-xs md:text-sm text-gray-600">
                                     Showing <?php echo count($students); ?> of <?php echo number_format($total_students); ?> students
                                 </p>
                             </div>
                         </div>
-                        <?php if ($total_pages > 1): ?>
-                            <div class="mt-3 sm:mt-0 flex items-center">
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <a href="index.php" 
+                               class="inline-flex items-center px-3 sm:px-4 py-2 border border-blue-900 rounded-lg text-xs sm:text-sm font-medium text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-700 transition-colors duration-200 shadow-sm">
+                                <i class="fas fa-times mr-1.5 sm:mr-2"></i>Clear Filters
+                            </a>
+                            <?php if ($total_pages > 1): ?>
                                 <div class="bg-white rounded-lg px-3 py-2 border border-gray-200 shadow-sm">
-                                    <span class="text-sm font-medium text-gray-600">
+                                    <span class="text-xs sm:text-sm font-medium text-gray-600 whitespace-nowrap">
                                         Page <?php echo $page; ?> of <?php echo $total_pages; ?>
                                     </span>
                                 </div>
-                            </div>
-                        <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     
                     <!-- Search and Filter Form -->
-                    <form method="GET" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div class="relative">
+                    <form method="GET" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div class="relative sm:col-span-2 lg:col-span-1">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-search text-gray-400 text-sm"></i>
                                 </div>
                                 <input type="text" id="search" name="search" 
                                        placeholder="Search name, email, ID..." 
                                        value="<?php echo htmlspecialchars($search); ?>"
-                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                       class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors">
                             </div>
                             
                             <select id="filter_status" name="filter_status" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors">
                                 <option value="">All Status</option>
                                 <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
                                 <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
@@ -376,7 +382,7 @@ function getStudentFullName($student) {
                             </select>
                             
                             <select id="filter_course" name="filter_course" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors">
                                 <option value="">All Courses</option>
                                 <?php foreach ($courses as $course): ?>
                                     <option value="<?php echo htmlspecialchars($course); ?>" 
@@ -390,13 +396,13 @@ function getStudentFullName($student) {
                 </div>
                 
                 <?php if (empty($students)): ?>
-                    <div class="text-center py-12">
-                        <div class="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <i class="fas fa-users text-gray-400 text-2xl"></i>
+                    <div class="text-center py-16 px-4">
+                        <div class="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-users text-gray-400 text-3xl"></i>
                         </div>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">No students found</h3>
-                        <p class="text-gray-600 mb-6">No students match your current search criteria.</p>
-                        <a href="index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        <h3 class="text-lg md:text-xl font-medium text-gray-900 mb-2">No students found</h3>
+                        <p class="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">No students match your current search criteria. Try adjusting your filters.</p>
+                        <a href="index.php" class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm">
                             <i class="fas fa-refresh mr-2"></i>Clear Filters
                         </a>
                     </div>
@@ -423,13 +429,6 @@ function getStudentFullName($student) {
                                     <tr class="hover:bg-gray-50 transition-colors duration-200">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0 h-10 w-10">
-                                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                        <span class="text-sm font-medium text-blue-600">
-                                                            <?php echo $initials; ?>
-                                                        </span>
-                                                    </div>
-                                                </div>
                                                 <div class="ml-4">
                                                     <div class="text-sm font-medium text-gray-900">
                                                         <?php echo $full_name; ?>
@@ -460,15 +459,15 @@ function getStudentFullName($student) {
                                             <div class="flex items-center justify-end space-x-2">
                                                 <a href="view.php?id=<?php echo $student['id']; ?>" 
                                                    class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                                    <i class="fas fa-eye mr-1"></i>View
+                                                    <i class="fas fa-eye mr-1"></i>
                                                 </a>
                                                 <a href="edit.php?id=<?php echo $student['id']; ?>" 
                                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-semibold rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
+                                                    <i class="fas fa-edit mr-1"></i>
                                                 </a>
                                                 <button onclick="confirmDelete(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
                                                         class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                                                    <i class="fas fa-trash mr-1"></i>Delete
+                                                    <i class="fas fa-trash mr-1"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -488,14 +487,7 @@ function getStudentFullName($student) {
                             <div class="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-200">
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-center flex-1 min-w-0">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <span class="text-sm font-medium text-blue-600">
-                                                    <?php echo $initials; ?>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="ml-3 flex-1 min-w-0">
+                                        <div class="flex-1 min-w-0">
                                             <div class="text-sm font-medium text-gray-900 truncate">
                                                 <?php echo $full_name; ?>
                                             </div>
@@ -556,13 +548,11 @@ function getStudentFullName($student) {
                                 <?php if ($page > 1): ?>
                                     <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" 
                                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                        Previous
                                     </a>
                                 <?php endif; ?>
                                 <?php if ($page < $total_pages): ?>
                                     <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" 
                                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                        Next
                                     </a>
                                 <?php endif; ?>
                             </div>
@@ -609,6 +599,32 @@ function getStudentFullName($student) {
     <?php include '../components/admin-scripts.php'; ?>
     
     <script>
+        // Auto-submit form when filters change
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search');
+            const statusFilter = document.getElementById('filter_status');
+            const courseFilter = document.getElementById('filter_course');
+            const form = searchInput.closest('form');
+            
+            // Auto-submit on filter change
+            statusFilter.addEventListener('change', function() {
+                form.submit();
+            });
+            
+            courseFilter.addEventListener('change', function() {
+                form.submit();
+            });
+            
+            // Debounced search input
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    form.submit();
+                }, 500);
+            });
+        });
+        
         function confirmDelete(studentId, studentName) {
             // Create modern confirmation modal
             const modal = document.createElement('div');

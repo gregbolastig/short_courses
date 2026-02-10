@@ -472,36 +472,62 @@ try {
                 <div class="p-6 md:p-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div>
-                            <label for="province" class="block text-sm font-medium text-gray-700 mb-2">Province *</label>
-                            <input type="text" id="province" name="province" required 
-                                   value="<?php echo htmlspecialchars($student['province']); ?>"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                            <label for="province" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-map text-green-600 mr-1"></i>Province *
+                            </label>
+                            <select id="province" name="province" required 
+                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                    data-selected="<?php echo htmlspecialchars($student['province']); ?>">
+                                <option value="">Loading provinces...</option>
+                            </select>
+                            <div id="province-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading provinces...
+                            </div>
                         </div>
                         <div>
-                            <label for="city" class="block text-sm font-medium text-gray-700 mb-2">City/Municipality *</label>
-                            <input type="text" id="city" name="city" required 
-                                   value="<?php echo htmlspecialchars($student['city']); ?>"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                            <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-city text-green-600 mr-1"></i>City/Municipality *
+                            </label>
+                            <select id="city" name="city" required 
+                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                    data-selected="<?php echo htmlspecialchars($student['city']); ?>">
+                                <option value="">Select city/municipality</option>
+                            </select>
+                            <div id="city-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading cities...
+                            </div>
                         </div>
                         <div>
-                            <label for="barangay" class="block text-sm font-medium text-gray-700 mb-2">Barangay *</label>
-                            <input type="text" id="barangay" name="barangay" required 
-                                   value="<?php echo htmlspecialchars($student['barangay']); ?>"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                            <label for="barangay" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-home text-green-600 mr-1"></i>Barangay *
+                            </label>
+                            <select id="barangay" name="barangay" required 
+                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                    data-selected="<?php echo htmlspecialchars($student['barangay']); ?>">
+                                <option value="">Select barangay</option>
+                            </select>
+                            <div id="barangay-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading barangays...
+                            </div>
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         <div>
-                            <label for="street_address" class="block text-sm font-medium text-gray-700 mb-2">Street / Subdivision</label>
+                            <label for="street_address" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-road text-gray-400 mr-1"></i>Street / Subdivision
+                            </label>
                             <input type="text" id="street_address" name="street_address" 
                                    value="<?php echo htmlspecialchars($student['street_address']); ?>"
                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
                         </div>
                         <div>
-                            <label for="place_of_birth" class="block text-sm font-medium text-gray-700 mb-2">Place of Birth *</label>
-                            <input type="text" id="place_of_birth" name="place_of_birth" required 
+                            <label for="place_of_birth" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-baby text-green-600 mr-1"></i>Place of Birth
+                            </label>
+                            <input type="text" id="place_of_birth" name="place_of_birth" 
                                    value="<?php echo htmlspecialchars($student['place_of_birth']); ?>"
+                                   placeholder="City, Province"
                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
                         </div>
                     </div>
@@ -603,16 +629,30 @@ try {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="school_province" class="block text-sm font-medium text-gray-700 mb-2">School Province *</label>
-                            <input type="text" id="school_province" name="school_province" required 
-                                   value="<?php echo htmlspecialchars($student['school_province']); ?>"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                            <label for="school_province" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-map text-indigo-600 mr-1"></i>School Province *
+                            </label>
+                            <select id="school_province" name="school_province" required 
+                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                    data-selected="<?php echo htmlspecialchars($student['school_province']); ?>">
+                                <option value="">Loading provinces...</option>
+                            </select>
+                            <div id="school_province-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading provinces...
+                            </div>
                         </div>
                         <div>
-                            <label for="school_city" class="block text-sm font-medium text-gray-700 mb-2">School City/Municipality *</label>
-                            <input type="text" id="school_city" name="school_city" required 
-                                   value="<?php echo htmlspecialchars($student['school_city']); ?>"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                            <label for="school_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-city text-indigo-600 mr-1"></i>School City/Municipality *
+                            </label>
+                            <select id="school_city" name="school_city" required 
+                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                    data-selected="<?php echo htmlspecialchars($student['school_city']); ?>">
+                                <option value="">Select school city/municipality</option>
+                            </select>
+                            <div id="school_city-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>Loading cities...
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -713,6 +753,111 @@ try {
     </div>
 
     <script>
+        // Initialize page with API data
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load country codes for phone numbers
+            await loadCountryCodes('country_code');
+            await loadCountryCodes('parent_country_code');
+            
+            // Load provinces for address
+            await loadProvinces('province');
+            
+            // Load provinces for school
+            await loadProvinces('school_province');
+            
+            // Get selected values from data attributes
+            const provinceSelect = document.getElementById('province');
+            const citySelect = document.getElementById('city');
+            const barangaySelect = document.getElementById('barangay');
+            const schoolProvinceSelect = document.getElementById('school_province');
+            const schoolCitySelect = document.getElementById('school_city');
+            
+            const selectedProvince = provinceSelect.dataset.selected;
+            const selectedCity = citySelect.dataset.selected;
+            const selectedBarangay = barangaySelect.dataset.selected;
+            const selectedSchoolProvince = schoolProvinceSelect.dataset.selected;
+            const selectedSchoolCity = schoolCitySelect.dataset.selected;
+            
+            // Set selected province and load cities
+            if (selectedProvince) {
+                provinceSelect.value = selectedProvince;
+                const selectedOption = provinceSelect.options[provinceSelect.selectedIndex];
+                const provinceCode = selectedOption.dataset.code;
+                
+                if (provinceCode) {
+                    await loadCities(provinceCode, 'city', selectedCity);
+                    
+                    // After cities are loaded, load barangays
+                    if (selectedCity) {
+                        const cityOption = Array.from(citySelect.options).find(opt => opt.value === selectedCity);
+                        if (cityOption) {
+                            const cityCode = cityOption.dataset.code;
+                            if (cityCode) {
+                                await loadBarangays(cityCode, 'barangay', selectedBarangay);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Set selected school province and load school cities
+            if (selectedSchoolProvince) {
+                schoolProvinceSelect.value = selectedSchoolProvince;
+                const selectedOption = schoolProvinceSelect.options[schoolProvinceSelect.selectedIndex];
+                const provinceCode = selectedOption.dataset.code;
+                
+                if (provinceCode) {
+                    await loadCities(provinceCode, 'school_city', selectedSchoolCity);
+                }
+            }
+            
+            // Scroll to errors if present
+            const errorDiv = document.querySelector('.bg-red-50');
+            if (errorDiv) {
+                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+        
+        // Province change handler for address
+        document.getElementById('province').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const provinceCode = selectedOption.dataset.code;
+            
+            // Clear dependent dropdowns
+            document.getElementById('city').innerHTML = '<option value="">Select city/municipality</option>';
+            document.getElementById('barangay').innerHTML = '<option value="">Select barangay</option>';
+            
+            if (provinceCode) {
+                loadCities(provinceCode, 'city');
+            }
+        });
+        
+        // City change handler for address
+        document.getElementById('city').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const cityCode = selectedOption.dataset.code;
+            
+            // Clear barangay dropdown
+            document.getElementById('barangay').innerHTML = '<option value="">Select barangay</option>';
+            
+            if (cityCode) {
+                loadBarangays(cityCode, 'barangay');
+            }
+        });
+        
+        // School province change handler
+        document.getElementById('school_province').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const provinceCode = selectedOption.dataset.code;
+            
+            // Clear school city dropdown
+            document.getElementById('school_city').innerHTML = '<option value="">Select school city/municipality</option>';
+            
+            if (provinceCode) {
+                loadCities(provinceCode, 'school_city');
+            }
+        });
+
         // Age calculation on birthday change
         document.getElementById('birthday').addEventListener('change', function() {
             const birthday = new Date(this.value);
@@ -780,14 +925,6 @@ try {
                     this.classList.remove('form-loading');
                 }
             }, 10000); // 10 second timeout
-        });
-
-        // Add smooth scrolling to error messages
-        document.addEventListener('DOMContentLoaded', function() {
-            const errorDiv = document.querySelector('.bg-red-50');
-            if (errorDiv) {
-                errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
         });
 
         // Enhanced form validation feedback

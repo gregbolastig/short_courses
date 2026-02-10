@@ -48,6 +48,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
                 if (file_exists($file_path)) {
                     unlink($file_path);
                 }
+            }
             
             // Redirect to students list with success message
             header('Location: index.php?deleted=1');
@@ -364,43 +365,52 @@ try {
                         <div class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Province</label>
-                                    <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['province']); ?></p>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-map text-green-600 mr-1"></i>Province
+                                    </label>
+                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['province']); ?></p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">City/Municipality</label>
-                                    <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['city']); ?></p>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-city text-green-600 mr-1"></i>City/Municipality
+                                    </label>
+                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['city']); ?></p>
                                 </div>
                             </div>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Barangay</label>
-                                    <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['barangay']); ?></p>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-home text-green-600 mr-1"></i>Barangay
+                                    </label>
+                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['barangay']); ?></p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">Street Address</label>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-road text-gray-400 mr-1"></i>Street / Subdivision
+                                    </label>
                                     <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['street_address'] ?: 'N/A'); ?></p>
                                 </div>
                             </div>
                             
-                            <div>
-                                <label class="block text-sm font-medium text-gray-500 mb-1">Place of Birth</label>
-                                <p class="text-sm text-gray-900">
-                                    <?php 
-                                    $place_of_birth = '';
-                                    if (!empty($student['birth_city']) && !empty($student['birth_province'])) {
-                                        $place_of_birth = htmlspecialchars($student['birth_city'] . ', ' . $student['birth_province']);
-                                    } elseif (!empty($student['birth_city'])) {
-                                        $place_of_birth = htmlspecialchars($student['birth_city']);
-                                    } elseif (!empty($student['birth_province'])) {
-                                        $place_of_birth = htmlspecialchars($student['birth_province']);
-                                    } else {
-                                        $place_of_birth = 'N/A';
-                                    }
-                                    echo $place_of_birth;
-                                    ?>
-                                </p>
+                            <div class="pt-4 border-t border-gray-200">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                    <i class="fas fa-baby text-green-600 mr-2"></i>Place of Birth
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">
+                                            <i class="fas fa-map text-green-600 mr-1"></i>Province
+                                        </label>
+                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_province'] ?: 'N/A'); ?></p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">
+                                            <i class="fas fa-city text-green-600 mr-1"></i>City/Municipality
+                                        </label>
+                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_city'] ?: 'N/A'); ?></p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -452,12 +462,16 @@ try {
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">School Province</label>
-                                    <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['school_province']); ?></p>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-map text-orange-600 mr-1"></i>School Province
+                                    </label>
+                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['school_province']); ?></p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-500 mb-1">School City</label>
-                                    <p class="text-sm text-gray-900"><?php echo htmlspecialchars($student['school_city']); ?></p>
+                                    <label class="block text-sm font-medium text-gray-500 mb-1">
+                                        <i class="fas fa-city text-orange-600 mr-1"></i>School City/Municipality
+                                    </label>
+                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['school_city']); ?></p>
                                 </div>
                             </div>
                         </div>
