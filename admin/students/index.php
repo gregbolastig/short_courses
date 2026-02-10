@@ -4,198 +4,258 @@ require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
 require_once '../../includes/system_activity_logger.php';
 
-// Require admin authentication
 requireAdmin();
 
-$page_title = 'Manage Students';
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
-$students = [];
+$page_title = 'Manage Students';
 $error_message = '';
 $success_message = '';
-
-// Initialize system activity logger
 $logger = new SystemActivityLogger();
 
-// Handle delete action
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
-    try {
-        $database = new Database();
-        $conn = $database->getConnection();
-        
-        // Get student info before soft delete
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, profile_picture FROM students WHERE id = :id");
-        $stmt->bindParam(':id', $_GET['id']);
-        $stmt->execute();
-        $student = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Soft delete student record (set deleted_at timestamp)
-        $stmt = $conn->prepare("UPDATE students SET deleted_at = NOW(), deleted_by = :admin_id WHERE id = :id");
-        $stmt->bindParam(':id', $_GET['id']);
-        $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-        
-        if ($stmt->execute()) {
-            // Log student deletion
-            if ($student) {
-                $logger->log(
-                    'student_deleted',
-                    "Admin deleted student '{$student['first_name']} {$student['last_name']}' (ID: {$_GET['id']})",
-                    'admin',
-                    $_SESSION['user_id'],
-                    'student',
-                    $_GET['id']
-                );
-            }
-            
-            // Delete profile picture file if exists
-            if ($student && !empty($student['profile_picture'])) {
-                $file_path = '';
-                if (strpos($student['profile_picture'], '../') === 0) {
-                    // Old format: use as is
-                    $file_path = $student['profile_picture'];
-                } else {
-                    // New format: add ../
-                    $file_path = '../' . $student['profile_picture'];
-                }
-                
-                if (file_exists($file_path)) {
-                    unlink($file_path);
-                }
-            }
-            $success_message = 'Student deleted successfully.';
-        } else {
-            $error_message = 'Failed to delete student.';
-        }
-    } catch (PDOException $e) {
-        $error_message = 'Database error: ' . $e->getMessage();
-    }
+$database = new Database();
+$conn = $database->getConnection();
+
+// Check if soft delete column exists
+$has_soft_delete = checkSoftDeleteColumn($conn);
+
+// ============================================================================
+// HANDLE DELETE ACTION
+// ============================================================================
+
+if (isset($_GET['action'], $_GET['id']) && $_GET['action'] === 'delete') {
+    $result = handleStudentDelete($conn, $logger, $_GET['id'], $_SESSION['user_id']);
+    $error_message = $result['error'] ?? '';
+    $success_message = $result['success'] ?? '';
 }
 
-// Get search parameters
+// ============================================================================
+// GET FILTER PARAMETERS
+// ============================================================================
+
 $search = $_GET['search'] ?? '';
 $filter_course = $_GET['filter_course'] ?? '';
 $filter_status = $_GET['filter_status'] ?? '';
 
 // Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// Build query
-$where_conditions = [];
-$params = [];
+// ============================================================================
+// BUILD QUERY CONDITIONS
+// ============================================================================
 
-// Check if deleted_at column exists
-$database = new Database();
-$conn = $database->getConnection();
-$has_soft_delete = false;
-try {
-    $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'deleted_at'");
-    $has_soft_delete = $stmt->rowCount() > 0;
-} catch (PDOException $e) {
-    $has_soft_delete = false;
-}
+list($where_clause, $params) = buildWhereClause($search, $filter_course, $filter_status, $has_soft_delete);
 
-// Filter out soft-deleted records if column exists
-if ($has_soft_delete) {
-    $where_conditions[] = "deleted_at IS NULL";
-}
+// ============================================================================
+// FETCH DATA
+// ============================================================================
 
-if (!empty($search)) {
-    $where_conditions[] = "(first_name LIKE :search OR last_name LIKE :search OR email LIKE :search OR uli LIKE :search OR student_id LIKE :search)";
-    $params[':search'] = '%' . $search . '%';
-}
-
-if (!empty($filter_course)) {
-    $where_conditions[] = "course = :course";
-    $params[':course'] = $filter_course;
-}
-
-if (!empty($filter_status)) {
-    $where_conditions[] = "status = :status";
-    $params[':status'] = $filter_status;
-}
-
-$where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
-
-// Initialize default values
+$students = [];
 $total_students = 0;
 $total_pages = 1;
-$students = [];
 $courses = [];
-$total_students_count = 0;
-$pending_count = 0;
-$approved_count = 0;
-$rejected_count = 0;
-$completed_count = 0;
+$statistics = [
+    'total' => 0,
+    'pending' => 0,
+    'approved' => 0,
+    'rejected' => 0,
+    'completed' => 0
+];
 
 try {
-    
     // Get total count for pagination
-    $count_sql = "SELECT COUNT(*) as total FROM students $where_clause";
-    $stmt = $conn->prepare($count_sql);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->execute();
-    $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    $total_students = getTotalStudents($conn, $where_clause, $params);
     $total_pages = ceil($total_students / $limit);
     
     // Get students with filters and pagination
-    $sql = "SELECT id, student_id, first_name, middle_name, last_name, email, uli, sex, province, city, contact_number, status, created_at 
-            FROM students $where_clause ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+    $students = getStudents($conn, $where_clause, $params, $limit, $offset);
     
-    $stmt = $conn->prepare($sql);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Get courses from courses table for filter
-    $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
-    $courses = $stmt->fetchAll(PDO::FETCH_COLUMN);
-  
-    // Initialize courses as empty array if query fails
-    if (!$courses) {
-        $courses = [];
-    }
+    // Get active courses for filter dropdown
+    $courses = getActiveCourses($conn);
     
     // Get statistics
-    $soft_delete_filter = $has_soft_delete ? " AND deleted_at IS NULL" : "";
-    
-    try {
-        $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE 1=1{$soft_delete_filter}");
-        $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
-        
-        $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'{$soft_delete_filter}");
-        $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
-        
-        $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'{$soft_delete_filter}");
-        $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved'];
-        
-        $stmt = $conn->query("SELECT COUNT(*) as rejected FROM students WHERE status = 'rejected'{$soft_delete_filter}");
-        $rejected_count = $stmt->fetch(PDO::FETCH_ASSOC)['rejected'];
-        
-        $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'{$soft_delete_filter}");
-        $completed_count = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
-    } catch (PDOException $e) {
-        // Keep default values of 0
-    }
+    $statistics = getStudentStatistics($conn, $has_soft_delete);
     
 } catch (PDOException $e) {
     $error_message = 'Database error: ' . $e->getMessage();
 }
 
 // Get pending approvals count for sidebar
-$pending_approvals = 0;
-try {
+$pending_approvals = $statistics['pending'];
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function checkSoftDeleteColumn($conn) {
+    try {
+        $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'deleted_at'");
+        return $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function handleStudentDelete($conn, $logger, $student_id, $user_id) {
+    try {
+        // Get student info before delete
+        $stmt = $conn->prepare("SELECT id, first_name, last_name FROM students WHERE id = :id");
+        $stmt->bindParam(':id', $student_id);
+        $stmt->execute();
+        $student = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$student) {
+            return ['error' => 'Student not found.'];
+        }
+        
+        // Soft delete
+        $stmt = $conn->prepare("UPDATE students SET deleted_at = NOW() WHERE id = :id");
+        $stmt->bindParam(':id', $student_id);
+        $stmt->execute();
+        
+        // Log deletion
+        $logger->log(
+            'student_deleted',
+            "Admin soft-deleted student '{$student['first_name']} {$student['last_name']}' (ID: {$student_id})",
+            'admin',
+            $user_id,
+            'student',
+            $student_id
+        );
+        
+        return ['success' => 'Student removed from view.'];
+        
+    } catch (PDOException $e) {
+        return ['error' => 'Database error: ' . $e->getMessage()];
+    }
+}
+
+function buildWhereClause($search, $filter_course, $filter_status, $has_soft_delete) {
+    $where_conditions = [];
+    $params = [];
+    
+    // Filter out soft-deleted records
+    if ($has_soft_delete) {
+        $where_conditions[] = "deleted_at IS NULL";
+    }
+    
+    // Search filter
+    if (!empty($search)) {
+        $where_conditions[] = "(first_name LIKE :search OR last_name LIKE :search OR email LIKE :search OR uli LIKE :search OR student_id LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
+    }
+    
+    // Course filter
+    if (!empty($filter_course)) {
+        $where_conditions[] = "course = :course";
+        $params[':course'] = $filter_course;
+    }
+    
+    // Status filter
+    if (!empty($filter_status)) {
+        $where_conditions[] = "status = :status";
+        $params[':status'] = $filter_status;
+    }
+    
+    $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
+    
+    return [$where_clause, $params];
+}
+
+function getTotalStudents($conn, $where_clause, $params) {
+    $sql = "SELECT COUNT(*) as total FROM students $where_clause";
+    $stmt = $conn->prepare($sql);
+    
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    
+    $stmt->execute();
+    return (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
+}
+
+function getStudents($conn, $where_clause, $params, $limit, $offset) {
+    $sql = "SELECT id, student_id, first_name, middle_name, last_name, email, uli, sex, 
+                   province, city, contact_number, status, created_at 
+            FROM students $where_clause 
+            ORDER BY created_at DESC 
+            LIMIT :limit OFFSET :offset";
+    
+    $stmt = $conn->prepare($sql);
+    
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getActiveCourses($conn) {
+    try {
+        $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+function getStudentStatistics($conn, $has_soft_delete) {
     $soft_delete_filter = $has_soft_delete ? " AND deleted_at IS NULL" : "";
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'{$soft_delete_filter}");
-    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
-} catch (PDOException $e) {
-    $pending_approvals = 0;
+    $stats = [
+        'total' => 0,
+        'pending' => 0,
+        'approved' => 0,
+        'rejected' => 0,
+        'completed' => 0
+    ];
+    
+    try {
+        $queries = [
+            'total' => "SELECT COUNT(*) as count FROM students WHERE 1=1{$soft_delete_filter}",
+            'pending' => "SELECT COUNT(*) as count FROM students WHERE status = 'pending'{$soft_delete_filter}",
+            'approved' => "SELECT COUNT(*) as count FROM students WHERE status = 'approved'{$soft_delete_filter}",
+            'rejected' => "SELECT COUNT(*) as count FROM students WHERE status = 'rejected'{$soft_delete_filter}",
+            'completed' => "SELECT COUNT(*) as count FROM students WHERE status = 'completed'{$soft_delete_filter}"
+        ];
+        
+        foreach ($queries as $key => $query) {
+            $stmt = $conn->query($query);
+            $stats[$key] = (int)$stmt->fetch(PDO::FETCH_ASSOC)['count'];
+        }
+    } catch (PDOException $e) {
+        // Return default values
+    }
+    
+    return $stats;
+}
+
+function getStatusBadgeClass($status) {
+    switch ($status) {
+        case 'approved':
+            return 'bg-green-100 text-green-800 border-green-200';
+        case 'rejected':
+            return 'bg-red-100 text-red-800 border-red-200';
+        case 'completed':
+            return 'bg-blue-100 text-blue-800 border-blue-200';
+        default:
+            return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
+}
+
+function getStudentInitials($first_name, $last_name) {
+    return strtoupper(substr($first_name, 0, 1) . substr($last_name, 0, 1));
+}
+
+function getStudentFullName($student) {
+    return htmlspecialchars(trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name']));
 }
 ?>
 
@@ -228,254 +288,55 @@ try {
 <body class="bg-gray-50">
     <?php include '../components/sidebar.php'; ?>
     
-    <!-- Main Content -->
-    <div class="md:ml-64 min-h-screen">
-        <!-- Header -->
-        <?php include '../components/header.php'; ?>
-        
-        <!-- Page Content -->
-        <main class="p-4 md:p-6 lg:p-8">
-            <!-- Page Header with Enhanced Design -->
-            <div class="mb-8">
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 md:p-8 text-white shadow-xl">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                        <div class="mb-4 md:mb-0">
-                            <div class="flex items-center mb-3">
-                                <div class="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center mr-4">
-                                    <i class="fas fa-users text-2xl text-white"></i>
-                                </div>
+            <!-- Main content wrapper -->
+        <div id="main-content" class="min-h-screen transition-all duration-300 ease-in-out ml-0 md:ml-64">
+            <?php include '../components/header.php'; ?>
+            
+            <!-- Main content area -->
+            <main class="overflow-y-auto focus:outline-none">
+                <div class="py-4 md:py-6">
+                    <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+                        
+                        <!-- Page Header -->
+                        <div class="mb-8 mt-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                                 <div>
-                                    <h1 class="text-3xl md:text-4xl font-bold mb-1">Manage Students</h1>
-                                    <p class="text-blue-100 text-lg">Comprehensive student management system</p>
+                                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Student Management</h1>
+                                    <p class="text-lg text-gray-600 mt-2">View and manage student registrations and applications</p>
                                 </div>
                             </div>
-                            <div class="flex flex-wrap gap-4 text-sm text-blue-100">
+                        </div>
+
+                        <!-- Alert Messages -->
+                        <?php if ($error_message): ?>
+                            <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                 <div class="flex items-center">
-                                    <i class="fas fa-database mr-2"></i>
-                                    <span>Total: <?php echo number_format($total_students_count); ?> students</span>
+                                    <i class="fas fa-exclamation-circle mr-2"></i>
+                                    <?php echo htmlspecialchars($error_message); ?>
                                 </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-clock mr-2"></i>
-                                    <span>Pending: <?php echo number_format($pending_count); ?></span>
-                                </div>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($success_message): ?>
+                            <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
                                 <div class="flex items-center">
                                     <i class="fas fa-check-circle mr-2"></i>
-                                    <span>Approved: <?php echo number_format($approved_count); ?></span>
-                                </div>
-                                <div class="flex items-center">
-                                    <i class="fas fa-graduation-cap mr-2"></i>
-                                    <span>Completed: <?php echo number_format($completed_count); ?></span>
+                                    <?php echo htmlspecialchars($success_message); ?>
                                 </div>
                             </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-4 text-center">
-                                <div class="text-2xl font-bold"><?php echo number_format($total_students_count); ?></div>
-                                <div class="text-xs text-blue-200">Total Students</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                        <?php endif; ?>
 
-            <!-- Alert Messages -->
-            <?php if ($error_message): ?>
-                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($success_message): ?>
-                <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- Enhanced Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-users text-white text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Students</p>
-                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($total_students_count); ?></p>
-                            </div>
-                        </div>
-                        <div class="text-blue-500">
-                            <i class="fas fa-arrow-up text-sm"></i>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">All registered students</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-clock text-white text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Pending</p>
-                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($pending_count); ?></p>
-                            </div>
-                        </div>
-                        <div class="text-yellow-500">
-                            <i class="fas fa-exclamation-triangle text-sm"></i>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">Awaiting approval</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-check text-white text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Approved</p>
-                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($approved_count); ?></p>
-                            </div>
-                        </div>
-                        <div class="text-green-500">
-                            <i class="fas fa-check-circle text-sm"></i>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">Successfully approved</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-14 h-14 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-times text-white text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Rejected</p>
-                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($rejected_count); ?></p>
-                            </div>
-                        </div>
-                        <div class="text-red-500">
-                            <i class="fas fa-times-circle text-sm"></i>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">Application rejected</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-graduation-cap text-white text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Completed</p>
-                                <p class="text-3xl font-bold text-gray-900"><?php echo number_format($completed_count); ?></p>
-                            </div>
-                        </div>
-                        <div class="text-blue-500">
-                            <i class="fas fa-certificate text-sm"></i>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">Course completed</p>
-                    </div>
-                </div>
-            </div>
-                                    <!-- Search and Filter Section -->
-                        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 mb-8">
-                            <div class="flex items-center justify-between mb-6">
-                                <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mr-3">
-                                        <i class="fas fa-filter text-white"></i>
-                                    </div>
-                                    <div>
-                                        <h2 class="text-xl font-bold text-gray-900">Filter & Search Students</h2>
-                                        <p class="text-sm text-gray-600">Use filters to find specific students</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <form method="GET" class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <div>
-                                        <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                                        <div class="relative">
-                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i class="fas fa-search text-gray-400"></i>
-                                            </div>
-                                            <input type="text" id="search" name="search" 
-                                                   placeholder="Student name, email, ID..." 
-                                                   value="<?php echo htmlspecialchars($search); ?>"
-                                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <label for="filter_status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                        <select id="filter_status" name="filter_status" 
-                                                class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                            <option value="">All Status</option>
-                                            <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
-                                            <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
-                                            <option value="rejected" <?php echo ($filter_status === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
-                                            <option value="completed" <?php echo ($filter_status === 'completed') ? 'selected' : ''; ?>>Completed</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div>
-                                        <label for="filter_course" class="block text-sm font-medium text-gray-700 mb-2">Course</label>
-                                         <select id="filter_course" name="filter_course" 
-                                                 class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
-                                             <option value="">All Courses</option>
-                                             <?php foreach ($courses as $course): ?>
-                                                 <option value="<?php echo htmlspecialchars($course); ?>" 
-                                                         <?php echo ($filter_course == $course) ? 'selected' : ''; ?>>
-                                                     <?php echo htmlspecialchars($course); ?>
-                                                 </option>
-                                             <?php endforeach; ?>
-                                         </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                                    <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                                        <i class="fas fa-times mr-2"></i>Clear Filters
-                                    </a>
-                                    <button type="submit" class="inline-flex items-center px-6 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                                        <i class="fas fa-filter mr-2"></i>Apply Filters
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
+                    
             <!-- Enhanced Students Table -->
             <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <!-- Table Header with Search Filters -->
                 <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-6 md:px-8 py-6 border-b border-gray-200">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div class="flex items-center">
                             <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3">
                                 <i class="fas fa-table text-white"></i>
                             </div>
                             <div>
-                                <h2 class="text-xl font-bold text-gray-900">Students Directory</h2>
                                 <p class="text-sm text-gray-600 mt-1">
                                     Showing <?php echo count($students); ?> of <?php echo number_format($total_students); ?> students
                                 </p>
@@ -491,6 +352,41 @@ try {
                             </div>
                         <?php endif; ?>
                     </div>
+                    
+                    <!-- Search and Filter Form -->
+                    <form method="GET" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400 text-sm"></i>
+                                </div>
+                                <input type="text" id="search" name="search" 
+                                       placeholder="Search name, email, ID..." 
+                                       value="<?php echo htmlspecialchars($search); ?>"
+                                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            </div>
+                            
+                            <select id="filter_status" name="filter_status" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">All Status</option>
+                                <option value="pending" <?php echo ($filter_status === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                <option value="approved" <?php echo ($filter_status === 'approved') ? 'selected' : ''; ?>>Approved</option>
+                                <option value="rejected" <?php echo ($filter_status === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                <option value="completed" <?php echo ($filter_status === 'completed') ? 'selected' : ''; ?>>Completed</option>
+                            </select>
+                            
+                            <select id="filter_course" name="filter_course" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                <option value="">All Courses</option>
+                                <?php foreach ($courses as $course): ?>
+                                    <option value="<?php echo htmlspecialchars($course); ?>" 
+                                            <?php echo ($filter_course == $course) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($course); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </form>
                 </div>
                 
                 <?php if (empty($students)): ?>
@@ -519,20 +415,24 @@ try {
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <?php foreach ($students as $student): ?>
+                                <?php foreach ($students as $student): 
+                                    $status_class = getStatusBadgeClass($student['status']);
+                                    $initials = getStudentInitials($student['first_name'], $student['last_name']);
+                                    $full_name = getStudentFullName($student);
+                                ?>
                                     <tr class="hover:bg-gray-50 transition-colors duration-200">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
                                                 <div class="flex-shrink-0 h-10 w-10">
                                                     <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                                                         <span class="text-sm font-medium text-blue-600">
-                                                            <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
+                                                            <?php echo $initials; ?>
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <div class="ml-4">
                                                     <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo htmlspecialchars(trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name'])); ?>
+                                                        <?php echo $full_name; ?>
                                                     </div>
                                                     <div class="text-sm text-gray-500">
                                                         ULI: <?php echo htmlspecialchars($student['uli']); ?>
@@ -549,19 +449,6 @@ try {
                                             <div class="text-sm text-gray-500"><?php echo htmlspecialchars($student['province']); ?></div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <?php
-                                            $status_class = '';
-                                            switch ($student['status']) {
-                                                case 'approved':
-                                                    $status_class = 'bg-green-100 text-green-800 border-green-200';
-                                                    break;
-                                                case 'rejected':
-                                                    $status_class = 'bg-red-100 text-red-800 border-red-200';
-                                                    break;
-                                                default:
-                                                    $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                            }
-                                            ?>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
                                                 <?php echo ucfirst($student['status']); ?>
                                             </span>
@@ -593,20 +480,24 @@ try {
 
                     <!-- Mobile Cards -->
                     <div class="lg:hidden">
-                        <?php foreach ($students as $student): ?>
+                        <?php foreach ($students as $student): 
+                            $status_class = getStatusBadgeClass($student['status']);
+                            $initials = getStudentInitials($student['first_name'], $student['last_name']);
+                            $full_name = getStudentFullName($student);
+                        ?>
                             <div class="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-200">
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-center flex-1 min-w-0">
                                         <div class="flex-shrink-0 h-10 w-10">
                                             <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                                                 <span class="text-sm font-medium text-blue-600">
-                                                    <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
+                                                    <?php echo $initials; ?>
                                                 </span>
                                             </div>
                                         </div>
                                         <div class="ml-3 flex-1 min-w-0">
                                             <div class="text-sm font-medium text-gray-900 truncate">
-                                                <?php echo htmlspecialchars(trim($student['first_name'] . ' ' . $student['middle_name'] . ' ' . $student['last_name'])); ?>
+                                                <?php echo $full_name; ?>
                                             </div>
                                             <div class="text-sm text-gray-500 truncate">
                                                 <?php echo htmlspecialchars($student['email']); ?>
@@ -617,19 +508,6 @@ try {
                                         </div>
                                     </div>
                                     <div class="flex-shrink-0 ml-2">
-                                        <?php
-                                        $status_class = '';
-                                        switch ($student['status']) {
-                                            case 'approved':
-                                                $status_class = 'bg-green-100 text-green-800 border-green-200';
-                                                break;
-                                            case 'rejected':
-                                                $status_class = 'bg-red-100 text-red-800 border-red-200';
-                                                break;
-                                            default:
-                                                $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-                                        }
-                                        ?>
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border <?php echo $status_class; ?>">
                                             <?php echo ucfirst($student['status']); ?>
                                         </span>
