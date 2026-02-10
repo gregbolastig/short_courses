@@ -171,7 +171,7 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 $student_courses[] = [
                     'id' => 'app_' . $app['application_id'],
                     'course_id' => $app['course_id'],
-                    'course_name' => $app['course_name'] ?: ('Course ID: ' . $app['course_id']),
+                    'course_name' => $app['course_name'] ?: ( $app['course_id']),
                     'nc_level' => $app['nc_level'] ?: 'Pending Assignment',
                     'training_start' => $training_start,
                     'training_end' => $training_end,
@@ -221,7 +221,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     $student_courses[] = [
                         'id' => 'enroll_' . $enrollment['enrollment_id'],
                         'course_id' => $enrollment['course_id'],
-                        'course_name' => $enrollment['course_name'] ?: ('Course ID: ' . $enrollment['course_id']),
+                        'course_name' => $enrollment['course_name'] ?: (
+                             $enrollment['course_id']),
                         'nc_level' => $enrollment['nc_level'] ?: 'Not specified',
                         'training_start' => $enrollment['training_start'],
                         'training_end' => $enrollment['training_end'],
@@ -282,7 +283,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                     $legacy_course_name = !empty($student_profile['course_display_name']) 
                         ? $student_profile['course_display_name'] 
                         : (!empty($student_profile['course']) 
-                            ? 'Course ID: ' . $student_profile['course'] 
+                            ? 
+                             $student_profile['course'] 
                             : 'Unknown Course');
                     
                     $student_courses[] = [

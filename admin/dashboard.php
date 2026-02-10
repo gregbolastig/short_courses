@@ -51,8 +51,8 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                 $training_end = $_POST['training_end'] ?? '';
                 $adviser = $_POST['adviser'] ?? '';
                 
-                // Validate required fields
-                if (empty($course_id) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
+                // Validate required fields (adviser is optional)
+                if (empty($course_id) || empty($nc_level) || empty($training_start) || empty($training_end)) {
                     $error_message = 'Please fill in all required fields.';
                 } else {
                     $conn->beginTransaction();
@@ -142,8 +142,8 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                 $training_end = $_POST['training_end'] ?? '';
                 $adviser = $_POST['adviser'] ?? '';
                 
-                // Validate required fields
-                if (empty($course_id) || empty($nc_level) || empty($adviser) || empty($training_start) || empty($training_end)) {
+                // Validate required fields (adviser is optional)
+                if (empty($course_id) || empty($nc_level) || empty($training_start) || empty($training_end)) {
                     $error_message = 'Please fill in all required fields.';
                 } else {
                     // Get course name from course_id
@@ -1571,9 +1571,9 @@ try {
                         <!-- Adviser Dropdown -->
                         <div>
                             <label for="adviser" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser
+                                <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser <span class="text-gray-400 text-xs">(Optional)</span>
                             </label>
-                            <select name="adviser" id="adviser" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                            <select name="adviser" id="adviser" class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
                                 <option value="">Select Adviser</option>
                                 <?php foreach ($advisers as $adviser): ?>
                                     <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">

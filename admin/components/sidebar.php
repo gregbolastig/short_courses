@@ -36,18 +36,6 @@
                     <span class="sidebar-text transition-all duration-200 truncate">Dashboard</span>
                 </a>
                 
-                <!-- Manage Courses -->
-                <?php 
-                    $courses_path = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 
-                                   ($in_subfolder ? '../courses/index.php' : 'courses/index.php');
-                ?>
-                <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
-                    <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
-                        <i class="fas fa-graduation-cap text-base"></i>
-                    </div>
-                    <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
-                </a>
-                
                 <!-- Manage Students -->
                 <?php 
                     $students_path = (strpos($_SERVER['PHP_SELF'], '/students/') !== false) ? 'index.php' : 
@@ -58,6 +46,18 @@
                         <i class="fas fa-users text-base"></i>
                     </div>
                     <span class="sidebar-text transition-all duration-200 truncate">Manage Students</span>
+                </a>
+                
+                <!-- Manage Courses -->
+                <?php 
+                    $courses_path = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 
+                                   ($in_subfolder ? '../courses/index.php' : 'courses/index.php');
+                ?>
+                <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                    <div class="flex items-center justify-center w-6 h-6 mr-2 md:mr-3 flex-shrink-0">
+                        <i class="fas fa-graduation-cap text-base"></i>
+                    </div>
+                    <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
                 </a>
                 
                 <!-- Adviser List -->
@@ -236,20 +236,20 @@
                     <span class="truncate">Dashboard</span>
                 </a>
                 
-                <!-- Manage Courses -->
-                <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
-                    <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
-                        <i class="fas fa-graduation-cap text-base"></i>
-                    </div>
-                    <span class="truncate">Manage Courses</span>
-                </a>
-                
                 <!-- Manage Students -->
                 <a href="<?php echo $students_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'students/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
                     <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
                         <i class="fas fa-users text-base"></i>
                     </div>
                     <span class="truncate">Manage Students</span>
+                </a>
+                
+                <!-- Manage Courses -->
+                <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                    <div class="flex items-center justify-center w-6 h-6 mr-3 flex-shrink-0">
+                        <i class="fas fa-graduation-cap text-base"></i>
+                    </div>
+                    <span class="truncate">Manage Courses</span>
                 </a>
                 
                 <!-- Adviser List -->
