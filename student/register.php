@@ -989,7 +989,10 @@ include 'components/header.php';
             const select = document.getElementById(selectId);
             select.innerHTML = `<option value="">${placeholder}</option>`;
             
-            options.forEach(option => {
+            // Sort options alphabetically by name for better user experience
+            const sortedOptions = [...options].sort((a, b) => a.name.localeCompare(b.name));
+            
+            sortedOptions.forEach(option => {
                 const optionElement = document.createElement('option');
                 optionElement.value = option.name;
                 optionElement.textContent = option.name;
