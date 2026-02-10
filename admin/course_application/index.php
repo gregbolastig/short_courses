@@ -532,11 +532,17 @@ try {
                                                         <?php
                                                         $status_class = '';
                                                         switch ($app['status']) {
+                                                            case 'completed':
+                                                                $status_class = 'bg-green-100 text-green-800 border-green-200';
+                                                                break;
                                                             case 'approved':
                                                                 $status_class = 'bg-green-100 text-green-800 border-green-200';
                                                                 break;
                                                             case 'rejected':
                                                                 $status_class = 'bg-red-100 text-red-800 border-red-200';
+                                                                break;
+                                                            case 'pending':
+                                                                $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                                                                 break;
                                                             default:
                                                                 $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
@@ -612,11 +618,17 @@ try {
                                                     <?php
                                                     $status_class = '';
                                                     switch ($app['status']) {
+                                                        case 'completed':
+                                                            $status_class = 'bg-green-100 text-green-800 border-green-200';
+                                                            break;
                                                         case 'approved':
                                                             $status_class = 'bg-green-100 text-green-800 border-green-200';
                                                             break;
                                                         case 'rejected':
                                                             $status_class = 'bg-red-100 text-red-800 border-red-200';
+                                                            break;
+                                                        case 'pending':
+                                                            $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
                                                             break;
                                                         default:
                                                             $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';

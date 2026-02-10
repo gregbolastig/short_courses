@@ -123,6 +123,69 @@ try {
     </script>
 </head>
 <body class="bg-gray-50">
+    <!-- Success Notification Toast -->
+    <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Success!</p>
+                    <p class="text-xs text-green-100" id="successMessage">
+                        Operation completed successfully!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        #successNotification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+
+    <script>
+        // Toast notification functions
+        function showSuccessNotification(message) {
+            const notification = document.getElementById('successNotification');
+            const messageElement = document.getElementById('successMessage');
+            if (message) {
+                messageElement.textContent = message;
+            }
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                closeSuccessNotification();
+            }, 3000);
+        }
+        
+        function closeSuccessNotification() {
+            const notification = document.getElementById('successNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
+        
+        // Check for toast message from PHP session
+        <?php if (isset($_SESSION['toast_message'])): ?>
+            showSuccessNotification('<?php echo addslashes($_SESSION['toast_message']); ?>');
+            <?php 
+                unset($_SESSION['toast_message']);
+                unset($_SESSION['toast_type']);
+            ?>
+        <?php endif; ?>
+    </script>
+
     <?php include '../components/sidebar.php'; ?>
     
     <!-- Main Content -->

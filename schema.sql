@@ -214,6 +214,12 @@ CREATE TABLE course_applications (
     student_id INT NOT NULL,
     course_id INT NOT NULL, -- NORMALIZED: Foreign key to courses table
     nc_level VARCHAR(10) NULL,
+    
+    -- Training details (added for first course support and historical record keeping)
+    adviser VARCHAR(255) NULL COMMENT 'Adviser name for this course',
+    training_start DATE NULL COMMENT 'Training start date',
+    training_end DATE NULL COMMENT 'Training end date',
+    
     status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMP NULL,
@@ -248,7 +254,7 @@ CREATE TABLE course_applications (
     INDEX idx_student_status (student_id, status)
     
     -- Note: No unique constraint - allows duplicate applications
-) COMMENT='Course applications before enrollment (normalized with foreign keys)';
+) COMMENT='Course applications before enrollment (normalized with foreign keys and training details)';
 
 -- Student Enrollments table - Active enrollments created from approved applications
 CREATE TABLE student_enrollments (
@@ -436,6 +442,18 @@ CREATE TABLE IF NOT EXISTS system_activities (
 -- same course with different NC levels, run the commands below.
 -- 
 -- For NEW databases: Skip this section (constraints are already correct in CREATE TABLE above).
+-- 
+-- ============================================================================
+-- IMPORTANT: First Course Migration
+-- ============================================================================
+-- 
+-- If you have existing students with course data in the students table,
+-- run the migration script to move that data to course_applications:
+-- 
+--   php database/migrate_first_course_to_applications.php
+-- 
+-- This ensures all courses are stored consistently in course_applications table.
+-- See database/FIRST_COURSE_MIGRATION.md for details.
 -- 
 -- ============================================================================
 -- NOTE: No unique constraints on applications/enrollments

@@ -239,6 +239,10 @@ try {
                                     $status_class = '';
                                     $status_icon = '';
                                     switch ($application['status']) {
+                                        case 'completed':
+                                            $status_class = 'bg-green-100 text-green-800 border-green-200';
+                                            $status_icon = 'fas fa-graduation-cap';
+                                            break;
                                         case 'approved':
                                             $status_class = 'bg-green-100 text-green-800 border-green-200';
                                             $status_icon = 'fas fa-check-circle';
@@ -246,6 +250,10 @@ try {
                                         case 'rejected':
                                             $status_class = 'bg-red-100 text-red-800 border-red-200';
                                             $status_icon = 'fas fa-times-circle';
+                                            break;
+                                        case 'pending':
+                                            $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                                            $status_icon = 'fas fa-clock';
                                             break;
                                         default:
                                             $status_class = 'bg-yellow-100 text-yellow-800 border-yellow-200';

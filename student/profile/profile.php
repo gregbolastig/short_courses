@@ -236,72 +236,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 }
             }
             
-            // Legacy support: Show course if student has been approved or completed (has course assigned in students table)
-            if (($student_profile['status'] === 'approved' || $student_profile['status'] === 'completed') && !empty($student_profile['course'])) {
-                // Check if this course is already shown from applications/enrollments
-                $course_already_shown = false;
-                $legacy_course_id = $student_profile['course'];
-                foreach ($student_courses as $existing_course) {
-                    // Compare by course_id if available, otherwise by course_name
-                    if (isset($existing_course['course_id']) && $existing_course['course_id'] == $legacy_course_id) {
-                        $course_already_shown = true;
-                        break;
-                    } elseif (!isset($existing_course['course_id']) && isset($existing_course['course_name']) && $existing_course['course_name'] === $student_profile['course_display_name']) {
-                        $course_already_shown = true;
-                        break;
-                    }
-                }
-                
-                if (!$course_already_shown) {
-                    // Determine course status based on student status and training dates
-                    $course_status = 'pending';
-                    $completion_date = null;
-                    $certificate_number = null;
-                    
-                    if ($student_profile['status'] === 'completed') {
-                        // Admin has approved the course completion - show as completed
-                        $course_status = 'completed';
-                        $completion_date = $student_profile['approved_at'];
-                        $certificate_number = 'CERT-' . date('Y', strtotime($student_profile['approved_at'])) . '-' . str_pad($student_profile['id'], 6, '0', STR_PAD_LEFT);
-                    } elseif ($student_profile['status'] === 'approved') {
-                        // Only for approved students, check training dates
-                        $today = date('Y-m-d');
-                        if (!empty($student_profile['training_start']) && !empty($student_profile['training_end'])) {
-                            if ($today < $student_profile['training_start']) {
-                                $course_status = 'pending_start'; // Training hasn't started yet
-                            } elseif ($today >= $student_profile['training_start'] && $today <= $student_profile['training_end']) {
-                                $course_status = 'in_progress'; // Currently in training
-                            } else {
-                                $course_status = 'training_ended'; // Training period ended
-                            }
-                        } else {
-                            $course_status = 'enrolled'; // Approved but no training dates set
-                        }
-                    }
-                    
-                    // Get course name - use course_display_name if available, otherwise fallback to course_id
-                    $legacy_course_name = !empty($student_profile['course_display_name']) 
-                        ? $student_profile['course_display_name'] 
-                        : (!empty($student_profile['course']) 
-                            ? 
-                             $student_profile['course'] 
-                            : 'Unknown Course');
-                    
-                    $student_courses[] = [
-                        'id' => 'legacy_1',
-                        'course_id' => $student_profile['course'],
-                        'course_name' => $legacy_course_name,
-                        'nc_level' => $student_profile['nc_level'] ?: 'Not specified',
-                        'training_start' => $student_profile['training_start'],
-                        'training_end' => $student_profile['training_end'],
-                        'adviser' => $student_profile['adviser'],
-                        'status' => $course_status,
-                        'completion_date' => $completion_date,
-                        'certificate_number' => $certificate_number,
-                        'approved_at' => $student_profile['approved_at']
-                    ];
-                }
-            }
+            // Note: All courses (including the first one) are now stored in course_applications table
+            // No need for legacy support code since first course registration now creates a course_application record
         }
     } catch (PDOException $e) {
         $errors[] = 'Database error: ' . $e->getMessage();

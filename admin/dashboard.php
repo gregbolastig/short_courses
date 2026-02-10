@@ -157,27 +157,38 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     } else {
                         $course_name = $course_data['course_name'];
                         
-                        // Update student with approval and course details (status: pending -> completed)
-                        $stmt = $conn->prepare("UPDATE students SET 
-                            status = 'completed',
-                            approved_by = :admin_id,
-                            approved_at = NOW(),
-                            course = :course,
-                            nc_level = :nc_level,
-                            training_start = :training_start,
-                            training_end = :training_end,
-                            adviser = :adviser
-                            WHERE id = :id");
+                        // Start transaction to ensure both operations succeed or fail together
+                        $conn->beginTransaction();
                         
-                        $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                        $stmt->bindParam(':course', $course_name);
-                        $stmt->bindParam(':nc_level', $nc_level);
-                        $stmt->bindParam(':training_start', $training_start);
-                        $stmt->bindParam(':training_end', $training_end);
-                        $stmt->bindParam(':adviser', $adviser);
-                        $stmt->bindParam(':id', $student_id);
-                        
-                        if ($stmt->execute()) {
+                        try {
+                            // 1. Create a course_application record for the first course
+                            $stmt = $conn->prepare("INSERT INTO course_applications 
+                                (student_id, course_id, nc_level, training_start, training_end, adviser, status, reviewed_by, reviewed_at, applied_at) 
+                                VALUES (:student_id, :course_id, :nc_level, :training_start, :training_end, :adviser, 'completed', :admin_id, NOW(), NOW())");
+                            
+                            $stmt->bindParam(':student_id', $student_id);
+                            $stmt->bindParam(':course_id', $course_id);
+                            $stmt->bindParam(':nc_level', $nc_level);
+                            $stmt->bindParam(':training_start', $training_start);
+                            $stmt->bindParam(':training_end', $training_end);
+                            $stmt->bindParam(':adviser', $adviser);
+                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                            $stmt->execute();
+                            
+                            // 2. Update student status to completed (but don't store course data in students table)
+                            $stmt = $conn->prepare("UPDATE students SET 
+                                status = 'completed',
+                                approved_by = :admin_id,
+                                approved_at = NOW()
+                                WHERE id = :id");
+                            
+                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                            $stmt->bindParam(':id', $student_id);
+                            $stmt->execute();
+                            
+                            // Commit transaction
+                            $conn->commit();
+                            
                             // Log student registration approval
                             $logger->log(
                                 'student_registration_approved',
@@ -192,8 +203,10 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                             // Redirect to refresh and show updated status
                             header("Location: dashboard.php?approved=" . $student_id);
                             exit;
-                        } else {
-                            $error_message = 'Failed to approve student registration.';
+                        } catch (Exception $e) {
+                            // Rollback transaction on error
+                            $conn->rollBack();
+                            $error_message = 'Failed to approve student registration: ' . $e->getMessage();
                         }
                     }
                 }
@@ -948,7 +961,7 @@ try {
                                                                     'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                                     'approved' => 'bg-green-100 text-green-800 border-green-200',
                                                                     'rejected' => 'bg-red-100 text-red-800 border-red-200',
-                                                                    'completed' => 'bg-blue-100 text-blue-800 border-blue-200'
+                                                                    'completed' => 'bg-green-100 text-green-800 border-green-200'
                                                                 ];
                                                                 $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
                                                                 ?>
@@ -1046,7 +1059,7 @@ try {
                                                             'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                             'approved' => 'bg-green-100 text-green-800 border-green-200',
                                                             'rejected' => 'bg-red-100 text-red-800 border-red-200',
-                                                            'completed' => 'bg-blue-100 text-blue-800 border-blue-200'
+                                                            'completed' => 'bg-green-100 text-green-800 border-green-200'
                                                         ];
                                                         $status_class = $status_classes[$student['status']] ?? 'bg-gray-100 text-gray-800 border-gray-200';
                                                         ?>

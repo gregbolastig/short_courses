@@ -34,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate required fields
     $required_fields = [
         'first_name', 'last_name', 'birthday', 'sex', 'civil_status',
-        'contact_number', 'province', 'city', 'barangay', 
-        'guardian_first_name', 'guardian_last_name', 'parent_contact', 
+        'country_code', 'contact_number', 'province', 'city', 'barangay', 'birth_province', 'birth_city',
+        'guardian_first_name', 'guardian_last_name', 'parent_country_code', 'parent_contact', 
         'email', 'uli', 'last_school', 'school_province', 'school_city'
     ];
     
@@ -50,13 +50,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid email format';
     }
     
-    // Validate phone numbers
-    $phone_pattern = '/^(\+63|0)[0-9]{10}$/';
-    if (!empty($_POST['contact_number']) && !preg_match($phone_pattern, str_replace(' ', '', $_POST['contact_number']))) {
-        $errors[] = 'Invalid contact number format';
+    // Validate phone numbers - they should be 10 digits only (country code is separate)
+    if (!empty($_POST['contact_number'])) {
+        $phone_number = str_replace(' ', '', $_POST['contact_number']);
+        if (!preg_match('/^\d{10}$/', $phone_number)) {
+            $errors[] = 'Contact number must be exactly 10 digits';
+        }
     }
-    if (!empty($_POST['parent_contact']) && !preg_match($phone_pattern, str_replace(' ', '', $_POST['parent_contact']))) {
-        $errors[] = 'Invalid parent contact number format';
+    
+    if (!empty($_POST['parent_contact'])) {
+        $parent_phone = str_replace(' ', '', $_POST['parent_contact']);
+        if (!preg_match('/^\d{10}$/', $parent_phone)) {
+            $errors[] = 'Parent contact number must be exactly 10 digits';
+        }
+    }
+    
+    // Validate country codes are provided
+    if (empty($_POST['country_code'])) {
+        $errors[] = 'Country code is required for contact number';
+    }
+    if (empty($_POST['parent_country_code'])) {
+        $errors[] = 'Country code is required for parent contact number';
     }
     
     // Calculate age
@@ -76,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!in_array($file_type, $allowed_types)) {
             $errors[] = 'Profile picture must be JPG, JPEG, or PNG';
-        } elseif ($file_size > 2 * 1024 * 1024) {
-            $errors[] = 'Profile picture must be less than 2MB';
+        } elseif ($file_size > 10 * 1024 * 1024) {
+            $errors[] = 'Profile picture must be less than 10MB';
         } else {
             $upload_dir = '../../uploads/profiles/';
             if (!is_dir($upload_dir)) {
@@ -116,11 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $database = new Database();
             $conn = $database->getConnection();
             
+            // Combine country code with phone numbers
+            $full_contact_number = $_POST['country_code'] . $_POST['contact_number'];
+            $full_parent_contact = $_POST['parent_country_code'] . $_POST['parent_contact'];
+            
             $sql = "UPDATE students SET 
                 first_name = :first_name, middle_name = :middle_name, last_name = :last_name, extension_name = :extension_name,
                 birthday = :birthday, age = :age, sex = :sex, civil_status = :civil_status,
                 contact_number = :contact_number, province = :province, city = :city,
-                barangay = :barangay, street_address = :street_address, place_of_birth = :place_of_birth,
+                barangay = :barangay, street_address = :street_address, birth_province = :birth_province, birth_city = :birth_city,
                 guardian_first_name = :guardian_first_name, guardian_middle_name = :guardian_middle_name, 
                 guardian_last_name = :guardian_last_name, guardian_extension = :guardian_extension,
                 parent_contact = :parent_contact, email = :email, profile_picture = :profile_picture, 
@@ -137,17 +155,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':age', $age);
             $stmt->bindParam(':sex', $_POST['sex']);
             $stmt->bindParam(':civil_status', $_POST['civil_status']);
-            $stmt->bindParam(':contact_number', $_POST['contact_number']);
+            $stmt->bindParam(':contact_number', $full_contact_number);
             $stmt->bindParam(':province', $_POST['province']);
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
-            $stmt->bindParam(':place_of_birth', $_POST['place_of_birth']);
+            $stmt->bindParam(':birth_province', $_POST['birth_province']);
+            $stmt->bindParam(':birth_city', $_POST['birth_city']);
             $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
             $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
             $stmt->bindParam(':guardian_last_name', $_POST['guardian_last_name']);
             $stmt->bindParam(':guardian_extension', $_POST['guardian_extension']);
-            $stmt->bindParam(':parent_contact', $_POST['parent_contact']);
+            $stmt->bindParam(':parent_contact', $full_parent_contact);
             $stmt->bindParam(':email', $_POST['email']);
             $stmt->bindParam(':profile_picture', $profile_picture_path);
             $stmt->bindParam(':uli', $_POST['uli']);
@@ -167,7 +186,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $student_id
                 );
                 
-                $success_message = 'Student information updated successfully!';
+                // Set success message in session for toast notification
+                $_SESSION['toast_message'] = 'Student information updated successfully!';
+                $_SESSION['toast_type'] = 'success';
+                
+                // Redirect to view page to show updated information
+                header("Location: view.php?id=" . $student_id);
+                exit;
             } else {
                 $errors[] = 'Update failed. Please try again.';
             }
@@ -203,6 +228,34 @@ try {
             ['title' => 'View: ' . $student['first_name'] . ' ' . $student['last_name'], 'icon' => 'fas fa-eye', 'url' => 'view.php?id=' . $student_id],
             ['title' => 'Edit', 'icon' => 'fas fa-edit']
         ];
+        
+        // Parse contact number to separate country code and phone number
+        $contact_country_code = '';
+        $contact_phone_number = '';
+        if (!empty($student['contact_number'])) {
+            // Match country code pattern (+ followed by 1-4 digits)
+            if (preg_match('/^(\+\d{1,4})(\d{10})$/', $student['contact_number'], $matches)) {
+                $contact_country_code = $matches[1];
+                $contact_phone_number = $matches[2];
+            } else {
+                // If no country code, assume it's just the phone number
+                $contact_phone_number = $student['contact_number'];
+            }
+        }
+        
+        // Parse parent contact to separate country code and phone number
+        $parent_country_code = '';
+        $parent_phone_number = '';
+        if (!empty($student['parent_contact'])) {
+            // Match country code pattern (+ followed by 1-4 digits)
+            if (preg_match('/^(\+\d{1,4})(\d{10})$/', $student['parent_contact'], $matches)) {
+                $parent_country_code = $matches[1];
+                $parent_phone_number = $matches[2];
+            } else {
+                // If no country code, assume it's just the phone number
+                $parent_phone_number = $student['parent_contact'];
+            }
+        }
     }
     
 } catch (PDOException $e) {
@@ -286,12 +339,109 @@ try {
         .animate-fade-in-up {
             animation: fadeInUp 0.3s ease-out;
         }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        
+        /* System Toast notification styles */
+        #successNotification.show,
+        #errorNotification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
     
     <!-- API Utilities for Phone Number Country Codes -->
     <script src="../../student/components/api-utils.js"></script>
 </head>
 <body class="bg-gray-50">
+    <!-- Success Notification Toast -->
+    <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm mb-1">Success!</p>
+                    <p class="text-xs text-green-100" id="successMessage">
+                        Student information updated successfully!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Error Notification Toast -->
+    <div id="errorNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
+        <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
+            <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-circle text-white text-lg"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-sm" id="errorMessage">
+                        An error occurred
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="text-center mb-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <i class="fas fa-question-circle text-blue-600 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2" id="modalTitle">Confirm Action</h3>
+                <p class="text-sm text-gray-600" id="modalMessage">Are you sure you want to proceed?</p>
+            </div>
+            <div class="flex gap-3 justify-center">
+                <button id="modalCancel" class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors">
+                    Cancel
+                </button>
+                <button id="modalConfirm" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="min-h-screen bg-gray-50">
         <?php include '../components/sidebar.php'; ?>
         
@@ -337,19 +487,6 @@ try {
                                                 <li><?php echo htmlspecialchars($error); ?></li>
                                             <?php endforeach; ?>
                                         </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                        
-                        <?php if ($success_message): ?>
-                            <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-check-circle text-green-400"></i>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -440,15 +577,17 @@ try {
                             </label>
                             <div class="flex flex-col sm:flex-row gap-2">
                                 <select id="country_code" name="country_code" 
-                                        class="w-full sm:w-24 px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm shadow-sm">
+                                        class="w-full sm:w-24 px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm shadow-sm"
+                                        data-selected="<?php echo htmlspecialchars($contact_country_code); ?>">
                                     <option value="">Code</option>
                                 </select>
                                 <input type="tel" id="contact_number" name="contact_number" required 
                                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 text-sm shadow-sm"
                                        placeholder="9123456789"
                                        pattern="[0-9]{10}"
+                                       maxlength="10"
                                        inputmode="numeric"
-                                       value="<?php echo htmlspecialchars($student['contact_number']); ?>">
+                                       value="<?php echo htmlspecialchars($contact_phone_number); ?>">
                             </div>
                             <p class="text-xs text-gray-500 mt-2 flex items-center">
                                 <i class="fas fa-info-circle mr-1"></i>
@@ -521,14 +660,39 @@ try {
                                    value="<?php echo htmlspecialchars($student['street_address']); ?>"
                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
                         </div>
-                        <div>
-                            <label for="place_of_birth" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-baby text-green-600 mr-1"></i>Place of Birth
-                            </label>
-                            <input type="text" id="place_of_birth" name="place_of_birth" 
-                                   value="<?php echo htmlspecialchars($student['place_of_birth']); ?>"
-                                   placeholder="City, Province"
-                                   class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+                            <i class="fas fa-baby text-green-600 mr-2"></i>Place of Birth
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="birth_province" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-map text-green-600 mr-1"></i>Province *
+                                </label>
+                                <select id="birth_province" name="birth_province" required 
+                                        class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                        data-selected="<?php echo htmlspecialchars($student['birth_province'] ?? ''); ?>">
+                                    <option value="">Loading provinces...</option>
+                                </select>
+                                <div id="birth_province-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading provinces...
+                                </div>
+                            </div>
+                            <div>
+                                <label for="birth_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <i class="fas fa-city text-green-600 mr-1"></i>City/Municipality *
+                                </label>
+                                <select id="birth_city" name="birth_city" required 
+                                        class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
+                                        data-selected="<?php echo htmlspecialchars($student['birth_city'] ?? ''); ?>">
+                                    <option value="">Select city/municipality</option>
+                                </select>
+                                <div id="birth_city-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Loading cities...
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -580,15 +744,17 @@ try {
                             </label>
                             <div class="flex flex-col sm:flex-row gap-2">
                                 <select id="parent_country_code" name="parent_country_code" 
-                                        class="w-full sm:w-24 px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm shadow-sm">
+                                        class="w-full sm:w-24 px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm shadow-sm"
+                                        data-selected="<?php echo htmlspecialchars($parent_country_code); ?>">
                                     <option value="">Code</option>
                                 </select>
                                 <input type="tel" id="parent_contact" name="parent_contact" required 
                                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 text-sm shadow-sm"
                                        placeholder="9123456789"
                                        pattern="[0-9]{10}"
+                                       maxlength="10"
                                        inputmode="numeric"
-                                       value="<?php echo htmlspecialchars($student['parent_contact']); ?>">
+                                       value="<?php echo htmlspecialchars($parent_phone_number); ?>">
                             </div>
                             <p class="text-xs text-gray-500 mt-2 flex items-center">
                                 <i class="fas fa-info-circle mr-1"></i>
@@ -712,7 +878,7 @@ try {
                             <div class="flex-1">
                                 <input type="file" id="profile_picture" name="profile_picture" accept="image/jpeg,image/jpg,image/png"
                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all duration-200">
-                                <p class="mt-2 text-sm text-gray-500">Maximum file size: 2MB. Accepted formats: JPG, JPEG, PNG. Leave empty to keep current photo.</p>
+                                <p class="mt-2 text-sm text-gray-500">Maximum file size: 10MB. Accepted formats: JPG, JPEG, PNG. Leave empty to keep current photo.</p>
                             </div>
                         </div>
                     </div>
@@ -723,14 +889,11 @@ try {
             <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                 <div class="p-6 md:p-8">
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button type="submit" class="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <button type="submit" id="submit-btn" class="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                             <i class="fas fa-save mr-2"></i>Update Student Information
                         </button>
-                        <a href="view.php?id=<?php echo $student_id; ?>" class="inline-flex items-center justify-center px-8 py-4 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md">
+                        <a href="view.php?id=<?php echo $student_id; ?>" id="cancel-btn" class="inline-flex items-center justify-center px-8 py-4 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md">
                             <i class="fas fa-times mr-2"></i>Cancel Changes
-                        </a>
-                        <a href="index.php" class="inline-flex items-center justify-center px-8 py-4 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Students List
                         </a>
                     </div>
                 </div>
@@ -744,14 +907,117 @@ try {
     </div>
 
     <script>
+        // Modal and Toast Functions
+        function showModal(title, message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalConfirm = document.getElementById('modalConfirm');
+            const modalCancel = document.getElementById('modalCancel');
+            
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+            
+            const closeModal = () => {
+                modal.classList.remove('show');
+                setTimeout(() => modal.style.display = 'none', 300);
+            };
+            
+            modalConfirm.onclick = () => {
+                closeModal();
+                onConfirm();
+            };
+            
+            modalCancel.onclick = closeModal;
+            modal.onclick = (e) => {
+                if (e.target === modal) closeModal();
+            };
+        }
+        
+        // System Toast Notification Functions
+        function showSuccessNotification(message) {
+            const notification = document.getElementById('successNotification');
+            const messageElement = document.getElementById('successMessage');
+            if (message) {
+                messageElement.textContent = message;
+            }
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                closeSuccessNotification();
+            }, 3000);
+        }
+        
+        function closeSuccessNotification() {
+            const notification = document.getElementById('successNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
+        
+        function showErrorNotification(message) {
+            const notification = document.getElementById('errorNotification');
+            const messageElement = document.getElementById('errorMessage');
+            if (message) {
+                messageElement.textContent = message;
+            }
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+                closeErrorNotification();
+            }, 3000);
+        }
+        
+        function closeErrorNotification() {
+            const notification = document.getElementById('errorNotification');
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.classList.add('hidden');
+            }, 300);
+        }
+        
+        // Check for toast message from PHP session
+        <?php if (isset($_SESSION['toast_message'])): ?>
+            <?php if (($_SESSION['toast_type'] ?? 'success') === 'success'): ?>
+                showSuccessNotification('<?php echo addslashes($_SESSION['toast_message']); ?>');
+            <?php else: ?>
+                showErrorNotification('<?php echo addslashes($_SESSION['toast_message']); ?>');
+            <?php endif; ?>
+            <?php 
+                unset($_SESSION['toast_message']);
+                unset($_SESSION['toast_type']);
+            ?>
+        <?php endif; ?>
+        
         // Initialize page with API data
         document.addEventListener('DOMContentLoaded', async function() {
-            // Load country codes for phone numbers and set Philippines as default
-            await loadCountryCodes('country_code', '+63');
-            await loadCountryCodes('parent_country_code', '+63');
+            // Load country codes for phone numbers
+            const countryCodeSelect = document.getElementById('country_code');
+            const parentCountryCodeSelect = document.getElementById('parent_country_code');
+            const selectedCountryCode = countryCodeSelect.dataset.selected;
+            const selectedParentCountryCode = parentCountryCodeSelect.dataset.selected;
+            
+            // Load country codes and set selected values
+            await loadCountryCodes('country_code', selectedCountryCode || '+63');
+            await loadCountryCodes('parent_country_code', selectedParentCountryCode || '+63');
             
             // Load provinces for address
             await loadProvinces('province');
+            
+            // Load provinces for birth place
+            await loadProvinces('birth_province');
             
             // Load provinces for school
             await loadProvinces('school_province');
@@ -760,12 +1026,16 @@ try {
             const provinceSelect = document.getElementById('province');
             const citySelect = document.getElementById('city');
             const barangaySelect = document.getElementById('barangay');
+            const birthProvinceSelect = document.getElementById('birth_province');
+            const birthCitySelect = document.getElementById('birth_city');
             const schoolProvinceSelect = document.getElementById('school_province');
             const schoolCitySelect = document.getElementById('school_city');
             
             const selectedProvince = provinceSelect.dataset.selected;
             const selectedCity = citySelect.dataset.selected;
             const selectedBarangay = barangaySelect.dataset.selected;
+            const selectedBirthProvince = birthProvinceSelect.dataset.selected;
+            const selectedBirthCity = birthCitySelect.dataset.selected;
             const selectedSchoolProvince = schoolProvinceSelect.dataset.selected;
             const selectedSchoolCity = schoolCitySelect.dataset.selected;
             
@@ -788,6 +1058,17 @@ try {
                             }
                         }
                     }
+                }
+            }
+            
+            // Set selected birth province and load birth cities
+            if (selectedBirthProvince) {
+                birthProvinceSelect.value = selectedBirthProvince;
+                const selectedOption = birthProvinceSelect.options[birthProvinceSelect.selectedIndex];
+                const provinceCode = selectedOption.dataset.code;
+                
+                if (provinceCode) {
+                    await loadCities(provinceCode, 'birth_city', selectedBirthCity);
                 }
             }
             
@@ -836,6 +1117,19 @@ try {
             }
         });
         
+        // Birth province change handler
+        document.getElementById('birth_province').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const provinceCode = selectedOption.dataset.code;
+            
+            // Clear birth city dropdown
+            document.getElementById('birth_city').innerHTML = '<option value="">Select city/municipality</option>';
+            
+            if (provinceCode) {
+                loadCities(provinceCode, 'birth_city');
+            }
+        });
+        
         // School province change handler
         document.getElementById('school_province').addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
@@ -879,9 +1173,9 @@ try {
                     return;
                 }
                 
-                // Validate file size (2MB)
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('File size must be less than 2MB');
+                // Validate file size (10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size must be less than 10MB');
                     this.value = '';
                     return;
                 }
@@ -898,24 +1192,44 @@ try {
             }
         });
 
-        // Form submission with loading state
+        // Form submission with confirmation and loading state
         document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default submission
+            
+            const form = this;
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             
-            // Add loading state
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
-            submitBtn.disabled = true;
-            this.classList.add('form-loading');
-            
-            // If there's an error, restore the button (this would be handled by PHP validation)
-            setTimeout(() => {
-                if (this.classList.contains('form-loading')) {
-                    submitBtn.innerHTML = originalText;
-                    submitBtn.disabled = false;
-                    this.classList.remove('form-loading');
+            // Show confirmation modal
+            showModal(
+                'Confirm Update',
+                'Are you sure you want to update this student\'s information?',
+                function() {
+                    // Add loading state
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+                    submitBtn.disabled = true;
+                    form.classList.add('form-loading');
+                    
+                    // Submit the form
+                    form.submit();
                 }
-            }, 10000); // 10 second timeout
+            );
+        });
+        
+        // Cancel button confirmation
+        document.getElementById('cancel-btn').addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent default navigation
+            
+            const href = this.href;
+            
+            // Show confirmation modal
+            showModal(
+                'Cancel Changes',
+                'Are you sure you want to cancel? Any unsaved changes will be lost.',
+                function() {
+                    window.location.href = href;
+                }
+            );
         });
 
         // Enhanced form validation feedback
