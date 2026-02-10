@@ -182,6 +182,8 @@ try {
     $status_filter = $_GET['status'] ?? '';
     $course_filter = $_GET['course'] ?? '';
     $search = $_GET['search'] ?? '';
+    $start_date = $_GET['start_date'] ?? '';
+    $end_date = $_GET['end_date'] ?? '';
     
     // Build WHERE clause
     $where_conditions = [];
@@ -200,6 +202,16 @@ try {
     if (!empty($search)) {
         $where_conditions[] = "(s.first_name LIKE :search OR s.last_name LIKE :search OR s.email LIKE :search OR s.uli LIKE :search OR c.course_name LIKE :search)";
         $params[':search'] = '%' . $search . '%';
+    }
+    
+    if (!empty($start_date)) {
+        $where_conditions[] = "DATE(ca.applied_at) >= :start_date";
+        $params[':start_date'] = $start_date;
+    }
+    
+    if (!empty($end_date)) {
+        $where_conditions[] = "DATE(ca.applied_at) <= :end_date";
+        $params[':end_date'] = $end_date;
     }
     
     $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
@@ -364,7 +376,7 @@ try {
                         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 md:p-8 mb-8">
                             
                             <form method="GET" class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     <div>
                                         <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
                                         <div class="relative">
@@ -401,6 +413,30 @@ try {
                                                  </option>
                                              <?php endforeach; ?>
                                          </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="start_date" class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-calendar text-gray-400"></i>
+                                            </div>
+                                            <input type="date" id="start_date" name="start_date" 
+                                                   value="<?php echo htmlspecialchars($start_date); ?>"
+                                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="end_date" class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <i class="fas fa-calendar text-gray-400"></i>
+                                            </div>
+                                            <input type="date" id="end_date" name="end_date" 
+                                                   value="<?php echo htmlspecialchars($end_date); ?>"
+                                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                        </div>
                                     </div>
                                     
                                     <div class="flex items-end">

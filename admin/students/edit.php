@@ -575,34 +575,25 @@ try {
                                    class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
                         </div>
                         <div>
-                            <label for="parent_contact" class="block text-sm font-medium text-gray-700 mb-2">Guardian Contact Number *</label>
-                            <div class="flex space-x-2">
-                                <div class="w-24">
-                                    <select id="parent_country_code" name="parent_country_code" 
-                                            class="block w-full px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
-                                        <option value="+63">🇵🇭 +63</option>
-                                        <option value="+1">🇺🇸 +1</option>
-                                        <option value="+44">🇬🇧 +44</option>
-                                        <option value="+86">🇨🇳 +86</option>
-                                        <option value="+81">🇯🇵 +81</option>
-                                        <option value="+82">🇰🇷 +82</option>
-                                        <option value="+65">🇸🇬 +65</option>
-                                        <option value="+60">🇲🇾 +60</option>
-                                        <option value="+66">🇹🇭 +66</option>
-                                        <option value="+84">🇻🇳 +84</option>
-                                    </select>
-                                    <div id="parent_country_code-loading" class="hidden text-xs text-gray-500 mt-1">Loading...</div>
-                                </div>
-                                <div class="flex-1">
-                                    <input type="tel" id="parent_contact" name="parent_contact" required 
-                                           placeholder="e.g., 9123456789 (without country code)"
-                                           value="<?php echo htmlspecialchars($student['parent_contact']); ?>"
-                                           class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
-                                           pattern="[0-9]{10}"
-                                           title="Please enter a 10-digit phone number">
-                                </div>
+                            <label for="parent_contact" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-phone text-blue-500 mr-2"></i>Guardian Contact Number *
+                            </label>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <select id="parent_country_code" name="parent_country_code" 
+                                        class="w-full sm:w-24 px-2 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm shadow-sm">
+                                    <option value="">Code</option>
+                                </select>
+                                <input type="tel" id="parent_contact" name="parent_contact" required 
+                                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 hover:border-gray-300 text-sm shadow-sm"
+                                       placeholder="9123456789"
+                                       pattern="[0-9]{10}"
+                                       inputmode="numeric"
+                                       value="<?php echo htmlspecialchars($student['parent_contact']); ?>">
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">Enter guardian's phone number without the country code. Default is Philippines (+63).</p>
+                            <p class="text-xs text-gray-500 mt-2 flex items-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Select country code and enter 10-digit phone number (e.g., 9123456789)
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -755,9 +746,9 @@ try {
     <script>
         // Initialize page with API data
         document.addEventListener('DOMContentLoaded', async function() {
-            // Load country codes for phone numbers
-            await loadCountryCodes('country_code');
-            await loadCountryCodes('parent_country_code');
+            // Load country codes for phone numbers and set Philippines as default
+            await loadCountryCodes('country_code', '+63');
+            await loadCountryCodes('parent_country_code', '+63');
             
             // Load provinces for address
             await loadProvinces('province');
