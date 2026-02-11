@@ -63,6 +63,12 @@ function toggleSidebar() {
             logoContainer.classList.add('justify-center');
         }
         
+        // Center the profile button
+        const profileButton = sidebar.querySelector('button[onclick="toggleProfileDropdown()"]');
+        if (profileButton) {
+            profileButton.classList.add('justify-center');
+        }
+        
         // Position toggle button for collapsed state
         const toggleButton = sidebar.querySelector('button[onclick="toggleSidebar()"]');
         if (toggleButton) {
@@ -113,6 +119,12 @@ function toggleSidebar() {
         const logoContainer = sidebar.querySelector('.flex.items-center.flex-shrink-0');
         if (logoContainer) {
             logoContainer.classList.remove('justify-center');
+        }
+        
+        // Restore profile button alignment
+        const profileButton = sidebar.querySelector('button[onclick="toggleProfileDropdown()"]');
+        if (profileButton) {
+            profileButton.classList.remove('justify-center');
         }
         
         // Restore toggle button position
@@ -178,6 +190,11 @@ window.addEventListener('resize', function() {
         const logoContainer = sidebar?.querySelector('.flex.items-center.flex-shrink-0');
         if (logoContainer) {
             logoContainer.classList.remove('justify-center');
+        }
+        
+        const profileButton = sidebar?.querySelector('button[onclick="toggleProfileDropdown()"]');
+        if (profileButton) {
+            profileButton.classList.remove('justify-center');
         }
         
         const toggleButton = sidebar?.querySelector('button[onclick="toggleSidebar()"]');
@@ -468,4 +485,39 @@ document.addEventListener('keydown', function(e) {
         closeApprovalModal();
     }
 });
+
+// Toast Notification Function
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `transform transition-all duration-300 ease-in-out translate-x-full opacity-0 pointer-events-auto`;
+    
+    const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+    const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    
+    toast.innerHTML = `
+        <div class="${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3 min-w-[320px] max-w-md backdrop-blur-sm">
+            <i class="fas ${icon} text-xl flex-shrink-0"></i>
+            <span class="flex-1 font-medium text-sm">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 transition flex-shrink-0 ml-2">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full', 'opacity-0');
+    }, 10);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
 </script>

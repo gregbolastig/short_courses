@@ -486,6 +486,20 @@ try {
         <div id="main-content" class="min-h-screen transition-all duration-300 ease-in-out ml-0 md:ml-64">
             <?php include 'components/header.php'; ?>
             
+            <!-- Toast Notification Container - Fixed positioning with responsive adjustments -->
+            <div id="toast-container" class="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
+                <!-- Toasts will be inserted here -->
+            </div>
+            
+            <?php if (isset($_SESSION['login_success']) && $_SESSION['login_success']): ?>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showToast('Welcome back! Login successful.', 'success');
+                    });
+                </script>
+                <?php unset($_SESSION['login_success']); ?>
+            <?php endif; ?>
+            
             <!-- Main content area -->
             <main class="overflow-y-auto focus:outline-none">
                 <div class="py-4 md:py-6">
