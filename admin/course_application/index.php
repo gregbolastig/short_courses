@@ -556,18 +556,18 @@ try {
                                                         <div class="flex items-center justify-center space-x-2">
                                                             <a href="view.php?id=<?php echo $app['application_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-xs font-semibold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                                                                <i class="fas fa-eye mr-1"></i>View
+                                                                <i class="fas fa-eye mr-1"></i>
                                                             </a>
                                                             
                                                             <?php if ($app['status'] === 'pending'): ?>
                                                                 <button onclick="openApprovalModal(<?php echo htmlspecialchars(json_encode($app)); ?>)" 
                                                                         class="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-semibold rounded-md text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
-                                                                    <i class="fas fa-check mr-1"></i>Approve
+                                                                    <i class="fas fa-check mr-1"></i>
                                                                 </button>
                                                                 
                                                                 <button onclick="openRejectionModal(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
                                                                         class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                                                                    <i class="fas fa-times mr-1"></i>Reject
+                                                                    <i class="fas fa-times mr-1"></i>
                                                                 </button>
                                                             <?php endif; ?>
                                                         </div>

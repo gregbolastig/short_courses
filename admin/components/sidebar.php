@@ -48,30 +48,6 @@
                     <span class="sidebar-text transition-all duration-200 truncate ml-3">Manage Students</span>
                 </a>
                 
-                <!-- Manage Courses -->
-                <?php 
-                    $courses_path = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 
-                                   ($in_subfolder ? '../courses/index.php' : 'courses/index.php');
-                ?>
-                <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
-                    <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
-                        <i class="fas fa-graduation-cap text-lg"></i>
-                    </div>
-                    <span class="sidebar-text transition-all duration-200 truncate ml-3">Manage Courses</span>
-                </a>
-                
-                <!-- Adviser List -->
-                <?php 
-                    $advisers_path = (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) ? 'index.php' : 
-                                    ($in_subfolder ? '../advisers/index.php' : 'advisers/index.php');
-                ?>
-                <a href="<?php echo $advisers_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
-                    <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
-                        <i class="fas fa-chalkboard-teacher text-lg"></i>
-                    </div>
-                    <span class="sidebar-text transition-all duration-200 truncate ml-3">Adviser List</span>
-                </a>
-                
                 <!-- Manage Course Applications -->
                 <?php 
                     $course_app_path = (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) ? 'index.php' : 
@@ -83,13 +59,57 @@
                     </div>
                     <span class="sidebar-text transition-all duration-200 truncate ml-3">Manage Course Applications</span>
                 </a>
+                
+                <!-- Manage Section (Collapsible) -->
+                <div class="relative">
+                    <button onclick="toggleManageMenu(event)" class="text-blue-200 hover:bg-blue-800 hover:text-white group flex items-center w-full px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                        <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
+                            <i class="fas fa-cog text-lg"></i>
+                        </div>
+                        <span class="sidebar-text transition-all duration-200 truncate ml-3 flex-1 text-left">Manage</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 sidebar-text" id="manage-chevron"></i>
+                    </button>
+                    
+                    <!-- Manage Submenu -->
+                    <div id="manage-submenu" class="hidden mt-1 space-y-1 ml-2">
+                        <!-- Manage Courses -->
+                        <?php 
+                            $courses_path = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 
+                                           ($in_subfolder ? '../courses/index.php' : 'courses/index.php');
+                        ?>
+                        <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
+                            <i class="fas fa-graduation-cap text-sm mr-3 flex-shrink-0"></i>
+                            <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
+                        </a>
+                        
+                        <!-- Adviser List -->
+                        <?php 
+                            $advisers_path = (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) ? 'index.php' : 
+                                            ($in_subfolder ? '../advisers/index.php' : 'advisers/index.php');
+                        ?>
+                        <a href="<?php echo $advisers_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
+                            <i class="fas fa-chalkboard-teacher text-sm mr-3 flex-shrink-0"></i>
+                            <span class="sidebar-text transition-all duration-200 truncate">Adviser List</span>
+                        </a>
+                        
+                        <!-- Manage Checklist -->
+                        <?php 
+                            $checklist_path = (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false) ? 'index.php' : 
+                                            ($in_subfolder ? '../checklist/index.php' : 'checklist/index.php');
+                        ?>
+                        <a href="<?php echo $checklist_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'checklist/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
+                            <i class="fas fa-tasks text-sm mr-3 flex-shrink-0"></i>
+                            <span class="sidebar-text transition-all duration-200 truncate">Manage Checklist</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
             
             <!-- User Info & Profile Dropdown -->
             <div class="flex-shrink-0 border-t border-blue-700 p-3 md:p-4">
                 <div class="relative">
-                    <button onclick="toggleProfileDropdown()" class="flex items-center w-full text-left hover:bg-blue-800 rounded-lg p-1.5 md:p-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:shadow-lg">
-                        <div class="bg-blue-600 rounded-full p-1.5 md:p-2 mr-2 md:mr-3 shadow-lg relative flex-shrink-0">
+                    <button onclick="toggleProfileDropdown()" id="profile-button" class="flex items-center w-full text-left hover:bg-blue-800 rounded-lg p-1.5 md:p-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:shadow-lg">
+                        <div class="bg-blue-600 rounded-full p-1.5 md:p-2 shadow-lg relative flex-shrink-0 profile-icon">
                             <i class="fas fa-user text-white text-xs md:text-sm"></i>
                             <?php if (isset($pending_approvals) && $pending_approvals > 0): ?>
                                 <span class="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center font-semibold animate-pulse">
@@ -97,7 +117,7 @@
                                 </span>
                             <?php endif; ?>
                         </div>
-                        <div class="flex-1 min-w-0 sidebar-text transition-all duration-200">
+                        <div class="flex-1 min-w-0 sidebar-text transition-all duration-200 ml-2 md:ml-3">
                             <p class="text-xs md:text-sm font-medium text-white truncate">
                                 <?php echo htmlspecialchars($_SESSION['username'] ?? 'Admin'); ?>
                             </p>
@@ -108,11 +128,11 @@
                                 <?php endif; ?>
                             </p>
                         </div>
-                        <i class="fas fa-chevron-up text-blue-300 text-xs transition-transform duration-200 sidebar-text flex-shrink-0" id="profile-chevron"></i>
+                        <i class="fas fa-chevron-up text-blue-300 text-xs transition-transform duration-200 sidebar-text flex-shrink-0 ml-2" id="profile-chevron"></i>
                     </button>
                     
                     <!-- Profile Dropdown -->
-                    <div id="profile-dropdown" class="hidden absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+                    <div id="profile-dropdown" class="hidden absolute bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 profile-dropdown-width">
                         <div class="px-4 py-3 border-b border-gray-100">
                             <div class="flex items-center space-x-3">
                                 <div class="bg-blue-600 rounded-full p-2">

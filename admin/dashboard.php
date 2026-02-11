@@ -306,9 +306,10 @@ try {
     $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
     $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Pending approvals
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
-    $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
+    // Pending course approvals (from course_applications table - matches Pending Course Applications section)
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM course_applications WHERE status = 'pending'");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $pending_approvals = $result ? (int)$result['pending'] : 0;
     
     // Completed students
     $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
@@ -358,9 +359,11 @@ try {
     $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
     $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get pending course applications
-    $stmt = $conn->query("SELECT COUNT(*) as pending_applications FROM course_applications WHERE status = 'pending'");
-    $pending_applications = $stmt->fetch(PDO::FETCH_ASSOC)['pending_applications'];
+    // Get student applications count (matches the table display)
+    // This includes: pending registrations + approved students with courses
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $pending_applications = $result ? (int)$result['total'] : 0;
     
     // Pagination for course applications
     $app_page = isset($_GET['app_page']) ? max(1, intval($_GET['app_page'])) : 1;
@@ -387,16 +390,17 @@ try {
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get approved course applications (from course_applications table with status='approved')
-    $stmt = $conn->query("SELECT COUNT(*) as approved_applications FROM course_applications WHERE status = 'approved'");
-    $approved_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_applications'];
+    // Get total course applications count (all statuses - matches course_application/index.php)
+    $stmt = $conn->query("SELECT COUNT(*) as total_applications FROM course_applications");
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $approved_applications_count = $result ? (int)$result['total_applications'] : 0;
     
     // Pagination for approved applications
     $approved_page = isset($_GET['approved_page']) ? max(1, intval($_GET['approved_page'])) : 1;
     $approved_per_page = 10;
     $approved_offset = ($approved_page - 1) * $approved_per_page;
     
-    // Get total count for pagination
+    // Get total count for pagination (keeping this for backward compatibility)
     $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'approved'");
     $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_approved_pages = ceil($total_approved_count / $approved_per_page);
@@ -544,7 +548,7 @@ try {
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Total Students</dt>
+                                                <dt class="text-sm font-medium text-gray-500">Total Number of Students</dt>
                                                 <dd class="text-2xl md:text-3xl font-bold text-gray-900 animate-pulse"><?php echo $total_students; ?></dd>
                                                 <dd class="text-xs text-green-600 flex items-center mt-1">
                                                     <i class="fas fa-arrow-up mr-1"></i>
@@ -562,7 +566,36 @@ try {
                                 </div>
                             </div>
 
-                            <!-- Pending Approvals Card -->
+                            <!-- Total Approved Applications Card -->
+                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                <div class="p-4 md:p-6">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-indigo-100 rounded-xl p-3 md:p-4 shadow-inner">
+                                                <i class="fas fa-check-circle text-indigo-600 text-xl md:text-2xl"></i>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4 md:ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt class="text-sm font-medium text-gray-500">Total Approved Applications</dt>
+                                                <dd class="text-2xl md:text-3xl font-bold text-indigo-600 animate-pulse"><?php echo $approved_applications_count; ?></dd>
+                                                <dd class="text-xs text-green-600 flex items-center mt-1">
+                                                    <i class="fas fa-arrow-up mr-1"></i>
+                                                    +8% from last month
+                                                </dd>
+                                            </dl>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-indigo-50 px-4 md:px-6 py-3 border-t border-indigo-100">
+                                    <a href="course_application/index.php" class="text-sm text-indigo-700 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200">
+                                        View approved applications
+                                        <i class="fas fa-arrow-right ml-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Pending Course Approvals Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -573,7 +606,7 @@ try {
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Pending Approvals</dt>
+                                                <dt class="text-sm font-medium text-gray-500">Pending Course Approvals</dt>
                                                 <dd class="text-2xl md:text-3xl font-bold text-yellow-600 animate-pulse"><?php echo $pending_approvals; ?></dd>
                                                 <?php if ($pending_approvals > 0): ?>
                                                     <dd class="text-xs text-red-600 flex items-center mt-1 animate-attention-pulse">
@@ -591,14 +624,14 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-yellow-50 px-4 md:px-6 py-3 border-t border-yellow-100">
-                                    <a href="pending_approvals.php" class="text-sm text-yellow-700 hover:text-yellow-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="#course-applications" class="text-sm text-yellow-700 hover:text-yellow-800 font-medium flex items-center transition-colors duration-200">
                                         Review pending approvals
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
                             </div>
 
-                            <!-- Student Applications Card -->
+                            <!-- Pending Student Applications Card -->
                             <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
                                 <div class="p-4 md:p-6">
                                     <div class="flex items-center">
@@ -609,7 +642,7 @@ try {
                                         </div>
                                         <div class="ml-4 md:ml-5 w-0 flex-1">
                                             <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Student Applications</dt>
+                                                <dt class="text-sm font-medium text-gray-500">Pending Student Applications</dt>
                                                 <dd class="text-2xl md:text-3xl font-bold text-orange-600 animate-pulse"><?php echo $pending_applications; ?></dd>
                                                 <?php if ($pending_applications > 0): ?>
                                                     <dd class="text-xs text-red-600 flex items-center mt-1 animate-attention-pulse">
@@ -627,44 +660,8 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-orange-50 px-4 md:px-6 py-3 border-t border-orange-100">
-                                    <a href="course_application/index.php" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="#student-applications" class="text-sm text-orange-700 hover:text-orange-800 font-medium flex items-center transition-colors duration-200">
                                         View student applications
-                                        <i class="fas fa-arrow-right ml-2"></i>
-                                    </a>
-                                </div>
-                            </div>
-
-                            <!-- Approved Applications Card -->
-                            <div class="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                                <div class="p-4 md:p-6">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0">
-                                            <div class="bg-indigo-100 rounded-xl p-3 md:p-4 shadow-inner">
-                                                <i class="fas fa-check-circle text-indigo-600 text-xl md:text-2xl"></i>
-                                            </div>
-                                        </div>
-                                        <div class="ml-4 md:ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">Approved Applications</dt>
-                                                <dd class="text-2xl md:text-3xl font-bold text-indigo-600 animate-pulse"><?php echo $approved_applications_count; ?></dd>
-                                                <?php if ($approved_applications_count > 0): ?>
-                                                    <dd class="text-xs text-orange-600 flex items-center mt-1 animate-attention-pulse">
-                                                        <i class="fas fa-clock mr-1"></i>
-                                                        Awaiting completion
-                                                    </dd>
-                                                <?php else: ?>
-                                                    <dd class="text-xs text-green-600 flex items-center mt-1">
-                                                        <i class="fas fa-check-circle mr-1"></i>
-                                                        All processed!
-                                                    </dd>
-                                                <?php endif; ?>
-                                            </dl>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="bg-indigo-50 px-4 md:px-6 py-3 border-t border-indigo-100">
-                                    <a href="#approved-applications" class="text-sm text-indigo-700 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200">
-                                        View approved applications
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
                                 </div>
@@ -905,7 +902,7 @@ try {
 
 
                         <!-- Recent Students -->
-                        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
+                        <div id="student-applications" class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                             <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
                                     <h3 class="text-base md:text-lg font-semibold text-gray-900">

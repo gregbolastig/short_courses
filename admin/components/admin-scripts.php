@@ -63,10 +63,29 @@ function toggleSidebar() {
             logoContainer.classList.add('justify-center');
         }
         
-        // Center the profile button
-        const profileButton = sidebar.querySelector('button[onclick="toggleProfileDropdown()"]');
+        // Center the profile button and disable dropdown when collapsed
+        const profileButton = sidebar.querySelector('#profile-button');
         if (profileButton) {
             profileButton.classList.add('justify-center');
+            // Disable dropdown functionality when collapsed
+            profileButton.setAttribute('onclick', '');
+            profileButton.style.cursor = 'default';
+            
+            // Hide dropdown if open
+            const dropdown = document.getElementById('profile-dropdown');
+            if (dropdown && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+                const chevron = document.getElementById('profile-chevron');
+                if (chevron) chevron.classList.remove('rotate-180');
+            }
+        }
+        
+        // Adjust dropdown width for collapsed state (in case it's needed later)
+        const profileDropdown = document.getElementById('profile-dropdown');
+        if (profileDropdown) {
+            profileDropdown.classList.remove('left-0', 'right-0');
+            profileDropdown.classList.add('left-0');
+            profileDropdown.style.width = '240px';
         }
         
         // Position toggle button for collapsed state
@@ -121,10 +140,20 @@ function toggleSidebar() {
             logoContainer.classList.remove('justify-center');
         }
         
-        // Restore profile button alignment
-        const profileButton = sidebar.querySelector('button[onclick="toggleProfileDropdown()"]');
+        // Restore profile button alignment and enable dropdown
+        const profileButton = sidebar.querySelector('#profile-button');
         if (profileButton) {
             profileButton.classList.remove('justify-center');
+            // Re-enable dropdown functionality
+            profileButton.setAttribute('onclick', 'toggleProfileDropdown()');
+            profileButton.style.cursor = 'pointer';
+        }
+        
+        // Restore dropdown width for expanded state
+        const profileDropdown = document.getElementById('profile-dropdown');
+        if (profileDropdown) {
+            profileDropdown.classList.add('left-0', 'right-0');
+            profileDropdown.style.width = '';
         }
         
         // Restore toggle button position
@@ -192,9 +221,18 @@ window.addEventListener('resize', function() {
             logoContainer.classList.remove('justify-center');
         }
         
-        const profileButton = sidebar?.querySelector('button[onclick="toggleProfileDropdown()"]');
+        const profileButton = sidebar?.querySelector('#profile-button');
         if (profileButton) {
             profileButton.classList.remove('justify-center');
+            // Re-enable dropdown functionality
+            profileButton.setAttribute('onclick', 'toggleProfileDropdown()');
+            profileButton.style.cursor = 'pointer';
+        }
+        
+        const profileDropdown = document.getElementById('profile-dropdown');
+        if (profileDropdown) {
+            profileDropdown.classList.add('left-0', 'right-0');
+            profileDropdown.style.width = '';
         }
         
         const toggleButton = sidebar?.querySelector('button[onclick="toggleSidebar()"]');
@@ -222,6 +260,33 @@ function toggleMobileSidebar() {
         }
     }
 }
+
+function toggleManageMenu(event) {
+    // Prevent event from bubbling up
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    const submenu = document.getElementById('manage-submenu');
+    const chevron = document.getElementById('manage-chevron');
+    
+    submenu.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
+}
+
+// Close manage menu when clicking outside
+document.addEventListener('click', function(event) {
+    const manageSubmenu = document.getElementById('manage-submenu');
+    const manageButton = event.target.closest('button[onclick*="toggleManageMenu"]');
+    const clickedInsideSubmenu = event.target.closest('#manage-submenu');
+    
+    // Don't close if clicking the button or inside the submenu
+    if (!manageButton && !clickedInsideSubmenu && manageSubmenu && !manageSubmenu.classList.contains('hidden')) {
+        manageSubmenu.classList.add('hidden');
+        const chevron = document.getElementById('manage-chevron');
+        if (chevron) chevron.classList.remove('rotate-180');
+    }
+});
 
 function toggleProfileDropdown() {
     const dropdown = document.getElementById('profile-dropdown');
