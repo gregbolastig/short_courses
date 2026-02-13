@@ -106,12 +106,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Add New Checklist Item</h1>
                                     <p class="text-lg text-gray-600 mt-2">Create a new document requirement for student enrollment</p>
                                 </div>
-                                <div class="flex items-center space-x-4">
-                                    <a href="index.php" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-arrow-left mr-2"></i>
-                                        Back to Checklist
-                                    </a>
-                                </div>
                             </div>
                         </div>
                         

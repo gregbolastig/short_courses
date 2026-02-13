@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering to prevent header issues
 session_start();
 require_once '../../config/database.php';
 require_once '../../includes/auth_middleware.php';
@@ -22,16 +23,16 @@ if (!$item_id) {
 }
 
 // Get checklist item data
-$item = null;
+$checklist_item = null;
 try {
     $database = new Database();
     $conn = $database->getConnection();
     
     $stmt = $conn->prepare("SELECT * FROM checklist WHERE id = ?");
     $stmt->execute([$item_id]);
-    $item = $stmt->fetch(PDO::FETCH_ASSOC);
+    $checklist_item = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if (!$item) {
+    if (!$checklist_item || !isset($checklist_item['document_name'])) {
         header('Location: index.php');
         exit;
     }
@@ -39,13 +40,12 @@ try {
     // Update breadcrumb with item name
     $breadcrumb_items = [
         ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks', 'url' => 'index.php'],
-        ['title' => 'Edit: ' . $item['document_name'], 'icon' => 'fas fa-edit']
+        ['title' => 'Edit: ' . $checklist_item['document_name'], 'icon' => 'fas fa-edit']
     ];
     
 } catch (PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
-    header('Location: index.php');
-    exit;
+    // Don't redirect, show error on page
 }
 
 // Handle form submission
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Log checklist update
         $logger->log(
             'checklist_updated',
-            "Admin updated checklist item from '{$item['document_name']}' to '{$document_name}' (ID: {$item_id})",
+            "Admin updated checklist item from '{$checklist_item['document_name']}' to '{$document_name}' (ID: {$item_id})",
             'admin',
             $_SESSION['user_id'],
             'checklist',
@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Refresh item data
         $stmt = $conn->prepare("SELECT * FROM checklist WHERE id = ?");
         $stmt->execute([$item_id]);
-        $item = $stmt->fetch(PDO::FETCH_ASSOC);
+        $checklist_item = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Redirect to checklist list with success parameter
         header("Location: index.php?success=updated&name=" . urlencode($document_name));
@@ -140,14 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div>
                                     <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Edit Checklist Item</h1>
                                     <p class="text-lg text-gray-600 mt-2">
-                                        Editing: <span class="font-semibold text-blue-600"><?php echo htmlspecialchars($item['document_name'] ?? ''); ?></span>
+                                        Editing: <span class="font-semibold text-blue-600"><?php echo htmlspecialchars($checklist_item['document_name'] ?? ''); ?></span>
                                     </p>
-                                </div>
-                                <div class="flex items-center space-x-4">
-                                    <a href="index.php" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-arrow-left mr-2"></i>
-                                        Back to Checklist
-                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -165,23 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                             </div>
                         <?php endif; ?>
-                        
-                        <?php if (isset($success_message)): ?>
-                            <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-check-circle text-green-400"></i>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
-                                        <p class="text-xs text-green-600 mt-1">Redirecting to checklist...</p>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endif; ?>
 
                         <!-- Checklist Form -->
-                        <?php if ($item): ?>
+                        <?php if ($checklist_item): ?>
                         <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                             <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
                                 <div class="flex items-center space-x-3">
@@ -203,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 <i class="fas fa-file-alt text-gray-400"></i>
                                             </div>
                                             <input type="text" name="document_name" id="document_name" required 
-                                                   value="<?php echo htmlspecialchars($item['document_name']); ?>"
+                                                   value="<?php echo isset($checklist_item['document_name']) ? htmlspecialchars($checklist_item['document_name']) : ''; ?>"
                                                    class="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg transition-all duration-200"
                                                    placeholder="e.g., Birth Certificate (PSA)">
                                         </div>
