@@ -401,8 +401,13 @@ include 'components/header.php';
                         </label>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <select id="country_code" name="country_code" 
-                                    class="w-full sm:w-24 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
-                                <option value="">Code</option>
+                                    class="w-full sm:w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
+                                <option value="+63" selected>🇵🇭 +63</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+86">🇨🇳 +86</option>
+                                <option value="+81">🇯🇵 +81</option>
+                                <option value="+82">🇰🇷 +82</option>
                             </select>
                             <input type="tel" id="contact_number" name="contact_number" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
@@ -579,8 +584,13 @@ include 'components/header.php';
                         </label>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <select id="parent_country_code" name="parent_country_code" 
-                                    class="w-full sm:w-24 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
-                                <option value="">Code</option>
+                                    class="w-full sm:w-32 px-2 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300 bg-gray-50 text-sm">
+                                <option value="+63" selected>🇵🇭 +63</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+86">🇨🇳 +86</option>
+                                <option value="+81">🇯🇵 +81</option>
+                                <option value="+82">🇰🇷 +82</option>
                             </select>
                             <input type="tel" id="parent_contact" name="parent_contact" required 
                                    class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300"
