@@ -224,17 +224,22 @@ try {
                                     </div>
                                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                                         <!-- Search Bar -->
-                                        <form method="GET" action="" class="relative">
+                                        <form method="GET" action="" class="relative flex-1 sm:flex-initial" id="searchForm">
                                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                 <i class="fas fa-search text-gray-400"></i>
                                             </div>
-                                            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                                            <input type="text" name="search" id="searchInput" value="<?php echo htmlspecialchars($search); ?>" 
                                                    placeholder="Search documents..." 
-                                                   class="block w-full sm:w-80 pl-12 pr-4 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-all duration-200">
+                                                   class="block w-full sm:w-80 pl-12 <?php echo !empty($search) ? 'pr-20' : 'pr-4'; ?> py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-all duration-200"
+                                                   oninput="handleSearch()">
                                             <?php if (!empty($search)): ?>
-                                                <a href="index.php" class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                                                    <i class="fas fa-times text-gray-400 hover:text-gray-600 transition-colors duration-200"></i>
+                                                <a href="index.php" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200" title="Clear search">
+                                                    <i class="fas fa-times"></i>
                                                 </a>
+                                            <?php else: ?>
+                                                <button type="submit" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-600 transition-colors duration-200" title="Search">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
                                             <?php endif; ?>
                                         </form>
                                     </div>
@@ -456,6 +461,20 @@ try {
     
     <script>
         let itemToDelete = null;
+        let searchTimeout = null;
+        
+        // Live search function
+        function handleSearch() {
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Set new timeout to avoid too many requests
+            searchTimeout = setTimeout(() => {
+                document.getElementById('searchForm').submit();
+            }, 500); // Wait 500ms after user stops typing
+        }
         
         function confirmDelete(itemName, itemId) {
             itemToDelete = itemId;
