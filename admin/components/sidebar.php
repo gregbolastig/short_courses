@@ -26,7 +26,8 @@
                                     strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/students/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || 
-                                    strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false);
+                                    strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false ||
+                                    strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
                     $dashboard_path = $in_subfolder ? '../dashboard.php' : 'dashboard.php';
                 ?>
                 <a href="<?php echo $dashboard_path; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
@@ -95,7 +96,7 @@
                         <!-- Manage Checklist -->
                         <?php 
                             $checklist_path = (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false) ? 'index.php' : 
-                                            ($in_subfolder ? '../checklist/index.php' : 'checklist/index.php');
+                                             ($in_subfolder ? '../checklist/index.php' : 'checklist/index.php');
                         ?>
                         <a href="<?php echo $checklist_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'checklist/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
                             <i class="fas fa-tasks text-sm mr-3 flex-shrink-0"></i>
