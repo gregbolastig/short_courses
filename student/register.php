@@ -1833,7 +1833,16 @@ include 'components/header.php';
             middleInitialFields.forEach(fieldId => {
                 const initialInput = document.getElementById(fieldId);
                 if (initialInput) {
-                    // Allow only letters and periods on keypress
+                    // Handle backspace/delete to clear the field completely
+                    initialInput.addEventListener('keydown', function(e) {
+                        // If backspace or delete is pressed and field has content, clear it
+                        if ((e.key === 'Backspace' || e.key === 'Delete') && this.value.length > 0) {
+                            e.preventDefault();
+                            this.value = '';
+                        }
+                    });
+                    
+                    // Allow only letters on keypress (no periods needed from user)
                     initialInput.addEventListener('keypress', function(e) {
                         // Allow control keys (backspace, delete, tab, escape, enter)
                         if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
@@ -1844,25 +1853,25 @@ include 'components/header.php';
                         
                         const char = String.fromCharCode(e.which);
                         
-                        // Only allow letters and periods
-                        if (!/[A-Za-z.]/.test(char)) {
+                        // Only allow letters (no periods - we'll add them automatically)
+                        if (!/[A-Za-z]/.test(char)) {
                             e.preventDefault();
                         }
                     });
                     
-                    // Auto-format middle initial
-                    initialInput.addEventListener('input', function() {
-                        // Remove any non-letter/period characters
-                        let value = this.value.replace(/[^A-Za-z.]/g, '');
+                    // Auto-format middle initial with auto-caps and auto-period
+                    initialInput.addEventListener('input', function(e) {
+                        // Remove any non-letter characters
+                        let value = this.value.replace(/[^A-Za-z]/g, '');
                         
-                        // Limit to 2 characters
-                        if (value.length > 2) {
-                            value = value.substring(0, 2);
+                        // Limit to 1 letter (since we'll add the period)
+                        if (value.length > 1) {
+                            value = value.substring(0, 1);
                         }
                         
-                        // Auto-capitalize first letter
+                        // Auto-capitalize and add period
                         if (value.length > 0) {
-                            value = value.charAt(0).toUpperCase() + value.slice(1);
+                            value = value.toUpperCase() + '.';
                         }
                         
                         this.value = value;
