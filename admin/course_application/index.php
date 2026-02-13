@@ -21,6 +21,39 @@ $total_pages = 0;
 $error_message = '';
 $success_message = '';
 
+// Handle success messages from other pages
+if (isset($_GET['success'])) {
+    switch ($_GET['success']) {
+        case 'updated':
+            $success_message = 'Course application updated successfully!';
+            break;
+    }
+}
+
+// Handle delete action
+if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+    try {
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        // Get application info before deleting
+        $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name FROM course_applications ca 
+                               JOIN students s ON ca.student_id = s.id 
+                               WHERE ca.application_id = ?");
+        $stmt->execute([$_GET['delete']]);
+        $app = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($app) {
+            $stmt = $conn->prepare("DELETE FROM course_applications WHERE application_id = ?");
+            $stmt->execute([$_GET['delete']]);
+            
+            $success_message = "Application for {$app['first_name']} {$app['last_name']} deleted successfully!";
+        }
+    } catch (PDOException $e) {
+        $error_message = 'Cannot delete application: ' . $e->getMessage();
+    }
+}
+
 // Handle approval/rejection actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -188,6 +221,10 @@ try {
     // Build WHERE clause
     $where_conditions = [];
     $params = [];
+    
+    // Only show completed applications in this browser
+    // Pending and approved applications should be handled elsewhere
+    $where_conditions[] = "ca.status = 'completed'";
     
     if (!empty($status_filter)) {
         $where_conditions[] = "ca.status = :status";
@@ -555,21 +592,22 @@ try {
                                                     <td class="px-6 py-4 text-center">
                                                         <div class="flex items-center justify-center space-x-2">
                                                             <a href="view.php?id=<?php echo $app['application_id']; ?>" 
-                                                               class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-xs font-semibold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                                                               class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-xs font-semibold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+                                                               title="View Details">
                                                                 <i class="fas fa-eye mr-1"></i>
                                                             </a>
                                                             
-                                                            <?php if ($app['status'] === 'pending'): ?>
-                                                                <button onclick="openApprovalModal(<?php echo htmlspecialchars(json_encode($app)); ?>)" 
-                                                                        class="inline-flex items-center px-3 py-1.5 border border-green-300 text-xs font-semibold rounded-md text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
-                                                                    <i class="fas fa-check mr-1"></i>
-                                                                </button>
-                                                                
-                                                                <button onclick="openRejectionModal(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
-                                                                        class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                                                                    <i class="fas fa-times mr-1"></i>
-                                                                </button>
-                                                            <?php endif; ?>
+                                                            <a href="edit.php?id=<?php echo $app['application_id']; ?>" 
+                                                               class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                                                               title="Edit Application">
+                                                                <i class="fas fa-edit mr-1"></i>
+                                                            </a>
+                                                        
+                                                            <button onclick="confirmDelete(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
+                                                                    class="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-semibold rounded-md text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
+                                                                    title="Delete Application">
+                                                                <i class="fas fa-trash mr-1"></i>
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -640,23 +678,21 @@ try {
                                                 </div>
                                             </div>
                                             
-                                            <div class="flex items-center justify-center space-x-2 mt-4">
+                                            <div class="flex items-center justify-center space-x-2 mt-4 flex-wrap gap-2">
                                                 <a href="view.php?id=<?php echo $app['application_id']; ?>" 
                                                    class="inline-flex items-center justify-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                                                    <i class="fas fa-eye mr-2"></i>View Details
+                                                    <i class="fas fa-eye mr-2"></i>View
                                                 </a>
                                                 
-                                                <?php if ($app['status'] === 'pending'): ?>
-                                                    <button onclick="openApprovalModal(<?php echo htmlspecialchars(json_encode($app)); ?>)" 
-                                                            class="inline-flex items-center justify-center px-4 py-2 border border-green-300 text-sm font-semibold rounded-lg text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
-                                                        <i class="fas fa-check mr-2"></i>Approve
-                                                    </button>
-                                                    
-                                                    <button onclick="openRejectionModal(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
-                                                            class="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-semibold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
-                                                        <i class="fas fa-times mr-2"></i>Reject
-                                                    </button>
-                                                <?php endif; ?>
+                                                <a href="edit.php?id=<?php echo $app['application_id']; ?>" 
+                                                   class="inline-flex items-center justify-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                                    <i class="fas fa-edit mr-2"></i>Edit
+                                                </a>
+                                            
+                                                <button onclick="confirmDelete(<?php echo $app['application_id']; ?>, '<?php echo htmlspecialchars($app['first_name'] . ' ' . $app['last_name']); ?>')" 
+                                                        class="inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-semibold rounded-lg text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
+                                                    <i class="fas fa-trash mr-2"></i>Delete
+                                                </button>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -882,6 +918,63 @@ try {
             </div>
         </div>
     </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeDeleteModal()"></div>
+
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
+                <!-- Header Section -->
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-red-100 to-red-200 mb-4 shadow-lg">
+                        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-inner">
+                            <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">
+                        Delete Application
+                    </h3>
+                    <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto"></div>
+                </div>
+
+                <!-- Content Section -->
+                <div class="text-center mb-8">
+                    <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+                        <div class="flex items-center justify-center space-x-3 mb-2">
+                            <div class="bg-blue-100 rounded-lg p-2">
+                                <i class="fas fa-user text-blue-600"></i>
+                            </div>
+                            <span class="font-semibold text-gray-900 text-lg" id="deleteStudentName"></span>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 leading-relaxed">
+                        This action will permanently remove the course application from your system. All associated data will be lost and cannot be recovered.
+                    </p>
+                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-center justify-center space-x-2 text-red-700">
+                            <i class="fas fa-info-circle text-sm"></i>
+                            <span class="text-sm font-medium">This action cannot be undone</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" onclick="executeDelete()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                        <i class="fas fa-trash mr-2"></i>
+                        Delete Application
+                    </button>
+                    <button type="button" onclick="closeDeleteModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Modal functions
@@ -982,6 +1075,31 @@ try {
                 }
             }
         });
+        
+        // Delete confirmation function
+        let applicationToDelete = null;
+        let studentToDelete = '';
+        
+        function confirmDelete(applicationId, studentName) {
+            applicationToDelete = applicationId;
+            studentToDelete = studentName;
+            document.getElementById('deleteStudentName').textContent = studentName;
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+        
+        function closeDeleteModal() {
+            applicationToDelete = null;
+            studentToDelete = '';
+            document.getElementById('deleteModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+        
+        function executeDelete() {
+            if (applicationToDelete) {
+                window.location.href = `?delete=${applicationToDelete}`;
+            }
+        }
     </script>
 
     <?php include '../components/admin-scripts.php'; ?>
