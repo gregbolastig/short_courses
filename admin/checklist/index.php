@@ -34,7 +34,7 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    $stmt = $conn->query("SELECT * FROM checklist ORDER BY display_order ASC, created_at DESC");
+    $stmt = $conn->query("SELECT * FROM checklist ORDER BY created_at DESC");
     $checklist_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error_message = 'Database error: ' . $e->getMessage();
@@ -64,15 +64,6 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
         
         <main class="p-6">
             <div class="max-w-7xl mx-auto">
-                <!-- Breadcrumb -->
-                <nav class="mb-4 text-sm">
-                    <ol class="flex items-center space-x-2 text-gray-600">
-                        <li><a href="../dashboard.php" class="hover:text-blue-600"><i class="fas fa-home"></i> Dashboard</a></li>
-                        <li><i class="fas fa-chevron-right text-xs"></i></li>
-                        <li class="text-gray-900 font-medium">Manage Checklist</li>
-                    </ol>
-                </nav>
-
                 <!-- Header -->
                 <div class="mb-6">
                     <h1 class="text-3xl font-bold text-gray-900">
@@ -115,16 +106,14 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <?php if (empty($checklist_items)): ?>
                                     <tr>
-                                        <td colspan="4" class="px-6 py-12 text-center">
+                                        <td colspan="2" class="px-6 py-12 text-center">
                                             <i class="fas fa-clipboard-list text-gray-300 text-5xl mb-4"></i>
                                             <p class="text-gray-500 text-lg font-medium">No checklist items found</p>
                                             <p class="text-gray-400 text-sm mt-2">Get started by adding your first checklist item</p>
@@ -133,22 +122,8 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
                                 <?php else: ?>
                                     <?php foreach ($checklist_items as $item): ?>
                                         <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($item['display_order'] ?? 0); ?></span>
-                                            </td>
                                             <td class="px-6 py-4">
                                                 <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($item['document_name']); ?></div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <?php if ($item['is_required']): ?>
-                                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                        <i class="fas fa-exclamation-circle mr-1"></i> Required
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                                        Optional
-                                                    </span>
-                                                <?php endif; ?>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <a href="edit.php?id=<?php echo $item['id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">

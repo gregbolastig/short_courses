@@ -478,18 +478,6 @@ CREATE TABLE IF NOT EXISTS system_activities (
 CREATE TABLE IF NOT EXISTS checklist (
     id INT AUTO_INCREMENT PRIMARY KEY,
     document_name VARCHAR(255) NOT NULL,
-    is_required TINYINT(1) DEFAULT 1,
-    display_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_display_order (display_order)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Insert default document requirements
-INSERT INTO checklist (document_name, is_required, display_order) VALUES
-('Birth Certificate (PSA)', 1, 1),
-('Form 137/138', 1, 2),
-('Good Moral Certificate', 1, 3),
-('2x2 ID Pictures (4 copies)', 1, 4),
-('Medical Certificate', 1, 5),
-('Barangay Clearance', 0, 6);

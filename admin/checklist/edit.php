@@ -39,13 +39,9 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $document_name = trim($_POST['document_name']);
-        $is_required = isset($_POST['is_required']) ? 1 : 0;
-        $display_order = intval($_POST['display_order']);
         
-        $stmt = $conn->prepare("UPDATE checklist SET document_name = :document_name, is_required = :is_required, display_order = :display_order WHERE id = :id");
+        $stmt = $conn->prepare("UPDATE checklist SET document_name = :document_name WHERE id = :id");
         $stmt->bindParam(':document_name', $document_name);
-        $stmt->bindParam(':is_required', $is_required);
-        $stmt->bindParam(':display_order', $display_order);
         $stmt->bindParam(':id', $id);
         
         if ($stmt->execute()) {
@@ -78,17 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <main class="p-6">
             <div class="max-w-3xl mx-auto">
-                <!-- Breadcrumb -->
-                <nav class="mb-4 text-sm">
-                    <ol class="flex items-center space-x-2 text-gray-600">
-                        <li><a href="../dashboard.php" class="hover:text-blue-600"><i class="fas fa-home"></i> Dashboard</a></li>
-                        <li><i class="fas fa-chevron-right text-xs"></i></li>
-                        <li><a href="index.php" class="hover:text-blue-600">Manage Checklist</a></li>
-                        <li><i class="fas fa-chevron-right text-xs"></i></li>
-                        <li class="text-gray-900 font-medium">Edit Document</li>
-                    </ol>
-                </nav>
-
                 <!-- Header -->
                 <div class="mb-6">
                     <div class="flex items-center mb-4">
@@ -123,27 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" id="document_name" name="document_name" required
                                    value="<?php echo htmlspecialchars($item['document_name']); ?>"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <!-- Display Order -->
-                        <div>
-                            <label for="display_order" class="block text-sm font-medium text-gray-700 mb-2">
-                                Display Order
-                            </label>
-                            <input type="number" id="display_order" name="display_order" min="0"
-                                   value="<?php echo htmlspecialchars($item['display_order'] ?? 0); ?>"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <p class="mt-1 text-sm text-gray-500">Lower numbers appear first</p>
-                        </div>
-
-                        <!-- Required Checkbox -->
-                        <div class="flex items-center">
-                            <input type="checkbox" id="is_required" name="is_required" value="1"
-                                   <?php echo $item['is_required'] ? 'checked' : ''; ?>
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="is_required" class="ml-2 block text-sm text-gray-700">
-                                Required Document
-                            </label>
                         </div>
 
                         <!-- Buttons -->
