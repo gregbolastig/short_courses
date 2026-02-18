@@ -63,12 +63,12 @@
                 
                 <!-- Manage Section (Collapsible) -->
                 <div class="relative">
-                    <button onclick="toggleManageMenu(event)" class="text-blue-200 hover:bg-blue-800 hover:text-white group flex items-center w-full px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                    <button onclick="toggleManageMenu(event)" class="text-blue-200 hover:bg-blue-800 hover:text-white group flex items-center w-full px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                         <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
                             <i class="fas fa-cog text-lg"></i>
                         </div>
                         <span class="sidebar-text transition-all duration-200 truncate ml-3 flex-1 text-left">Manage</span>
-                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 sidebar-text" id="manage-chevron"></i>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-200 sidebar-text flex-shrink-0" id="manage-chevron"></i>
                     </button>
                     
                     <!-- Manage Submenu -->

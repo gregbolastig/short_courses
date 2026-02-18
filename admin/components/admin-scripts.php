@@ -51,11 +51,23 @@ function toggleSidebar() {
         }
         
         // Adjust padding for navigation items
-        const navItems = sidebar.querySelectorAll('nav a, nav > div > div');
+        const navItems = sidebar.querySelectorAll('nav a, nav button, nav > div > div');
         navItems.forEach(item => {
             item.classList.remove('px-3');
             item.classList.add('px-2', 'justify-center');
         });
+        
+        // Hide submenu when collapsed
+        const manageSubmenu = document.getElementById('manage-submenu');
+        if (manageSubmenu && !manageSubmenu.classList.contains('hidden')) {
+            manageSubmenu.classList.add('hidden');
+        }
+        
+        // Reset chevron rotation
+        const manageChevron = document.getElementById('manage-chevron');
+        if (manageChevron) {
+            manageChevron.classList.remove('rotate-180');
+        }
         
         // Center the logo container
         const logoContainer = sidebar.querySelector('.flex.items-center.flex-shrink-0');
@@ -128,7 +140,7 @@ function toggleSidebar() {
         }
         
         // Restore padding for navigation items
-        const navItems = sidebar.querySelectorAll('nav a, nav > div > div');
+        const navItems = sidebar.querySelectorAll('nav a, nav button, nav > div > div');
         navItems.forEach(item => {
             item.classList.remove('px-2', 'justify-center');
             item.classList.add('px-3');
@@ -210,7 +222,7 @@ window.addEventListener('resize', function() {
             }
         }
         
-        const navItems = sidebar?.querySelectorAll('nav a, nav > div > div');
+        const navItems = sidebar?.querySelectorAll('nav a, nav button, nav > div > div');
         navItems?.forEach(item => {
             item.classList.remove('px-2', 'justify-center');
             item.classList.add('px-3');
@@ -265,6 +277,11 @@ function toggleManageMenu(event) {
     // Prevent event from bubbling up
     if (event) {
         event.stopPropagation();
+    }
+    
+    // Don't open submenu if sidebar is collapsed
+    if (sidebarCollapsed) {
+        return;
     }
     
     const submenu = document.getElementById('manage-submenu');
