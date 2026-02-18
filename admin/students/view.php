@@ -252,7 +252,7 @@ try {
 
                 <!-- Student Profile Card -->
                 <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-6 md:mb-8">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 md:px-8 py-8 md:py-12">
+                    <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 md:px-8 py-8 md:py-12">
                         <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
                             <div class="flex-shrink-0">
                             <?php 
@@ -388,8 +388,8 @@ try {
                     <!-- Personal Information -->
                     <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
                         <div class="flex items-center mb-6">
-                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
-                                <i class="fas fa-user text-blue-600 text-xl"></i>
+                            <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-user text-white text-xl"></i>
                             </div>
                             <h3 class="text-xl font-bold text-gray-900">Personal Information</h3>
                         </div>
@@ -570,8 +570,8 @@ try {
                 <?php if ($student['status'] === 'completed' && ($student['course'] || $student['nc_level'] || $student['adviser'])): ?>
                     <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
                         <div class="flex items-center mb-6">
-                            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
-                                <i class="fas fa-book text-indigo-600 text-xl"></i>
+                            <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-book text-white text-xl"></i>
                             </div>
                             <h3 class="text-xl font-bold text-gray-900">Course Information</h3>
                         </div>
@@ -618,7 +618,7 @@ try {
                 <!-- Course History Section -->
                 <?php if (!empty($course_history)): ?>
                     <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 md:px-8 py-5 border-b border-indigo-200">
+                        <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 md:px-8 py-5 border-b border-blue-700">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
                                     <div class="bg-white bg-opacity-20 rounded-xl w-12 h-12 flex items-center justify-center mr-4 backdrop-blur-sm shadow-lg">
@@ -626,10 +626,10 @@ try {
                                     </div>
                                     <div>
                                         <h3 class="text-xl font-bold text-white">Course History</h3>
-                                        <p class="text-sm text-indigo-100 mt-1">Complete record of all course applications</p>
+                                        <p class="text-sm text-blue-100 mt-1">Complete record of all course applications</p>
                                     </div>
                                 </div>
-                                <span class="bg-white text-indigo-600 text-sm font-bold px-4 py-2 rounded-full shadow-lg">
+                                <span class="bg-white text-blue-900 text-sm font-bold px-4 py-2 rounded-full shadow-lg">
                                     <?php echo count($course_history); ?> Course<?php echo count($course_history) > 1 ? 's' : ''; ?>
                                 </span>
                             </div>
@@ -654,8 +654,8 @@ try {
                                             <tr class="hover:bg-gray-50 transition-colors duration-200">
                                                 <td class="px-6 py-4">
                                                     <div class="flex items-center">
-                                                        <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                                                            <i class="fas fa-book text-indigo-600 text-sm"></i>
+                                                        <div class="w-8 h-8 bg-blue-900 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                            <i class="fas fa-book text-blue-900 text-sm"></i>
                                                         </div>
                                                         <div class="text-sm font-medium text-gray-900">
                                                             <?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?>
@@ -722,8 +722,8 @@ try {
                                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                         <div class="flex items-start justify-between mb-3">
                                             <div class="flex items-center flex-1">
-                                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
-                                                    <i class="fas fa-book text-indigo-600"></i>
+                                                <div class="w-10 h-10 bg-blue-900 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                    <i class="fas fa-book text-blue-900"></i>
                                                 </div>
                                                 <div class="flex-1 min-w-0">
                                                     <h4 class="text-sm font-semibold text-gray-900 truncate">
