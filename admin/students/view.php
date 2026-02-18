@@ -817,24 +817,27 @@ try {
         function confirmDelete(studentId, studentName) {
             // Create modern confirmation modal
             const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300';
             modal.innerHTML = `
-                <div class="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-sm mx-4 transform transition-all">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                        <i class="fas fa-exclamation-triangle text-red-600"></i>
+                <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md mx-4 transform transition-all border border-gray-100">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-full shadow-lg mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-inner">
+                            <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                        </div>
                     </div>
-                    <h3 class="mt-4 text-lg font-medium text-gray-900 text-center">Delete Student</h3>
-                    <p class="mt-2 text-sm text-gray-500 text-center">
-                        Are you sure you want to delete <strong>${studentName}</strong>? This action cannot be undone.
+                    <h3 class="text-2xl font-bold text-gray-900 text-center mb-3">Delete Student</h3>
+                    <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto mb-6"></div>
+                    <p class="text-base text-gray-600 text-center mb-8 leading-relaxed">
+                        Are you sure you want to delete <strong class="text-gray-900">${studentName}</strong>? This action cannot be undone and all associated data will be permanently removed.
                     </p>
-                    <div class="mt-6 flex flex-col-reverse sm:flex-row gap-2">
+                    <div class="flex flex-col-reverse sm:flex-row gap-3">
                         <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                                class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                            Cancel
+                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                            <i class="fas fa-times mr-2"></i>Cancel
                         </button>
                         <button onclick="window.location.href='?action=delete&id=${studentId}'" 
-                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors duration-200">
-                            Delete
+                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                            <i class="fas fa-trash mr-2"></i>Delete
                         </button>
                     </div>
                 </div>
@@ -849,5 +852,7 @@ try {
             });
         }
     </script>
+    
+    <?php include '../components/admin-scripts.php'; ?>
 </body>
 </html>
