@@ -68,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Left Section - Image -->
         <div class="lg:w-3/5 lg:h-screen h-72 relative order-1 lg:order-1">
             <img src="../assets/images/school.jpg" alt="JZGMSAT Campus" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="absolute inset-0 bg-gradient-to-br from-green-900 to-green-700" style="display: none;"></div>
-            <div class="absolute inset-0 bg-gradient-to-r from-green-900/70 via-green-800/50 to-transparent flex items-center justify-center lg:justify-start lg:pl-16">
+            <div class="absolute inset-0 bg-gradient-to-br from-red-900 to-red-700" style="display: none;"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-red-900/70 via-red-800/50 to-transparent flex items-center justify-center lg:justify-start lg:pl-16">
                 <div class="text-white text-center lg:text-left p-6 max-w-xl">
                     <h1 class="text-3xl lg:text-4xl font-bold tracking-wide mb-3">Jacobo Z. Gonzales Memorial School of Arts and Trades</h1>
                     <h2 class="text-2xl lg:text-3xl font-semibold opacity-95">Financial Management System</h2>
@@ -82,15 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="w-full max-w-md">
                 <div class="p-6 lg:p-8">
                     <div class="mb-6">
-                        <a href="login.php" class="text-green-600 hover:text-green-800 text-sm">
+                        <a href="login.php" class="text-red-700 hover:text-red-900 text-sm">
                             <i class="fas fa-arrow-left mr-2"></i>Back to role selection
                         </a>
                     </div>
                     
                     <div class="mb-8">
                         <div class="flex items-center justify-center mb-4">
-                            <div class="bg-green-100 p-4 rounded-full">
-                                <i class="fas fa-calculator text-green-700 text-3xl"></i>
+                            <div class="bg-red-100 p-4 rounded-full">
+                                <i class="fas fa-calculator text-red-800 text-3xl"></i>
                             </div>
                         </div>
                         <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">Bookkeeping Login</h2>
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <i class="fas fa-envelope text-gray-400"></i>
                                 </div>
                                 <input type="email" id="email" name="email" required
-                                       class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                       class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                        placeholder="bookkeeping@jzgmsat.com"
                                        value="<?php echo isset($_COOKIE['remember_bookkeeping_email']) ? htmlspecialchars($_COOKIE['remember_bookkeeping_email']) : ''; ?>">
                             </div>
@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <i class="fas fa-lock text-gray-400"></i>
                                 </div>
                                 <input type="password" id="password" name="password" required
-                                       class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                       class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                        placeholder="••••••••">
                                 <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3 flex items-center">
                                     <i id="toggleIcon" class="fas fa-eye text-gray-400 hover:text-gray-600"></i>
@@ -140,17 +140,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="flex items-center">
                             <input id="remember" name="remember" type="checkbox" value="1"
                                    <?php echo isset($_COOKIE['remember_bookkeeping_email']) ? 'checked' : ''; ?>
-                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                   class="h-4 w-4 text-red-700 focus:ring-red-500 border-gray-300 rounded">
                             <label for="remember" class="ml-2 block text-sm text-gray-700">Remember me</label>
                         </div>
                         
-                        <button type="submit" class="w-full bg-green-700 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-lg">
+                        <button type="submit" class="w-full bg-red-900 hover:bg-red-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-lg">
                             <i class="fas fa-sign-in-alt mr-2"></i>Sign In
                         </button>
                     </form>
                     
-                    <div class="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                        <p class="text-xs text-green-800 text-center">
+                    <div class="mt-6 p-4 bg-red-50 rounded-lg border border-red-200">
+                        <p class="text-xs text-red-900 text-center">
                             <i class="fas fa-info-circle mr-1"></i>
                             Demo credentials: bookkeeping@jzgmsat.com / bookkeeping123
                         </p>

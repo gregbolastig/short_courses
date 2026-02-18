@@ -65,7 +65,7 @@ $conn = $database->getConnection();
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-green-700 shadow-lg sticky top-0 z-40">
+    <nav class="bg-red-900 shadow-lg sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -76,7 +76,7 @@ $conn = $database->getConnection();
                     <span class="text-white">
                         <i class="fas fa-user-circle mr-2"></i><?php echo htmlspecialchars($username); ?>
                     </span>
-                    <a href="../auth/logout.php" class="bg-green-800 hover:bg-green-900 text-white px-4 py-2 rounded-lg transition duration-200">
+                    <a href="../auth/logout.php" class="bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                     </a>
                 </div>
@@ -93,21 +93,21 @@ $conn = $database->getConnection();
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                     <input type="text" id="searchLastName" placeholder="Enter last name" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                     <input type="text" id="searchFirstName" placeholder="Enter first name" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">ULI</label>
                     <input type="text" id="searchULI" placeholder="Enter ULI" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
                 </div>
             </div>
             <div class="mt-4 flex justify-between items-center">
-                <button onclick="searchStudents()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                <button onclick="searchStudents()" class="bg-red-700 hover:bg-red-800 text-white px-6 py-2 rounded-lg transition duration-200">
                     <i class="fas fa-search mr-2"></i>Search
                 </button>
                 <button onclick="clearSearch()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
@@ -131,7 +131,7 @@ $conn = $database->getConnection();
     <!-- Receipt Number Modal -->
     <div id="receiptModal" class="modal">
         <div class="modal-content bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div class="bg-green-700 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
+            <div class="bg-red-900 text-white px-6 py-4 rounded-t-lg flex justify-between items-center">
                 <h3 id="receiptModalTitle" class="text-lg font-bold">
                     <i class="fas fa-receipt mr-2"></i>Insert Receipt Number
                 </h3>
@@ -164,13 +164,13 @@ $conn = $database->getConnection();
                         pattern="[0-9]{1,9}"
                         placeholder="Enter receipt number (max 9 digits)"
                         required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-lg"
                     >
                     <p class="text-xs text-gray-500 mt-1">Maximum 9 digits (numbers only)</p>
                 </div>
 
                 <div class="flex space-x-3">
-                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition duration-200 font-medium">
+                    <button type="submit" class="flex-1 bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg transition duration-200 font-medium">
                         <i class="fas fa-save mr-2"></i>Save Receipt
                     </button>
                     <button type="button" onclick="closeReceiptModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-200">
@@ -318,7 +318,7 @@ $conn = $database->getConnection();
                                         Status: <span class="font-medium">${course.enrollment_status}</span>
                                     </p>
                                     ${course.receipt_number ? `
-                                        <p class="text-sm text-green-700 font-medium mt-2">
+                                        <p class="text-sm text-red-800 font-medium mt-2">
                                             <i class="fas fa-receipt mr-1"></i>Receipt #: ${course.receipt_number}
                                         </p>
                                     ` : `
@@ -328,7 +328,7 @@ $conn = $database->getConnection();
                                     `}
                                 </div>
                                 <button onclick="openReceiptModal(${studentId}, ${course.enrollment_id}, '${course.student_name}', '${course.course_name}', '${course.receipt_number || ''}')" 
-                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition duration-200">
+                                        class="bg-red-700 hover:bg-red-800 text-white px-3 py-1 rounded text-sm transition duration-200">
                                     <i class="fas fa-receipt mr-1"></i>${course.receipt_number ? 'Edit' : 'Add'}
                                 </button>
                             </div>
