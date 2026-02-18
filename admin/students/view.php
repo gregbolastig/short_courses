@@ -80,6 +80,16 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
                 ['title' => 'Manage Students', 'icon' => 'fas fa-users', 'url' => 'index.php'],
                 ['title' => 'View: ' . $student['first_name'] . ' ' . $student['last_name'], 'icon' => 'fas fa-eye']
             ];
+            
+            // Get course history from course_applications table
+            $stmt = $conn->prepare("SELECT ca.*, c.course_name, ca.reviewed_at, ca.applied_at
+                                   FROM course_applications ca
+                                   LEFT JOIN courses c ON ca.course_id = c.course_id
+                                   WHERE ca.student_id = :student_id
+                                   ORDER BY ca.applied_at DESC");
+            $stmt->bindParam(':student_id', $_GET['id']);
+            $stmt->execute();
+            $course_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
     } catch (PDOException $e) {
@@ -101,9 +111,9 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?> - Jacobo Z. Gonzales Memorial School of Arts and Trades</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title><?php echo $page_title; ?> - Student Registration System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -111,18 +121,24 @@ try {
                     colors: {
                         primary: {
                             50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#1e3a8a',
+                            600: '#1e40af',
                             700: '#1d4ed8',
-                            900: '#1e3a8a'
+                            800: '#1e3a8a',
+                            900: '#1e293b'
                         }
                     }
                 }
             }
         }
     </script>
+    <?php include '../components/admin-styles.php'; ?>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 min-h-screen">
     <!-- Success Notification Toast -->
     <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
         <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
@@ -189,22 +205,28 @@ try {
     <?php include '../components/sidebar.php'; ?>
     
     <!-- Main Content -->
-    <div class="md:ml-64 min-h-screen">
+    <div id="main-content" class="min-h-screen transition-all duration-300 ease-in-out ml-0 md:ml-64">
         <!-- Header -->
         <?php include '../components/header.php'; ?>
         
         <!-- Page Content -->
-        <main class="p-4 md:p-6 lg:p-8">
+        <main class="overflow-y-auto focus:outline-none">
+            <div class="py-4 md:py-6">
+                <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
 
             <?php if ($error_message): ?>
-                <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <?php echo htmlspecialchars($error_message); ?>
+                <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
+                        </div>
                     </div>
                 </div>
                 <div class="text-center">
-                    <a href="index.php" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                    <a href="index.php" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Students List
                     </a>
                 </div>
@@ -212,13 +234,16 @@ try {
                 
                 <!-- Page Header -->
                 <div class="mb-6 md:mb-8">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                        <div class="mb-4 md:mb-0">
-                            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Student Details</h1>
-                            <p class="text-gray-600">Complete information for <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></p>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Student Profile</h1>
+                            <p class="text-lg text-gray-600 mt-2">Complete information for <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></p>
                         </div>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <a href="edit.php?id=<?php echo $student['id']; ?>" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
+                        <div class="flex items-center space-x-4">
+                            <a href="index.php" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                <i class="fas fa-arrow-left mr-2"></i>Back
+                            </a>
+                            <a href="edit.php?id=<?php echo $student['id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                 <i class="fas fa-edit mr-2"></i>Edit Student
                             </a>
                         </div>
@@ -226,8 +251,8 @@ try {
                 </div>
 
                 <!-- Student Profile Card -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6 md:mb-8">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
+                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-6 md:mb-8">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 md:px-8 py-8 md:py-12">
                         <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
                             <div class="flex-shrink-0">
                             <?php 
@@ -361,12 +386,12 @@ try {
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                     
                     <!-- Personal Information -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-user text-blue-600"></i>
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-user text-blue-600 text-xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Personal Information</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Personal Information</h3>
                         </div>
                         
                         <div class="space-y-4">
@@ -417,12 +442,12 @@ try {
                     </div>
                     
                     <!-- Address Information -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-map-marker-alt text-green-600"></i>
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-map-marker-alt text-green-600 text-xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Address Information</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Address Information</h3>
                         </div>
                         
                         <div class="space-y-4">
@@ -479,12 +504,12 @@ try {
                     </div>
                     
                     <!-- Guardian Information -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-users text-purple-600"></i>
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-users text-purple-600 text-xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Guardian Information</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Guardian Information</h3>
                         </div>
                         
                         <div class="space-y-4">
@@ -509,12 +534,12 @@ try {
                     </div>
                     
                     <!-- Education Information -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-graduation-cap text-orange-600"></i>
+                    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-graduation-cap text-orange-600 text-xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Education Information</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Education Information</h3>
                         </div>
                         
                         <div class="space-y-4">
@@ -543,12 +568,12 @@ try {
 
                 <!-- Course Information (if completed) -->
                 <?php if ($student['status'] === 'completed' && ($student['course'] || $student['nc_level'] || $student['adviser'])): ?>
-                    <div class="mt-6 md:mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex items-center mb-4">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-book text-indigo-600"></i>
+                    <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                        <div class="flex items-center mb-6">
+                            <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-book text-indigo-600 text-xl"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Course Information</h3>
+                            <h3 class="text-xl font-bold text-gray-900">Course Information</h3>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -590,15 +615,201 @@ try {
                     </div>
                 <?php endif; ?>
 
+                <!-- Course History Section -->
+                <?php if (!empty($course_history)): ?>
+                    <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 md:px-8 py-5 border-b border-indigo-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="bg-white bg-opacity-20 rounded-xl w-12 h-12 flex items-center justify-center mr-4 backdrop-blur-sm shadow-lg">
+                                        <i class="fas fa-history text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-white">Course History</h3>
+                                        <p class="text-sm text-indigo-100 mt-1">Complete record of all course applications</p>
+                                    </div>
+                                </div>
+                                <span class="bg-white text-indigo-600 text-sm font-bold px-4 py-2 rounded-full shadow-lg">
+                                    <?php echo count($course_history); ?> Course<?php echo count($course_history) > 1 ? 's' : ''; ?>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6 md:p-8">
+                            <!-- Desktop Table View -->
+                            <div class="hidden md:block overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NC Level</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adviser</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training Period</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <?php foreach ($course_history as $course): ?>
+                                            <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center">
+                                                        <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                            <i class="fas fa-book text-indigo-600 text-sm"></i>
+                                                        </div>
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            <?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        <?php echo htmlspecialchars($course['nc_level'] ?? 'N/A'); ?>
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <?php echo htmlspecialchars($course['adviser'] ?? 'Not Assigned'); ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                        <div class="flex flex-col">
+                                                            <span class="text-xs text-gray-500">Start: <?php echo date('M j, Y', strtotime($course['training_start'])); ?></span>
+                                                            <span class="text-xs text-gray-500">End: <?php echo date('M j, Y', strtotime($course['training_end'])); ?></span>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <span class="text-gray-400">Not Set</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <?php
+                                                    $status_class = '';
+                                                    $status_icon = '';
+                                                    switch ($course['status']) {
+                                                        case 'completed':
+                                                            $status_class = 'bg-green-100 text-green-800';
+                                                            $status_icon = 'fas fa-check-circle';
+                                                            break;
+                                                        case 'approved':
+                                                            $status_class = 'bg-blue-100 text-blue-800';
+                                                            $status_icon = 'fas fa-thumbs-up';
+                                                            break;
+                                                        case 'rejected':
+                                                            $status_class = 'bg-red-100 text-red-800';
+                                                            $status_icon = 'fas fa-times-circle';
+                                                            break;
+                                                        default:
+                                                            $status_class = 'bg-yellow-100 text-yellow-800';
+                                                            $status_icon = 'fas fa-clock';
+                                                    }
+                                                    ?>
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
+                                                        <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                        <?php echo ucfirst($course['status']); ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Mobile Card View -->
+                            <div class="md:hidden space-y-4">
+                                <?php foreach ($course_history as $course): ?>
+                                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <div class="flex items-start justify-between mb-3">
+                                            <div class="flex items-center flex-1">
+                                                <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                    <i class="fas fa-book text-indigo-600"></i>
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <h4 class="text-sm font-semibold text-gray-900 truncate">
+                                                        <?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?>
+                                                    </h4>
+                                                    <p class="text-xs text-gray-500">
+                                                        Applied: <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <?php
+                                            $status_class = '';
+                                            $status_icon = '';
+                                            switch ($course['status']) {
+                                                case 'completed':
+                                                    $status_class = 'bg-green-100 text-green-800';
+                                                    $status_icon = 'fas fa-check-circle';
+                                                    break;
+                                                case 'approved':
+                                                    $status_class = 'bg-blue-100 text-blue-800';
+                                                    $status_icon = 'fas fa-thumbs-up';
+                                                    break;
+                                                case 'rejected':
+                                                    $status_class = 'bg-red-100 text-red-800';
+                                                    $status_icon = 'fas fa-times-circle';
+                                                    break;
+                                                default:
+                                                    $status_class = 'bg-yellow-100 text-yellow-800';
+                                                    $status_icon = 'fas fa-clock';
+                                            }
+                                            ?>
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $status_class; ?> flex-shrink-0 ml-2">
+                                                <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                <?php echo ucfirst($course['status']); ?>
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex items-center">
+                                                <span class="text-gray-500 w-24">NC Level:</span>
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    <?php echo htmlspecialchars($course['nc_level'] ?? 'N/A'); ?>
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="text-gray-500 w-24">Adviser:</span>
+                                                <span class="text-gray-900"><?php echo htmlspecialchars($course['adviser'] ?? 'Not Assigned'); ?></span>
+                                            </div>
+                                            <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                <div class="flex items-center">
+                                                    <span class="text-gray-500 w-24">Training:</span>
+                                                    <span class="text-gray-900 text-xs">
+                                                        <?php echo date('M j, Y', strtotime($course['training_start'])); ?> - 
+                                                        <?php echo date('M j, Y', strtotime($course['training_end'])); ?>
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 p-12">
+                        <div class="text-center">
+                            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                                <i class="fas fa-history text-gray-400 text-3xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-3">No Course History</h3>
+                            <p class="text-lg text-gray-600 px-4 max-w-md mx-auto">This student hasn't applied for any courses yet.</p>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Delete Button (Centered) -->
-                <div class="mt-6 md:mt-8 flex justify-center">
+                <div class="mt-8 md:mt-12 flex justify-center pb-8">
                     <button onclick="confirmDelete(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" 
-                            class="inline-flex items-center justify-center px-6 py-3 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 shadow-sm">
+                            class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
                         <i class="fas fa-trash mr-2"></i>Delete Student
                     </button>
                 </div>
                 
             <?php endif; ?>
+                </div>
+            </div>
         </main>
     </div>
 
