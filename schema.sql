@@ -481,3 +481,30 @@ CREATE TABLE IF NOT EXISTS checklist (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- BOOKKEEPING RECEIPTS
+-- ============================================================================
+
+-- Bookkeeping receipts table for tracking receipt numbers per enrollment
+CREATE TABLE IF NOT EXISTS bookkeeping_receipts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    enrollment_id INT NOT NULL COMMENT 'Can reference student_enrollments.enrollment_id, course_applications.application_id, or students.id',
+    receipt_number VARCHAR(9) NOT NULL COMMENT 'Receipt number (maximum 9 digits)',
+    created_by INT NOT NULL COMMENT 'Bookkeeping user who created the receipt',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    -- Constraints
+    UNIQUE KEY unique_enrollment_receipt (enrollment_id) COMMENT 'One receipt per enrollment',
+    
+    -- Indexes for performance
+    INDEX idx_student_id (student_id),
+    INDEX idx_receipt_number (receipt_number),
+    INDEX idx_created_by (created_by),
+    INDEX idx_created_at (created_at),
+    
+    -- Foreign Key Constraints
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bookkeeping receipt numbers for student enrollments';
