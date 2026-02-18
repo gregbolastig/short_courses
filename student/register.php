@@ -229,6 +229,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Clear form data and verification code
                 $_POST = [];
                 unset($_SESSION['verification_code']);
+                
+                // Set session variable to trigger success modal
+                $_SESSION['registration_success'] = true;
+                $_SESSION['registration_uli'] = $submitted_uli;
             } else {
                 $errors[] = 'Registration failed. Please try again.';
             }
@@ -727,21 +731,33 @@ include 'components/header.php';
                             <div class="flex-1 w-full max-w-md">
                                 <div class="space-y-4">
                                     <!-- Action Buttons -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <button type="button" id="camera-btn" 
-                                                class="group relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                                            <div class="flex items-center justify-center">
-                                                <i class="fas fa-camera mr-3 text-lg"></i>
-                                                <span>Take Photo</span>
-                                            </div>
-                                            <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
-                                        </button>
+                                    <div class="space-y-3">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button type="button" id="camera-btn" 
+                                                    class="group relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                                <div class="flex items-center justify-center">
+                                                    <i class="fas fa-camera mr-3 text-lg"></i>
+                                                    <span>Take Photo</span>
+                                                </div>
+                                                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+                                            </button>
+                                            
+                                            <button type="button" id="file-btn" 
+                                                    class="group relative overflow-hidden bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-gray-600 hover:to-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                                <div class="flex items-center justify-center">
+                                                    <i class="fas fa-upload mr-3 text-lg"></i>
+                                                    <span>Upload File</span>
+                                                </div>
+                                                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
+                                            </button>
+                                        </div>
                                         
-                                        <button type="button" id="file-btn" 
-                                                class="group relative overflow-hidden bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-gray-600 hover:to-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                                        <!-- Remove Button (shown only when photo is uploaded) -->
+                                        <button type="button" id="remove-photo-btn" 
+                                                class="w-full group relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 hidden">
                                             <div class="flex items-center justify-center">
-                                                <i class="fas fa-upload mr-3 text-lg"></i>
-                                                <span>Upload File</span>
+                                                <i class="fas fa-trash mr-3 text-lg"></i>
+                                                <span>Remove Photo</span>
                                             </div>
                                             <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-200"></div>
                                         </button>
@@ -1291,6 +1307,12 @@ include 'components/header.php';
                         photoStatus.classList.add('hidden');
                     }
                     
+                    // Show remove button
+                    const removeBtn = document.getElementById('remove-photo-btn');
+                    if (removeBtn) {
+                        removeBtn.classList.remove('hidden');
+                    }
+                    
                     // Show success notification
                     showNotification('Profile picture updated successfully! Ready for submission.', 'success');
                 };
@@ -1408,6 +1430,12 @@ include 'components/header.php';
                             if (qualityIndicator) {
                                 qualityIndicator.classList.remove('hidden');
                                 qualityIndicator.classList.add('photo-quality-badge');
+                            }
+                            
+                            // Show remove button
+                            const removeBtn = document.getElementById('remove-photo-btn');
+                            if (removeBtn) {
+                                removeBtn.classList.remove('hidden');
                             }
                             
                             // Close modal
@@ -2068,6 +2096,89 @@ include 'components/header.php';
                 group.style.animationDelay = `${index * 0.1}s`;
                 group.classList.add('animate-fade-in');
             });
+        });
+        
+        // Success Modal
+        <?php if (isset($_SESSION['registration_success']) && $_SESSION['registration_success']): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showSuccessModal();
+        });
+        
+        function showSuccessModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-fade-in">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 px-8 py-6 rounded-t-2xl">
+                        <div class="flex items-center justify-center">
+                            <div class="bg-white rounded-full p-4 shadow-lg">
+                                <i class="fas fa-check-circle text-green-500 text-5xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-8 text-center">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3">Registration Successful!</h3>
+                        <div class="w-16 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto mb-6"></div>
+                        <p class="text-gray-600 mb-6 leading-relaxed">
+                            Your registration has been submitted successfully and is now pending admin approval.
+                        </p>
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                            <div class="flex items-center justify-center text-sm">
+                                <i class="fas fa-id-card text-blue-600 mr-2"></i>
+                                <span class="text-gray-700">Your ULI: <strong class="text-blue-600 font-mono"><?php echo htmlspecialchars($_SESSION['registration_uli'] ?? ''); ?></strong></span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-6">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            You will be notified once your registration is approved.
+                        </p>
+                        <button onclick="closeSuccessModal()" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                            <i class="fas fa-check mr-2"></i>
+                            Got it!
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function closeSuccessModal() {
+            const modal = document.querySelector('.fixed.inset-0.bg-gray-900');
+            if (modal) {
+                modal.remove();
+                // Redirect to home or clear the session
+                window.location.href = '../index.php';
+            }
+        }
+        <?php 
+            unset($_SESSION['registration_success']);
+            unset($_SESSION['registration_uli']);
+        ?>
+        <?php endif; ?>
+        
+        // Remove Photo Button Functionality
+        document.getElementById('remove-photo-btn')?.addEventListener('click', function() {
+            const profilePreview = document.getElementById('profile-preview');
+            const profilePictureInput = document.getElementById('profile_picture');
+            const photoQuality = document.getElementById('photo-quality');
+            const removeBtn = document.getElementById('remove-photo-btn');
+            
+            // Reset to default placeholder
+            profilePreview.src = "data:image/svg+xml,%3csvg width='192' height='192' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='192' height='192' fill='%23f9fafb'/%3e%3cg transform='translate(96,96)'%3e%3ccircle cx='0' cy='-20' r='25' fill='%23d1d5db'/%3e%3cpath d='M-35,20 Q-35,0 -15,0 L15,0 Q35,0 35,20 L35,40 L-35,40 Z' fill='%23d1d5db'/%3e%3c/g%3e%3ctext x='50%25' y='85%25' font-size='12' text-anchor='middle' fill='%236b7280'%3eProfile Photo%3c/text%3e%3c/svg%3e";
+            
+            // Clear file input
+            profilePictureInput.value = '';
+            profilePictureInput.removeAttribute('required');
+            
+            // Hide quality indicator and remove button
+            photoQuality.classList.add('hidden');
+            removeBtn.classList.add('hidden');
+            
+            // Show photo status error if needed
+            const photoStatus = document.getElementById('photo-status');
+            if (photoStatus) {
+                photoStatus.classList.remove('hidden');
+            }
         });
         
         // Phone number formatting - DISABLED since we now use separate country code dropdowns
