@@ -454,11 +454,66 @@ function initializeStudentSearch() {
 // Initialize search functionality
 initializeStudentSearch();
 
+// Load Checklist Function
+function loadChecklist() {
+    const container = document.getElementById('checklistContainer');
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = `
+        <div class="flex items-center justify-center py-8">
+            <i class="fas fa-spinner fa-spin text-blue-600 text-2xl"></i>
+        </div>
+    `;
+    
+    // Fetch checklist items
+    fetch('api/get_checklist.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.length > 0) {
+                container.innerHTML = data.data.map(item => `
+                    <label class="flex items-start space-x-3 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors duration-200 cursor-pointer border border-blue-200">
+                        <input type="checkbox" 
+                               class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer" 
+                               name="checklist[]" 
+                               value="${item.id}">
+                        <span class="text-sm text-gray-700 flex-1">${item.document_name}</span>
+                    </label>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-gray-400 text-3xl mb-2"></i>
+                        <p class="text-sm text-gray-500">No checklist items found</p>
+                        <a href="checklist/index.php" class="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block">
+                            <i class="fas fa-plus mr-1"></i>Add checklist items
+                        </a>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading checklist:', error);
+            container.innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+                    <p class="text-sm text-red-600">Failed to load checklist</p>
+                    <button onclick="loadChecklist()" class="text-xs text-blue-600 hover:text-blue-700 mt-2">
+                        <i class="fas fa-redo mr-1"></i>Retry
+                    </button>
+                </div>
+            `;
+        });
+}
+
 // Approval Modal Functions
 function openApprovalModal(studentId, studentName, course = '', ncLevel = '', adviser = '', trainingStart = '', trainingEnd = '') {
     console.log('openApprovalModal called', studentId, studentName, course, ncLevel);
     document.getElementById('modalStudentId').value = studentId;
     document.getElementById('modalStudentName').textContent = studentName;
+    
+    // Load checklist items
+    loadChecklist();
     
     // Pre-fill form fields if provided (for approved students) - keep fields enabled/clickable
     if (course) {

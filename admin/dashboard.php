@@ -1510,8 +1510,8 @@ try {
             <!-- Background overlay with blur effect -->
             <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeApprovalModal()"></div>
             
-            <!-- Modal panel with enhanced design -->
-            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100">
+            <!-- Modal panel with enhanced design - Made wider for checklist -->
+            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full border border-gray-100">
                 <form id="approvalForm" method="POST" action="">
                     <input type="hidden" name="action" value="approve">
                     <input type="hidden" name="student_id" id="modalStudentId">
@@ -1544,67 +1544,90 @@ try {
 
                     <!-- Form Fields -->
                     <div class="space-y-6 mb-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Course Dropdown -->
-                            <div>
-                                <label for="course" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-book text-gray-400 mr-2"></i>Course
-                                </label>
-                                <select name="course" id="course" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                                    <option value="">Select Course</option>
-                                    <?php foreach ($active_courses as $course): ?>
-                                        <option value="<?php echo htmlspecialchars($course['course_id']); ?>">
-                                            <?php echo htmlspecialchars($course['course_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Left Column: Course Details -->
+                            <div class="lg:col-span-2 space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Course Dropdown -->
+                                    <div>
+                                        <label for="course" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-book text-gray-400 mr-2"></i>Course
+                                        </label>
+                                        <select name="course" id="course" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                            <option value="">Select Course</option>
+                                            <?php foreach ($active_courses as $course): ?>
+                                                <option value="<?php echo htmlspecialchars($course['course_id']); ?>">
+                                                    <?php echo htmlspecialchars($course['course_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- NC Level Dropdown -->
+                                    <div>
+                                        <label for="nc_level" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-certificate text-gray-400 mr-2"></i>NC Level
+                                        </label>
+                                        <select name="nc_level" id="nc_level" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                            <option value="">Select NC Level</option>
+                                            <option value="NC I">NC I</option>
+                                            <option value="NC II">NC II</option>
+                                            <option value="NC III">NC III</option>
+                                            <option value="NC IV">NC IV</option>
+                                            <option value="NC V">NC V</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Training Duration -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="training_start" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>Training Start Date
+                                        </label>
+                                        <input type="date" name="training_start" id="training_start" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    </div>
+                                    <div>
+                                        <label for="training_end" class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-calendar-check text-gray-400 mr-2"></i>Training End Date
+                                        </label>
+                                        <input type="date" name="training_end" id="training_end" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                    </div>
+                                </div>
+                                
+                                <!-- Adviser Dropdown -->
+                                <div>
+                                    <label for="adviser" class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser <span class="text-gray-400 text-xs">(Optional)</span>
+                                    </label>
+                                    <select name="adviser" id="adviser" class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                                        <option value="">Select Adviser</option>
+                                        <?php foreach ($advisers as $adviser): ?>
+                                            <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
+                                                <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
-                            
-                            <!-- NC Level Dropdown -->
-                            <div>
-                                <label for="nc_level" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-certificate text-gray-400 mr-2"></i>NC Level
-                                </label>
-                                <select name="nc_level" id="nc_level" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                                    <option value="">Select NC Level</option>
-                                    <option value="NC I">NC I</option>
-                                    <option value="NC II">NC II</option>
-                                    <option value="NC III">NC III</option>
-                                    <option value="NC IV">NC IV</option>
-                                    <option value="NC V">NC V</option>
-                                </select>
+
+                            <!-- Right Column: Document Checklist -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 h-full">
+                                    <div class="flex items-center space-x-2 mb-4">
+                                        <div class="bg-blue-600 rounded-lg p-2">
+                                            <i class="fas fa-clipboard-check text-white text-sm"></i>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-gray-900">Document Checklist</h4>
+                                    </div>
+                                    
+                                    <div id="checklistContainer" class="space-y-2 max-h-80 overflow-y-auto pr-2">
+                                        <div class="flex items-center justify-center py-8">
+                                            <i class="fas fa-spinner fa-spin text-blue-600 text-2xl"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <!-- Training Duration -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="training_start" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar-alt text-gray-400 mr-2"></i>Training Start Date
-                                </label>
-                                <input type="date" name="training_start" id="training_start" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                            </div>
-                            <div>
-                                <label for="training_end" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-calendar-check text-gray-400 mr-2"></i>Training End Date
-                                </label>
-                                <input type="date" name="training_end" id="training_end" required class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                            </div>
-                        </div>
-                        
-                        <!-- Adviser Dropdown -->
-                        <div>
-                            <label for="adviser" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-chalkboard-teacher text-gray-400 mr-2"></i>Assigned Adviser <span class="text-gray-400 text-xs">(Optional)</span>
-                            </label>
-                            <select name="adviser" id="adviser" class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
-                                <option value="">Select Adviser</option>
-                                <?php foreach ($advisers as $adviser): ?>
-                                    <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
-                                        <?php echo htmlspecialchars($adviser['adviser_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
                         </div>
                     </div>
 
