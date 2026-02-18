@@ -774,13 +774,13 @@ try {
                                     <div>
                                         <label for="training_start" class="block text-sm font-medium text-gray-700 mb-2">Training Start *</label>
                                         <input type="date" id="training_start" name="training_start" required 
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900">
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 cursor-pointer">
                                     </div>
 
                                     <div>
                                         <label for="training_end" class="block text-sm font-medium text-gray-700 mb-2">Training End *</label>
                                         <input type="date" id="training_end" name="training_end" required 
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900">
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 cursor-pointer">
                                     </div>
                                 </div>
 
@@ -937,19 +937,29 @@ try {
             }
         });
         
-        // Set minimum date for training start to today
-        document.getElementById('training_start').min = new Date().toISOString().split('T')[0];
-        
-        // Update training end minimum date when start date changes
-        document.getElementById('training_start').addEventListener('change', function() {
-            const startDate = this.value;
-            const endDateInput = document.getElementById('training_end');
-            endDateInput.min = startDate;
+        // Initialize date fields on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const trainingStartInput = document.getElementById('training_start');
+            const trainingEndInput = document.getElementById('training_end');
             
-            // Clear end date if it's before the new start date
-            if (endDateInput.value && endDateInput.value < startDate) {
-                endDateInput.value = '';
-            }
+            // Make sure the inputs are not disabled and are clickable
+            trainingStartInput.removeAttribute('disabled');
+            trainingEndInput.removeAttribute('disabled');
+            trainingStartInput.removeAttribute('readonly');
+            trainingEndInput.removeAttribute('readonly');
+            
+            // Update training end minimum date when start date changes
+            trainingStartInput.addEventListener('change', function() {
+                const startDate = this.value;
+                if (startDate) {
+                    trainingEndInput.min = startDate;
+                    
+                    // Clear end date if it's before the new start date
+                    if (trainingEndInput.value && trainingEndInput.value < startDate) {
+                        trainingEndInput.value = '';
+                    }
+                }
+            });
         });
         
         <?php if ($error_message): ?>

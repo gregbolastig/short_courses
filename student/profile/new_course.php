@@ -185,7 +185,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
             $restriction_message = 'You have an active course enrollment (status: ' . ucfirst($student_profile['status']) . '). You can only apply for a new course after your current course is completed.';
         }
         
-        // Get pending applications for display
+        // Get pending applications for display (latest to oldest)
         $stmt = $conn->prepare("SELECT ca.*, c.course_name 
                                 FROM course_applications ca 
                                 LEFT JOIN courses c ON ca.course_id = c.course_id 
@@ -195,7 +195,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         $stmt->execute();
         $pending_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Get rejected applications for display
+        // Get rejected applications for display (latest to oldest)
         $stmt = $conn->prepare("SELECT ca.*, c.course_name 
                                 FROM course_applications ca 
                                 LEFT JOIN courses c ON ca.course_id = c.course_id 
@@ -207,12 +207,15 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         
         // Get approved/completed applications for display
         // Show all applications that are approved or completed
+        // Sort by reviewed_at (completion date) DESC, then applied_at DESC for latest to oldest
         $stmt = $conn->prepare("SELECT ca.*, c.course_name
                                FROM course_applications ca
                                LEFT JOIN courses c ON ca.course_id = c.course_id
                                WHERE ca.student_id = :student_id 
                                AND (ca.status = 'approved' OR ca.status = 'completed')
-                               ORDER BY ca.applied_at DESC");
+                               ORDER BY 
+                                   CASE WHEN ca.reviewed_at IS NOT NULL THEN ca.reviewed_at ELSE ca.applied_at END DESC,
+                                   ca.applied_at DESC");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $approved_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -368,31 +371,12 @@ include '../components/header.php';
                         ?>
                         
                         <!-- Completed Applications -->
-                        <?php 
-                        // Also include completed courses from students table
-                        $completed_from_students = [];
-                        if (!empty($student_profile['course']) && $student_profile['status'] === 'completed') {
-                            $completed_from_students[] = [
-                                'course_name' => $student_profile['course'],
-                                'nc_level' => $student_profile['nc_level'] ?? null,
-                                'adviser' => $student_profile['adviser'] ?? null,
-                                'training_start' => $student_profile['training_start'] ?? null,
-                                'training_end' => $student_profile['training_end'] ?? null,
-                                'reviewed_at' => $student_profile['approved_at'] ?? null,
-                                'applied_at' => $student_profile['created_at'] ?? null,
-                                'from_students_table' => true
-                            ];
-                        }
-                        
-                        // Merge completed apps from course_applications with completed courses from students table
-                        $all_completed = array_merge($completed_apps, $completed_from_students);
-                        ?>
-                        <?php if (!empty($all_completed)): ?>
+                        <?php if (!empty($completed_apps)): ?>
                             <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                                 <h4 class="text-sm font-semibold text-green-800 mb-2">
                                     <i class="fas fa-check-circle mr-2"></i>Completed Course Applications
                                 </h4>
-                                <?php foreach ($all_completed as $app): ?>
+                                <?php foreach ($completed_apps as $app): ?>
                                     <div class="bg-white border border-green-200 rounded-lg p-3 mb-2">
                                         <div class="flex items-center justify-between">
                                             <div>
