@@ -250,6 +250,15 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
 // Using consistent title across all pages
 $show_logo = true;
 
+// Check if just registered
+$just_registered = isset($_GET['registered']) && $_GET['registered'] == '1';
+if ($just_registered && isset($_SESSION['registration_uli'])) {
+    $registration_uli = $_SESSION['registration_uli'];
+    unset($_SESSION['registration_success']);
+    unset($_SESSION['registration_uli']);
+    unset($_SESSION['new_student_id']);
+}
+
 // Include header component
 include '../components/header.php';
 ?>
@@ -1157,6 +1166,50 @@ include '../components/header.php';
                 closeSuccessToast();
             }, 3000);
         });
+        <?php endif; ?>
+        
+        <?php if ($just_registered): ?>
+        // Show registration success toast
+        document.addEventListener('DOMContentLoaded', function() {
+            showRegistrationSuccessToast();
+        });
+        
+        function showRegistrationSuccessToast() {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]';
+            toast.innerHTML = `
+                <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-5 rounded-lg shadow-2xl border border-green-500 max-w-lg">
+                    <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-white rounded-full p-2">
+                                <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg mb-1">Registration Successful!</h3>
+                            <p class="text-sm text-green-100">Your registration is pending admin approval. You will be notified once approved.</p>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="flex-shrink-0 text-white hover:text-green-200">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(-50%) translateY(0)';
+            }, 10);
+            
+            // Remove toast after 8 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 8000);
+        }
         <?php endif; ?>
         
         function showSuccessToast() {

@@ -230,9 +230,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST = [];
                 unset($_SESSION['verification_code']);
                 
-                // Set session variable to trigger success modal
+                // Set session variable for success toast and redirect
                 $_SESSION['registration_success'] = true;
                 $_SESSION['registration_uli'] = $submitted_uli;
+                $_SESSION['new_student_id'] = $conn->lastInsertId();
+                
+                // Redirect to profile page
+                header("Location: profile/profile.php?student_id=" . $_SESSION['new_student_id'] . "&registered=1");
+                exit();
             } else {
                 $errors[] = 'Registration failed. Please try again.';
             }
@@ -2097,64 +2102,6 @@ include 'components/header.php';
                 group.classList.add('animate-fade-in');
             });
         });
-        
-        // Success Modal
-        <?php if (isset($_SESSION['registration_success']) && $_SESSION['registration_success']): ?>
-        document.addEventListener('DOMContentLoaded', function() {
-            showSuccessModal();
-        });
-        
-        function showSuccessModal() {
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4';
-            modal.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-fade-in">
-                    <div class="bg-gradient-to-r from-green-500 to-green-600 px-8 py-6 rounded-t-2xl">
-                        <div class="flex items-center justify-center">
-                            <div class="bg-white rounded-full p-4 shadow-lg">
-                                <i class="fas fa-check-circle text-green-500 text-5xl"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-8 text-center">
-                        <h3 class="text-2xl font-bold text-gray-900 mb-3">Registration Successful!</h3>
-                        <div class="w-16 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto mb-6"></div>
-                        <p class="text-gray-600 mb-6 leading-relaxed">
-                            Your registration has been submitted successfully and is now pending admin approval.
-                        </p>
-                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                            <div class="flex items-center justify-center text-sm">
-                                <i class="fas fa-id-card text-blue-600 mr-2"></i>
-                                <span class="text-gray-700">Your ULI: <strong class="text-blue-600 font-mono"><?php echo htmlspecialchars($_SESSION['registration_uli'] ?? ''); ?></strong></span>
-                            </div>
-                        </div>
-                        <p class="text-sm text-gray-500 mb-6">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            You will be notified once your registration is approved.
-                        </p>
-                        <button onclick="closeSuccessModal()" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
-                            <i class="fas fa-check mr-2"></i>
-                            Got it!
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-        
-        function closeSuccessModal() {
-            const modal = document.querySelector('.fixed.inset-0.bg-gray-900');
-            if (modal) {
-                modal.remove();
-                // Redirect to home or clear the session
-                window.location.href = '../index.php';
-            }
-        }
-        <?php 
-            unset($_SESSION['registration_success']);
-            unset($_SESSION['registration_uli']);
-        ?>
-        <?php endif; ?>
         
         // Remove Photo Button Functionality
         document.getElementById('remove-photo-btn')?.addEventListener('click', function() {

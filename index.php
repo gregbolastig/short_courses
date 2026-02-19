@@ -78,13 +78,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$date_obj || $date_obj->format('Y-m-d') !== $birthday) {
                     $errors[] = 'Please enter a valid date of birth';
                 } else {
-                    // Search with all criteria for exact match
+                    // Search with all criteria for exact match (case-insensitive)
                     $stmt = $conn->prepare("SELECT * FROM students WHERE 
-                        first_name = :first_name AND 
-                        last_name = :last_name AND 
+                        LOWER(TRIM(first_name)) = LOWER(TRIM(:first_name)) AND 
+                        LOWER(TRIM(last_name)) = LOWER(TRIM(:last_name)) AND 
                         birthday = :birthday AND 
-                        birth_province = :birth_province AND 
-                        birth_city = :birth_city");
+                        LOWER(TRIM(birth_province)) = LOWER(TRIM(:birth_province)) AND 
+                        LOWER(TRIM(birth_city)) = LOWER(TRIM(:birth_city))");
                     
                     $stmt->bindParam(':first_name', $first_name);
                     $stmt->bindParam(':last_name', $last_name);
@@ -149,13 +149,7 @@ include 'student/components/header.php';
 
     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <?php 
-        // Convert old error variable to errors array for component compatibility
-        if (!empty($error)) {
-            $errors = [$error];
-        }
-        
-        // Include alerts component
-        include 'student/components/alerts.php'; 
+        // Don't show alerts component on home page - errors will be shown as toast in modal
         ?>
         <?php if ($student_profile): ?>
             <!-- Redirect to profile page -->
@@ -241,9 +235,6 @@ include 'student/components/header.php';
             
             
             <!-- Main Options -->
-            <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <?php include 'student/components/alerts.php'; ?>
-</main>
 
 <!-- Student Type Selection Modal (Main Entry Point) -->
 <div id="studentTypeModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
@@ -700,4 +691,49 @@ include 'student/components/header.php';
     function closeRegistrarModal() {
         document.getElementById('registrarModal').classList.add('hidden');
     }
+
+    // Show error toast notification
+    function showErrorToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] transition-all duration-300 opacity-0 translate-y-[-20px]';
+        toast.innerHTML = `
+            <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-circle text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-semibold">Error</h3>
+                        <p class="text-sm text-red-100 mt-1">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="flex-shrink-0 text-white hover:text-red-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Trigger animation
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        }, 10);
+        
+        // Remove toast after 5 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    // Show errors on page load if any
+    <?php if (!empty($errors) && $search_performed): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php foreach ($errors as $error): ?>
+                showErrorToast(<?php echo json_encode($error); ?>);
+            <?php endforeach; ?>
+        });
+    <?php endif; ?>
 </script>
