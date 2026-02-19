@@ -35,4 +35,38 @@ try {
             course = :course,
             nc_level = :nc_level,
             training_start = :training_start,
-           
+            training_end = :training_end,
+            adviser = :adviser
+            WHERE id = :id";
+        
+        $stmt = $conn->prepare($test_sql);
+        $stmt->bindParam(':course', $test_data['course']);
+        $stmt->bindParam(':nc_level', $test_data['nc_level']);
+        $stmt->bindParam(':training_start', $test_data['training_start']);
+        $stmt->bindParam(':training_end', $test_data['training_end']);
+        $stmt->bindParam(':adviser', $test_data['adviser']);
+        $stmt->bindParam(':id', $test_student['id']);
+        
+        if ($stmt->execute()) {
+            echo "<p style='color: green;'>✓ Successfully updated student record</p>";
+            
+            // Verify the update
+            $verify_stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+            $verify_stmt->bindParam(':id', $test_student['id']);
+            $verify_stmt->execute();
+            $updated_student = $verify_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            echo "<h3>Updated Student Data:</h3>";
+            echo "<pre>" . print_r($updated_student, true) . "</pre>";
+        } else {
+            echo "<p style='color: red;'>✗ Failed to update student record</p>";
+            echo "<pre>" . print_r($stmt->errorInfo(), true) . "</pre>";
+        }
+    } else {
+        echo "<p>No students found in database to test with.</p>";
+    }
+    
+} catch (PDOException $e) {
+    echo "<p style='color: red;'>Error: " . $e->getMessage() . "</p>";
+}
+?>
