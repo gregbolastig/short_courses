@@ -2,7 +2,7 @@
 // Database configuration and setup
 class Database {
     private $host = 'localhost';
-    private $db_name = 'student_registration_db';
+    private $db_name = 'grading_system';
     private $username = 'root';
     private $password = '';
     private $conn;
@@ -33,8 +33,8 @@ function createDatabaseAndTable() {
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Create database
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS student_registration_db");
-        $pdo->exec("USE student_registration_db");
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS grading_system");
+        $pdo->exec("USE grading_system");
         
         // Create users table for authentication (admin only)
         $sql_users = "CREATE TABLE IF NOT EXISTS users (
@@ -306,7 +306,7 @@ function setupDatabaseWithFeedback() {
             
             if ($conn) {
                 echo "<p style='color: green;'>✓ Database connection successful!</p>";
-                echo "<p style='color: green;'>✓ Database 'student_registration_db' created/verified</p>";
+                echo "<p style='color: green;'>✓ Database 'grading_system' created/verified</p>";
                 echo "<p style='color: green;'>✓ Tables created/verified</p>";
                 
                 // Fix any missing columns

@@ -232,8 +232,8 @@ try {
     $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get available advisers
-    $stmt = $conn->query("SELECT * FROM advisers WHERE is_active = TRUE ORDER BY adviser_name");
+    // Get available advisers from faculty table
+    $stmt = $conn->query("SELECT faculty_id, name as adviser_name, status FROM faculty WHERE status = 'Active' ORDER BY name");
     $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {

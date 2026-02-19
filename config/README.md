@@ -32,7 +32,6 @@ $query = "SELECT * FROM " . TABLE_STUDENTS;
 - `TABLE_USERS` - shortcourse_users
 - `TABLE_STUDENTS` - shortcourse_students
 - `TABLE_COURSES` - shortcourse_courses
-- `TABLE_ADVISERS` - shortcourse_advisers
 - `TABLE_COURSE_APPLICATIONS` - shortcourse_course_applications
 - `TABLE_SYSTEM_ACTIVITIES` - shortcourse_system_activities
 - `TABLE_CHECKLIST` - shortcourse_checklist

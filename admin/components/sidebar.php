@@ -83,16 +83,6 @@
                             <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
                         </a>
                         
-                        <!-- Adviser List -->
-                        <?php 
-                            $advisers_path = (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false) ? 'index.php' : 
-                                            ($in_subfolder ? '../advisers/index.php' : 'advisers/index.php');
-                        ?>
-                        <a href="<?php echo $advisers_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
-                            <i class="fas fa-chalkboard-teacher text-sm mr-3 flex-shrink-0"></i>
-                            <span class="sidebar-text transition-all duration-200 truncate">Adviser List</span>
-                        </a>
-                        
                         <!-- Manage Checklist -->
                         <?php 
                             $checklist_path = (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false) ? 'index.php' : 
@@ -271,14 +261,6 @@
                         <i class="fas fa-graduation-cap text-lg"></i>
                     </div>
                     <span class="truncate ml-3">Manage Courses</span>
-                </a>
-                
-                <!-- Adviser List -->
-                <a href="<?php echo $advisers_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'advisers/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
-                    <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
-                        <i class="fas fa-chalkboard-teacher text-lg"></i>
-                    </div>
-                    <span class="truncate ml-3">Adviser List</span>
                 </a>
                 
                 <!-- Manage Course Applications -->

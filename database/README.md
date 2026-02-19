@@ -1,39 +1,56 @@
-# Database Documentation
+# Database Folder
 
-## Primary Database File
+This folder contains database documentation for the Student Registration System.
 
-**`../schema.sql`** (located in root directory) - This is the **single source of truth** for the database structure.
+## Database Setup
 
-- Contains the complete, optimized database schema
-- Includes all tables, relationships, indexes, and constraints
-- Use this file to create or reset the database
-- All database changes should be made here
+For a fresh installation, import the schema file from the root directory:
+```
+schema.sql
+```
 
-## Migration Scripts
+This will:
+- Create all 8 database tables
+- Insert sample faculty data
+- Set up all indexes and foreign keys
 
-The PHP files in this directory are migration utilities for updating existing databases:
+## Database Structure
 
-- `migrate_to_improved_schema.php` - Migrates from old schema to normalized structure
-- `migrate_to_two_stage_approval.php` - Implements two-stage approval workflow
-- `remove_unused_adviser_fields.php` - Cleans up legacy adviser fields
-- `php_examples.php` - Example queries for common operations
-- `two_stage_approval_examples.php` - Examples of the two-stage workflow
+The system uses 8 tables (7 with `shortcourse_` prefix + faculty):
 
-## Usage
+1. **shortcourse_users** - Admin user authentication
+2. **shortcourse_students** - Student information and registration
+3. **shortcourse_courses** - Course catalog with NC levels
+4. **faculty** - Faculty members (instructors/advisers)
+5. **shortcourse_course_applications** - Student course applications
+6. **shortcourse_system_activities** - System activity logging
+7. **shortcourse_checklist** - Document requirements checklist
+8. **shortcourse_bookkeeping_receipts** - Receipt tracking
 
-### Fresh Installation
+## Import Instructions
+
+### Using phpMyAdmin:
+1. Open phpMyAdmin
+2. Create database: `grading_system`
+3. Select the database
+4. Click "Import" tab
+5. Choose `schema.sql` file
+6. Click "Go"
+
+### Using MySQL Command Line:
 ```bash
 mysql -u root -p < schema.sql
 ```
 
-Or import via phpMyAdmin.
+## Sample Data
 
-### Updating Existing Database
-Run the appropriate migration script from the config directory or use phpMyAdmin to import schema.sql (will drop and recreate tables).
+The schema includes sample faculty data:
+- Mark Miller Abrera Polinar (Employee #2022-0585)
+- Mark Anthony Rapuson Guerrero (Employee #1998-8528)
 
-## Important Notes
+## Notes
 
-- **Do not create additional SQL files** - All schema changes go in `schema.sql`
-- Migration scripts are for transitioning existing data only
-- Always backup your database before running migrations
-- The schema.sql file is the authoritative source for database structure
+- The `faculty` table does NOT use the `shortcourse_` prefix
+- All other tables use the `shortcourse_` prefix for organization
+- Foreign keys are set up for data integrity
+- Indexes are optimized for performance

@@ -355,8 +355,8 @@ try {
     $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
     $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get advisers for approval modal
-    $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
+    // Get advisers from faculty table for approval modal
+    $stmt = $conn->query("SELECT faculty_id, name as adviser_name, status FROM faculty WHERE status = 'Active' ORDER BY name");
     $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get student applications count (matches the table display)

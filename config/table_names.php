@@ -10,7 +10,7 @@
 define('TABLE_USERS', 'shortcourse_users');
 define('TABLE_STUDENTS', 'shortcourse_students');
 define('TABLE_COURSES', 'shortcourse_courses');
-define('TABLE_ADVISERS', 'shortcourse_advisers');
+define('TABLE_FACULTY', 'faculty');
 define('TABLE_COURSE_APPLICATIONS', 'shortcourse_course_applications');
 define('TABLE_SYSTEM_ACTIVITIES', 'shortcourse_system_activities');
 define('TABLE_CHECKLIST', 'shortcourse_checklist');
@@ -20,7 +20,7 @@ define('TABLE_BOOKKEEPING_RECEIPTS', 'shortcourse_bookkeeping_receipts');
 define('TABLE_USERS_OLD', 'users');
 define('TABLE_STUDENTS_OLD', 'students');
 define('TABLE_COURSES_OLD', 'courses');
-define('TABLE_ADVISERS_OLD', 'advisers');
+define('TABLE_FACULTY_OLD', 'faculty');
 define('TABLE_COURSE_APPLICATIONS_OLD', 'course_applications');
 define('TABLE_SYSTEM_ACTIVITIES_OLD', 'system_activities');
 define('TABLE_CHECKLIST_OLD', 'checklist');
