@@ -286,58 +286,66 @@ include 'student/components/header.php';
 
 <!-- New Student Modal -->
 <div id="newStudentModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4 hidden">
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto transform transition-all duration-300 ease-out">
+    <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-md mx-auto transform transition-all duration-300 ease-out">
         <!-- Header Section -->
-        <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-2xl px-8 py-6 text-white relative overflow-hidden">
+        <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-lg px-5 py-3 text-white relative overflow-hidden">
             <div class="relative flex items-center">
-                <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
-                    <i class="fas fa-user-plus text-white text-xl"></i>
+                <div class="flex-shrink-0 w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-2">
+                    <i class="fas fa-user-plus text-white text-sm"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold mb-1">New Student Registration</h3>
-                    <p class="text-red-100 text-sm opacity-90">Register as a new student</p>
+                    <h3 class="text-base font-bold">New Student Registration</h3>
+                    <p class="text-red-100 text-xs opacity-90">Register as a new student</p>
                 </div>
             </div>
         </div>
 
         <!-- Content Section -->
-        <div class="px-8 py-6">
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div class="text-center mb-6">
-                    <div class="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="fas fa-user-plus text-2xl text-red-800"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">New to Jacobo Z. Gonzales Memorial School of Arts and Trades?</h3>
-                    <p class="text-gray-600">Register as a new student to get started</p>
+        <div class="px-5 py-4">
+            <div class="text-center mb-4">
+                <div class="mx-auto h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                    <i class="fas fa-user-plus text-xl text-red-800"></i>
                 </div>
-
-                <div class="space-y-4">
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <h4 class="font-semibold text-red-800 mb-2">
-                            <i class="fas fa-check-circle mr-2"></i>What you'll get:
-                        </h4>
-                        <ul class="text-sm text-red-700 space-y-1">
-                            <li><i class="fas fa-arrow-right mr-2"></i>Your unique ULI (Unique Learner Identifier)</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Access to course enrollment</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Student profile and records</li>
-                            <li><i class="fas fa-arrow-right mr-2"></i>Training certificates upon completion</li>
-                        </ul>
-                    </div>
-
-                    <a href="student/register.php"
-                       class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
-                        <i class="fas fa-user-plus mr-2"></i>Register as New Student
-                    </a>
-                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-1">New to JZGMSAT?</h3>
+                <p class="text-gray-600 text-xs">Register as a new student to get started with your training journey</p>
             </div>
+
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <h4 class="font-semibold text-red-800 mb-2 text-xs flex items-center">
+                    <i class="fas fa-check-circle mr-1.5"></i>What you'll receive:
+                </h4>
+                <ul class="text-xs text-red-700 space-y-1.5">
+                    <li class="flex items-start">
+                        <i class="fas fa-arrow-right mr-1.5 mt-0.5 flex-shrink-0 text-xs"></i>
+                        <span>Your unique ULI (Unique Learner Identifier)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-arrow-right mr-1.5 mt-0.5 flex-shrink-0 text-xs"></i>
+                        <span>Access to course enrollment and training programs</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-arrow-right mr-1.5 mt-0.5 flex-shrink-0 text-xs"></i>
+                        <span>Personal student profile and academic records</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-arrow-right mr-1.5 mt-0.5 flex-shrink-0 text-xs"></i>
+                        <span>Training certificates upon successful completion</span>
+                    </li>
+                </ul>
+            </div>
+
+            <a href="student/register.php"
+               class="w-full flex justify-center items-center py-2.5 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
+                <i class="fas fa-user-plus mr-2"></i>Register as New Student
+            </a>
         </div>
 
         <!-- Footer Section -->
-        <div class="bg-gray-50 rounded-b-2xl px-8 py-4 border-t border-gray-100">
+        <div class="bg-gray-50 rounded-b-lg px-5 py-2.5 border-t border-gray-100">
             <div class="flex justify-center">
                 <button onclick="closeNewStudentModal()"
-                        class="inline-flex items-center justify-center px-8 py-3 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                    <i class="fas fa-times mr-2"></i>Close
+                        class="inline-flex items-center justify-center px-5 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
+                    <i class="fas fa-arrow-left mr-1.5"></i>Back
                 </button>
             </div>
         </div>
@@ -346,145 +354,144 @@ include 'student/components/header.php';
 
 <!-- Old Student Modal -->
 <div id="oldStudentModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4 hidden">
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto transform transition-all duration-300 ease-out">
+    <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-5xl mx-auto transform transition-all duration-300 ease-out my-2">
         <!-- Header Section -->
-        <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-2xl px-8 py-6 text-white relative overflow-hidden">
+        <div class="bg-gradient-to-r from-red-800 to-red-900 rounded-t-lg px-5 py-3 text-white relative overflow-hidden">
             <div class="relative flex items-center">
-                <div class="flex-shrink-0 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-4">
-                    <i class="fas fa-search text-white text-xl"></i>
+                <div class="flex-shrink-0 w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-2">
+                    <i class="fas fa-search text-white text-sm"></i>
                 </div>
                 <div>
-                    <h3 class="text-xl font-bold mb-1">Search for Your Record</h3>
-                    <p class="text-red-100 text-sm opacity-90">Find your existing student profile</p>
+                    <h3 class="text-base font-bold">Search for Your Record</h3>
+                    <p class="text-red-100 text-xs opacity-90">Find your existing student profile</p>
                 </div>
             </div>
         </div>
 
         <!-- Content Section -->
-        <div class="px-8 py-6">
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                <div class="text-center mb-6">
-                    <div class="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="fas fa-search text-2xl text-red-800"></i>
+        <div class="px-5 py-4">
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="text-center mb-4">
+                    <div class="mx-auto h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-search text-lg text-red-800"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">Already Registered?</h3>
-                    <p class="text-gray-600">Search for your existing student record</p>
+                    <h3 class="text-base font-bold text-gray-900 mb-1">Already Registered?</h3>
+                    <p class="text-gray-600 text-xs">Search for your existing student record</p>
                 </div>
 
                 <!-- Important Notice -->
-                <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-2.5">
                     <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                        <div class="flex-shrink-0 mt-0.5">
+                            <i class="fas fa-exclamation-triangle text-yellow-600 text-sm"></i>
                         </div>
-                        <div class="ml-3">
-                            <h4 class="text-sm font-semibold text-yellow-800 mb-2">Important Notice</h4>
-                            <div class="text-xs text-yellow-700 space-y-1">
-                                <p>• Make sure you have your correct ULI or personal details before searching</p>
-                                <p>• If you don't know your ULI or are unsure about your details, please visit the registrar's office</p>
-                                <p>• Contact the registrar if you need assistance finding your records</p>
+                        <div class="ml-2">
+                            <h4 class="text-xs font-semibold text-yellow-800 mb-1.5">Important Notice</h4>
+                            <div class="text-xs text-yellow-700 space-y-0.5">
+                                <p>• Make sure you have your correct ULI or personal details</p>
+                                <p>• If you don't know your ULI, visit the registrar's office</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Search Tabs -->
-                <div class="mb-6">
+                <div class="mb-4">
                     <div class="flex border-b border-gray-200">
-                        <button onclick="showSearchTab('uli')" id="uli-tab" class="flex-1 py-2 px-4 text-sm font-medium text-center border-b-2 border-red-800 text-red-800">
-                            <i class="fas fa-id-card mr-2"></i>Search by ULI
+                        <button onclick="showSearchTab('uli')" id="uli-tab" class="flex-1 py-2 px-3 text-xs font-medium text-center border-b-2 border-red-800 text-red-800 -mb-px">
+                            <i class="fas fa-id-card mr-1"></i>Search by ULI
                         </button>
-                        <button onclick="showSearchTab('name')" id="name-tab" class="flex-1 py-2 px-4 text-sm font-medium text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-user mr-2"></i>Search by Details
+                        <button onclick="showSearchTab('name')" id="name-tab" class="flex-1 py-2 px-3 text-xs font-medium text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 -mb-px">
+                            <i class="fas fa-user mr-1"></i>Search by Details
                         </button>
                     </div>
                 </div>
 
                 <!-- ULI Search Form -->
                 <div id="uli-search" class="search-form">
-                    <form method="POST" class="space-y-4">
+                    <form method="POST" class="space-y-2">
                         <input type="hidden" name="search_type" value="uli">
                         <div>
-                            <label for="uli" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-id-card text-red-800 mr-2"></i>Enter your ULI (Unique Learner Identifier)
+                            <label for="uli" class="block text-xs font-medium text-gray-700 mb-0.5">
+                                <i class="fas fa-id-card text-red-800 mr-1"></i>Enter your ULI
                             </label>
                             <input type="text" id="uli" name="uli" required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200 font-mono tracking-wider"
+                                   class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200 font-mono tracking-wider"
                                    placeholder="ABC-12-123-12345-123"
                                    maxlength="25"
                                    title="Format: ABC-12-123-12345-123 (3 letters, then numbers separated by dashes)"
                                    value="<?php echo htmlspecialchars($_POST['uli'] ?? ''); ?>">
-                            <p class="text-xs text-gray-500 mt-2 flex items-center">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Format: 3 letters, then numbers (ABC-12-123-12345-123). You can type in lowercase - it will automatically convert to uppercase and format with dashes.
+                            <p class="text-xs text-gray-500 mt-1 flex items-start">
+                                <i class="fas fa-info-circle mr-1 mt-0.5 flex-shrink-0 text-xs"></i>
+                                <span>Format: ABC-12-123-12345-123</span>
                             </p>
                         </div>
                         <button type="submit"
-                                class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
-                            <i class="fas fa-search mr-2"></i>Search by ULI
+                                class="w-full flex justify-center items-center py-1.5 px-3 bg-red-800 text-white text-xs font-semibold rounded hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
+                            <i class="fas fa-search mr-1.5"></i>Search by ULI
                         </button>
                     </form>
                 </div>
 
                 <!-- Name Search Form -->
                 <div id="name-search" class="search-form hidden">
-                    <form method="POST" class="space-y-4">
+                    <form method="POST" class="space-y-2">
                         <input type="hidden" name="search_type" value="name">
 
                         <!-- Personal Information -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
-                                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-user text-red-800 mr-2"></i>First Name *
+                                <label for="first_name" class="block text-xs font-medium text-gray-700 mb-0.5">
+                                    <i class="fas fa-user text-red-800 mr-1"></i>First Name *
                                 </label>
                                 <input type="text" id="first_name" name="first_name" required
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200"
-                                       placeholder="Enter first name"
+                                       class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200"
+                                       placeholder="First name"
                                        value="<?php echo htmlspecialchars($_POST['first_name'] ?? ''); ?>">
                             </div>
                             <div>
-                                <label for="last_name" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <i class="fas fa-user text-red-800 mr-2"></i>Last Name *
+                                <label for="last_name" class="block text-xs font-medium text-gray-700 mb-0.5">
+                                    <i class="fas fa-user text-red-800 mr-1"></i>Last Name *
                                 </label>
                                 <input type="text" id="last_name" name="last_name" required
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200"
-                                       placeholder="Enter last name"
+                                       class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200"
+                                       placeholder="Last name"
                                        value="<?php echo htmlspecialchars($_POST['last_name'] ?? ''); ?>">
                             </div>
                         </div>
 
                         <!-- Date of Birth -->
                         <div>
-                            <label for="birthday" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-calendar-alt text-red-800 mr-2"></i>Date of Birth *
+                            <label for="birthday" class="block text-xs font-medium text-gray-700 mb-0.5">
+                                <i class="fas fa-calendar-alt text-red-800 mr-1"></i>Date of Birth *
                             </label>
                             <input type="date" id="birthday" name="birthday" required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200"
+                                   class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200"
                                    value="<?php echo htmlspecialchars($_POST['birthday'] ?? ''); ?>">
                         </div>
 
                         <!-- Place of Birth -->
-                        <div class="space-y-3">
-                            <h4 class="text-sm font-semibold text-gray-800 flex items-center">
-                                <i class="fas fa-map-marker-alt text-red-800 mr-2"></i>Place of Birth *
+                        <div class="space-y-1">
+                            <h4 class="text-xs font-semibold text-gray-800 flex items-center">
+                                <i class="fas fa-map-marker-alt text-red-800 mr-1"></i>Place of Birth *
                             </h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <div>
-                                    <label for="birth_province" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="birth_province" class="block text-xs font-medium text-gray-700 mb-0.5">
                                         Province *
                                     </label>
                                     <select id="birth_province" name="birth_province" required
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200">
+                                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200">
                                         <option value="">Select province</option>
                                         <!-- Provinces will be loaded via JavaScript -->
                                     </select>
                                 </div>
                                 <div>
-                                    <label for="birth_city" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label for="birth_city" class="block text-xs font-medium text-gray-700 mb-0.5">
                                         City/Municipality *
                                     </label>
                                     <select id="birth_city" name="birth_city" required
-                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800 focus:border-red-800 transition duration-200">
+                                            class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition duration-200">
                                         <option value="">Select city/municipality</option>
                                         <!-- Cities will be loaded via JavaScript -->
                                     </select>
@@ -492,16 +499,16 @@ include 'student/components/header.php';
                             </div>
                         </div>
 
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p class="text-xs text-red-700 flex items-center">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                All fields are required for security verification. Please enter the exact information as registered.
+                        <div class="bg-red-50 border border-red-200 rounded p-1.5">
+                            <p class="text-xs text-red-700 flex items-start">
+                                <i class="fas fa-info-circle mr-1 mt-0.5 flex-shrink-0 text-xs"></i>
+                                <span>All fields required for verification.</span>
                             </p>
                         </div>
 
                         <button type="submit"
-                                class="w-full flex justify-center items-center py-3 px-4 bg-red-800 text-white text-sm font-semibold rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
-                            <i class="fas fa-search mr-2"></i>Search by Personal Details
+                                class="w-full flex justify-center items-center py-1.5 px-3 bg-red-800 text-white text-xs font-semibold rounded hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-800 transition duration-200">
+                            <i class="fas fa-search mr-1.5"></i>Search by Details
                         </button>
                     </form>
                 </div>
@@ -509,11 +516,11 @@ include 'student/components/header.php';
         </div>
 
         <!-- Footer Section -->
-        <div class="bg-gray-50 rounded-b-2xl px-8 py-4 border-t border-gray-100">
+        <div class="bg-gray-50 rounded-b-lg px-5 py-2.5 border-t border-gray-100">
             <div class="flex justify-center">
                 <button onclick="closeOldStudentModal()"
-                        class="inline-flex items-center justify-center px-8 py-3 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
-                    <i class="fas fa-times mr-2"></i>Close
+                        class="inline-flex items-center justify-center px-5 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
+                    <i class="fas fa-times mr-1.5"></i>Close
                 </button>
             </div>
         </div>
@@ -682,6 +689,10 @@ include 'student/components/header.php';
         } else {
             document.getElementById('name-tab').classList.add('border-red-800', 'text-red-800');
             document.getElementById('name-tab').classList.remove('border-transparent', 'text-gray-500');
+            // Load provinces when switching to name search tab
+            if (typeof loadSearchProvinces === 'function') {
+                loadSearchProvinces();
+            }
         }
     }
 

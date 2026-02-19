@@ -89,6 +89,9 @@
                 const response = await fetch(`${PSGC_API_BASE}/provinces/`);
                 const provinces = await response.json();
                 
+                // Sort provinces alphabetically by name
+                provinces.sort((a, b) => a.name.localeCompare(b.name));
+                
                 const select = document.getElementById('birth_province');
                 if (select) {
                     select.innerHTML = '<option value="">Select province</option>';
@@ -122,6 +125,9 @@
             try {
                 const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
                 const cities = await response.json();
+                
+                // Sort cities alphabetically by name
+                cities.sort((a, b) => a.name.localeCompare(b.name));
                 
                 const select = document.getElementById('birth_city');
                 if (select) {
