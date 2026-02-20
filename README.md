@@ -190,6 +190,34 @@ Secondary (Navy Blue):
 
 ## Database Schema
 
+### Database Structure
+
+The system uses 8 tables (7 with `shortcourse_` prefix + faculty):
+
+1. **shortcourse_users** - Admin user authentication
+2. **shortcourse_students** - Student information and registration
+3. **shortcourse_courses** - Course catalog with NC levels
+4. **faculty** - Faculty members (instructors/advisers)
+5. **shortcourse_course_applications** - Student course applications
+6. **shortcourse_system_activities** - System activity logging
+7. **shortcourse_checklist** - Document requirements checklist
+8. **shortcourse_bookkeeping_receipts** - Receipt tracking
+
+### Database Setup
+
+For a fresh installation, import the schema file:
+```bash
+# Using MySQL Command Line
+mysql -u root -p < schema.sql
+
+# Or using phpMyAdmin:
+# 1. Create database: grading_system
+# 2. Select the database
+# 3. Click "Import" tab
+# 4. Choose schema.sql file
+# 5. Click "Go"
+```
+
 ### Students Table
 | Column | Type | Description |
 |--------|------|-------------|
@@ -226,6 +254,71 @@ Secondary (Navy Blue):
 - **Barangays**: `/cities-municipalities/{city_code}/barangays/`
 
 The system automatically loads provinces on page load and dynamically updates cities and barangays based on user selection.
+
+### API Utilities (api-utils.js)
+
+Shared JavaScript utilities for API integration located in `student/components/api-utils.js`.
+
+**Functions:**
+- `loadProvinces(selectId, selectedValue)` - Load provinces into dropdown
+- `loadCities(provinceCode, selectId, selectedValue)` - Load cities for province
+- `loadBarangays(cityCode, selectId, selectedValue)` - Load barangays for city
+- `loadCountryCodes(selectId, selectedValue)` - Load country codes
+- `setupAddressCascade(provinceId, cityId, barangayId)` - Setup cascading dropdowns
+
+**Features:**
+- Response caching for better performance
+- Loading states and error handling
+- Form value persistence
+- Cascading dropdown relationships
+
+**Usage Example:**
+```html
+<script src="components/api-utils.js"></script>
+<script>
+// Load provinces into dropdown
+APIUtils.loadProvinces('province-select');
+
+// Setup cascading address dropdowns
+APIUtils.setupAddressCascade('province', 'city', 'barangay');
+
+// Load country codes
+APIUtils.loadCountryCodes('country-code-select');
+</script>
+```
+
+## Reusable Components
+
+### Student Portal Components (`student/components/`)
+
+**header.php** - Standard header for student portal pages
+- Variables: `$page_title`, `$page_subtitle`, `$page_description`, `$show_logo`
+
+**register-header.php** - Special header for registration form
+- Variables: `$page_title`, `$show_logo`
+
+**footer.php** - Standard footer with contact information
+- Variables: `$include_search_js`
+
+**alerts.php** - Alert messages component
+- Variables: `$errors`, `$success_message`, `$info_message`
+
+**navigation.php** - Simple navigation component
+- Variables: `$nav_links` (array of links with url, text, icon)
+
+**Usage Example:**
+```php
+<?php
+$page_title = 'My Page';
+$errors = ['Error message'];
+$success_message = 'Success!';
+
+include 'components/header.php';
+include 'components/alerts.php';
+?>
+<!-- Your page content -->
+<?php include 'components/footer.php'; ?>
+```
 
 ## Security Features
 
