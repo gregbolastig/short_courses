@@ -22,8 +22,7 @@
             <nav class="mt-3 md:mt-5 flex-1 px-2 space-y-1 md:space-y-2">
                 <!-- Dashboard -->
                 <?php 
-                    $in_subfolder = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false || 
-                                    strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || 
+                    $in_subfolder = (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/students/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false ||
@@ -39,10 +38,10 @@
                 
                 <!-- Manage Students -->
                 <?php 
-                    $students_path = (strpos($_SERVER['PHP_SELF'], '/students/') !== false) ? 'index.php' : 
-                                    ($in_subfolder ? '../students/index.php' : 'students/index.php');
+                    $is_students_page = (basename($_SERVER['PHP_SELF']) === 'students.php') || (strpos($_SERVER['PHP_SELF'], '/students/') !== false);
+                    $students_path = $is_students_page ? 'students.php?page=index' : ($in_subfolder ? '../students.php?page=index' : 'students.php?page=index');
                 ?>
-                <a href="<?php echo $students_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'students/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php echo $students_path; ?>" class="<?php echo $is_students_page ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
                         <i class="fas fa-users text-lg"></i>
                     </div>
@@ -51,10 +50,10 @@
                 
                 <!-- Manage Course Applications -->
                 <?php 
-                    $course_app_path = (strpos($_SERVER['PHP_SELF'], '/course_application/') !== false) ? 'index.php' : 
-                                      ($in_subfolder ? '../course_application/index.php' : 'course_application/index.php');
+                    $is_course_app_page = (basename($_SERVER['PHP_SELF']) === 'course_application.php');
+                    $course_app_path = $is_course_app_page ? 'course_application.php?page=index' : ($in_subfolder ? '../course_application.php?page=index' : 'course_application.php?page=index');
                 ?>
-                <a href="<?php echo $course_app_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'course_application/') !== false) ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php echo $course_app_path; ?>" class="<?php echo $is_course_app_page ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
                         <i class="fas fa-file-alt text-lg"></i>
                     </div>
@@ -75,20 +74,20 @@
                     <div id="manage-submenu" class="hidden mt-1 space-y-1 ml-2">
                         <!-- Manage Courses -->
                         <?php 
-                            $courses_path = (strpos($_SERVER['PHP_SELF'], '/courses/') !== false) ? 'index.php' : 
-                                           ($in_subfolder ? '../courses/index.php' : 'courses/index.php');
+                            $is_courses_page = (basename($_SERVER['PHP_SELF']) === 'courses.php') || (strpos($_SERVER['PHP_SELF'], '/courses/') !== false);
+                            $courses_path = $is_courses_page ? 'courses.php' : ($in_subfolder ? '../courses.php' : 'courses.php');
                         ?>
-                        <a href="<?php echo $courses_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'courses/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
+                        <a href="<?php echo $courses_path; ?>" class="<?php echo $is_courses_page ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
                             <i class="fas fa-graduation-cap text-sm mr-3 flex-shrink-0"></i>
                             <span class="sidebar-text transition-all duration-200 truncate">Manage Courses</span>
                         </a>
                         
                         <!-- Manage Checklist -->
                         <?php 
-                            $checklist_path = (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false) ? 'index.php' : 
-                                             ($in_subfolder ? '../checklist/index.php' : 'checklist/index.php');
+                            $is_checklist_page = (basename($_SERVER['PHP_SELF']) === 'checklist.php') || (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
+                            $checklist_path = $is_checklist_page ? 'checklist.php?page=index' : ($in_subfolder ? '../checklist.php?page=index' : 'checklist.php?page=index');
                         ?>
-                        <a href="<?php echo $checklist_path; ?>" class="<?php echo (strpos($_SERVER['PHP_SELF'], 'checklist/') !== false) ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
+                        <a href="<?php echo $checklist_path; ?>" class="<?php echo $is_checklist_page ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
                             <i class="fas fa-tasks text-sm mr-3 flex-shrink-0"></i>
                             <span class="sidebar-text transition-all duration-200 truncate">Manage Checklist</span>
                         </a>

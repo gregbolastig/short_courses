@@ -502,7 +502,7 @@ function loadChecklist() {
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-gray-400 text-3xl mb-2"></i>
                         <p class="text-sm text-gray-500">No checklist items found</p>
-                        <a href="checklist/index.php" class="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block">
+                        <a href="checklist.php?page=index" class="text-xs text-blue-600 hover:text-blue-700 mt-2 inline-block">
                             <i class="fas fa-plus mr-1"></i>Add checklist items
                         </a>
                     </div>

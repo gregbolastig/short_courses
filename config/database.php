@@ -2,7 +2,7 @@
 // Database configuration and setup
 class Database {
     private $host = 'localhost';
-    private $db_name = 'grading_system';
+    private $db_name = 'student_registration_db';
     private $username = 'root';
     private $password = '';
     private $conn;
@@ -353,6 +353,7 @@ function setupDatabaseWithFeedback() {
 }
 
 // Initialize database automatically when this file is included
-createDatabaseAndTable();
-fixDatabase();
+// DISABLED: Database structure is now managed by schema.sql
+// createDatabaseAndTable();
+// fixDatabase();
 ?>

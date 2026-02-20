@@ -328,7 +328,7 @@ try {
     // Get course applications - includes:
     // 1. Student registrations (status='pending' - initial registrations)
     // 2. Approved course applications (status='approved' with course - from course_applications)
-    // Note: Completed students are now only visible in students/index.php
+    // Note: Completed students are now only visible in students.php
     $stmt = $conn->prepare("SELECT s.id, s.uli, s.first_name, s.last_name, s.email, s.status, s.course, s.nc_level, s.adviser, s.training_start, s.training_end, s.approved_at, s.created_at,
                                    c.course_id
                            FROM students s
@@ -390,7 +390,7 @@ try {
     $stmt->execute();
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get total course applications count (all statuses - matches course_application/index.php)
+    // Get total course applications count (all statuses - matches course_application.php?page=index)
     $stmt = $conn->query("SELECT COUNT(*) as total_applications FROM course_applications");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $approved_applications_count = $result ? (int)$result['total_applications'] : 0;
@@ -559,7 +559,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 px-4 md:px-6 py-3 border-t border-blue-100">
-                                    <a href="students/index.php" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="students.php?page=index" class="text-sm text-blue-700 hover:text-blue-800 font-medium flex items-center transition-colors duration-200">
                                         View all students
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
@@ -588,7 +588,7 @@ try {
                                     </div>
                                 </div>
                                 <div class="bg-indigo-50 px-4 md:px-6 py-3 border-t border-indigo-100">
-                                    <a href="course_application/index.php" class="text-sm text-indigo-700 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200">
+                                    <a href="course_application.php?page=index" class="text-sm text-indigo-700 hover:text-indigo-800 font-medium flex items-center transition-colors duration-200">
                                         View approved applications
                                         <i class="fas fa-arrow-right ml-2"></i>
                                     </a>
@@ -735,7 +735,7 @@ try {
                                                         </div>
                                                         
                                                         <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="students/view.php?id=<?php echo $student['student_id']; ?>" 
+                                                            <a href="students.php?page=view&id=<?php echo $student['student_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>View
                                                             </a>
@@ -806,7 +806,7 @@ try {
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <div class="flex items-center space-x-3">
-                                                        <a href="students/view.php?id=<?php echo $student['student_id']; ?>" 
+                                                        <a href="students.php?page=view&id=<?php echo $student['student_id']; ?>" 
                                                            class="inline-flex items-center px-4 py-2 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                             <i class="fas fa-eye mr-2"></i>View
                                                         </a>
@@ -931,7 +931,7 @@ try {
                                     <h3 class="text-base md:text-lg font-medium text-gray-900 mb-2">No student applications</h3>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">No pending student registrations or approved student applications at this time.</p>
                                     <p class="text-sm md:text-base text-gray-500 mb-4 px-4">Get started by having students register through the student portal.</p>
-                                    <a href="students/index.php" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
+                                    <a href="students.php?page=index" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-900 hover:bg-blue-800">
                                         <i class="fas fa-users mr-2"></i>
                                         Manage Students
                                     </a>
@@ -997,7 +997,7 @@ try {
                                                         </div>
                                                         
                                                         <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="students.php?page=view&id=<?php echo $student['id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1.5"></i>View
                                                             </a>
@@ -1083,7 +1083,7 @@ try {
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div class="flex items-center gap-2">
-                                                            <a href="students/view.php?id=<?php echo $student['id']; ?>" 
+                                                            <a href="students.php?page=view&id=<?php echo $student['id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1.5"></i>View
                                                             </a>
@@ -1225,7 +1225,7 @@ try {
                                         No course applications are currently pending review.
                                     </p>
                                     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                                        <a href="course_application/index.php" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                                        <a href="course_application.php?page=index" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200">
                                             <i class="fas fa-list mr-2"></i>View All Applications
                                         </a>
                                     </div>
@@ -1453,7 +1453,7 @@ try {
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Manage all student records, approvals, and registrations.</p>
                                 <div class="space-y-2">
-                                    <a href="students/index.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                    <a href="students.php?page=index" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View All Students
                                     </a>
                                     <a href="pending_approvals.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
@@ -1489,10 +1489,10 @@ try {
                                 </div>
                                 <p class="text-sm md:text-base text-gray-600 mb-4">Organize and manage courses and course applications.</p>
                                 <div class="space-y-2">
-                                    <a href="courses/index.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                    <a href="courses.php?page=index" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Manage Courses
                                     </a>
-                                    <a href="courses/add.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                    <a href="courses.php?page=add" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Add New Course
                                     </a>
                                 </div>
