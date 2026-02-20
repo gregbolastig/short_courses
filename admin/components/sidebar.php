@@ -25,7 +25,6 @@
                     $in_subfolder = (strpos($_SERVER['PHP_SELF'], '/advisers/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/students/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || 
-                                    strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false ||
                                     strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
                     $dashboard_path = $in_subfolder ? '../dashboard.php' : 'dashboard.php';
                 ?>
@@ -185,8 +184,7 @@
                                 </div>
                             </a>
                             <?php 
-                                $system_activity_path = (strpos($_SERVER['PHP_SELF'], '/system_activity/') !== false) ? 'index.php' : 
-                                                       ($in_subfolder ? '../system_activity/index.php' : 'system_activity/index.php');
+                                $system_activity_path = $in_subfolder ? '../system_activity.php' : 'system_activity.php';
                             ?>
                             <a href="<?php echo $system_activity_path; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-purple-100 rounded-lg p-2 mr-3">
