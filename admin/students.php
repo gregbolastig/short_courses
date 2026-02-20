@@ -212,16 +212,40 @@ function getStudentFullName(array $student): string {
 // Global delete handler (works for all views)
 // ========================================================================
 
-if (isset($_GET['action'], $_GET['id']) && $_GET['action'] === 'delete' && is_numeric($_GET['id'])) {
-    $result = handleStudentDelete($conn, $logger, (int)$_GET['id'], (int)$_SESSION['user_id']);
-    if (!empty($result['error'])) {
-        $error_message = $result['error'];
-    } else {
-        $_SESSION['toast_message'] = $result['success'];
-        $_SESSION['toast_type'] = 'success';
-        header('Location: students.php?page=index');
-        exit;
+if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['action'] === 'delete' && is_numeric($_POST['id'])) {
+    $student_id = (int)$_POST['id'];
+    $admin_password = $_POST['admin_password'];
+    
+    // Verify admin password
+    try {
+        $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+        $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->execute();
+        $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$admin || !password_verify($admin_password, $admin['password'])) {
+            $_SESSION['toast_message'] = 'Invalid password. Deletion cancelled.';
+            $_SESSION['toast_type'] = 'error';
+            header('Location: students.php?page=index');
+            exit;
+        }
+        
+        // Password verified, proceed with deletion
+        $result = handleStudentDelete($conn, $logger, $student_id, (int)$_SESSION['user_id']);
+        if (!empty($result['error'])) {
+            $_SESSION['toast_message'] = $result['error'];
+            $_SESSION['toast_type'] = 'error';
+        } else {
+            $_SESSION['toast_message'] = $result['success'];
+            $_SESSION['toast_type'] = 'success';
+        }
+    } catch (PDOException $e) {
+        $_SESSION['toast_message'] = 'Database error: ' . $e->getMessage();
+        $_SESSION['toast_type'] = 'error';
     }
+    
+    header('Location: students.php?page=index');
+    exit;
 }
 
 // ========================================================================
@@ -285,6 +309,10 @@ $course_history = [];
 
 if ($page === 'view') {
     $page_title = 'View Student';
+    $breadcrumb_items = [
+        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'students.php?page=index'],
+        ['title' => 'View Student', 'icon' => 'fas fa-eye']
+    ];
 
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
         $error_message = 'Invalid student ID.';
@@ -321,6 +349,10 @@ $edit_errors = [];
 
 if ($page === 'edit') {
     $page_title = 'Edit Student';
+    $breadcrumb_items = [
+        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'students.php?page=index'],
+        ['title' => 'Edit Student', 'icon' => 'fas fa-edit']
+    ];
 
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
         header('Location: students.php?page=index');
@@ -969,19 +1001,32 @@ if ($page === 'edit') {
                                 </div>
                                 <h3 class="text-2xl font-bold text-gray-900 text-center mb-3">Delete Student</h3>
                                 <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto mb-6"></div>
-                                <p class="text-base text-gray-600 text-center mb-8 leading-relaxed">
-                                    Are you sure you want to delete <strong class="text-gray-900">${studentName}</strong>? This action cannot be undone.
+                                <p class="text-base text-gray-600 text-center mb-4 leading-relaxed">
+                                    Are you sure you want to delete <strong class="text-gray-900">${studentName}</strong>?
                                 </p>
-                                <div class="flex flex-col-reverse sm:flex-row gap-3">
-                                    <button onclick="this.closest('.fixed').remove()"
-                                            class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-times mr-2"></i>Cancel
-                                    </button>
-                                    <button onclick="window.location.href='students.php?page=index&action=delete&id=${studentId}'"
-                                            class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
-                                        <i class="fas fa-trash mr-2"></i>Delete
-                                    </button>
-                                </div>
+                                <p class="text-sm text-red-600 text-center mb-6 font-medium">
+                                    Enter your admin password to confirm this action.
+                                </p>
+                                <form id="deleteForm" method="POST" action="students.php">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="${studentId}">
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Admin Password</label>
+                                        <input type="password" name="admin_password" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                               placeholder="Enter your password">
+                                    </div>
+                                    <div class="flex flex-col-reverse sm:flex-row gap-3">
+                                        <button type="button" onclick="this.closest('.fixed').remove()"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <i class="fas fa-times mr-2"></i>Cancel
+                                        </button>
+                                        <button type="submit"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-trash mr-2"></i>Delete
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         `;
                         document.body.appendChild(modal);
@@ -1004,11 +1049,6 @@ if ($page === 'edit') {
                                     </div>
                                 </div>
                             </div>
-                            <div class="text-center">
-                                <a href="students.php?page=index" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
-                                    <i class="fas fa-arrow-left mr-2"></i>Back to Students List
-                                </a>
-                            </div>
                         <?php else: ?>
                             <div class="mb-6 md:mb-8">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -1017,9 +1057,6 @@ if ($page === 'edit') {
                                         <p class="text-lg text-gray-600 mt-2">Complete information for <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="students.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                            <i class="fas fa-arrow-left mr-2"></i>Back
-                                        </a>
                                         <a href="students.php?page=edit&id=<?php echo (int)$student['id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-edit mr-2"></i>Edit Student
                                         </a>
@@ -1527,19 +1564,32 @@ if ($page === 'edit') {
                                 </div>
                                 <h3 class="text-2xl font-bold text-gray-900 text-center mb-3">Delete Student</h3>
                                 <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto mb-6"></div>
-                                <p class="text-base text-gray-600 text-center mb-8 leading-relaxed">
-                                    Are you sure you want to delete <strong class="text-gray-900">${studentName}</strong>? This action cannot be undone.
+                                <p class="text-base text-gray-600 text-center mb-4 leading-relaxed">
+                                    Are you sure you want to delete <strong class="text-gray-900">${studentName}</strong>?
                                 </p>
-                                <div class="flex flex-col-reverse sm:flex-row gap-3">
-                                    <button onclick="this.closest('.fixed').remove()"
-                                            class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-times mr-2"></i>Cancel
-                                    </button>
-                                    <button onclick="window.location.href='students.php?page=view&action=delete&id=${studentId}'"
-                                            class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
-                                        <i class="fas fa-trash mr-2"></i>Delete
-                                    </button>
-                                </div>
+                                <p class="text-sm text-red-600 text-center mb-6 font-medium">
+                                    Enter your admin password to confirm this action.
+                                </p>
+                                <form id="deleteForm" method="POST" action="students.php">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="${studentId}">
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Admin Password</label>
+                                        <input type="password" name="admin_password" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                               placeholder="Enter your password" autofocus>
+                                    </div>
+                                    <div class="flex flex-col-reverse sm:flex-row gap-3">
+                                        <button type="button" onclick="this.closest('.fixed').remove()"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <i class="fas fa-times mr-2"></i>Cancel
+                                        </button>
+                                        <button type="submit"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-trash mr-2"></i>Delete
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         `;
                         document.body.appendChild(modal);

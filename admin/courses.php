@@ -72,34 +72,46 @@ if ($page === 'index') {
         ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap']
     ];
 
-    // Handle delete operation
-    if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+    // Handle delete operation with password verification
+    if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['action'] === 'delete' && is_numeric($_POST['id'])) {
         try {
-            $course_id_to_delete = (int)$_GET['delete'];
-
-            // Get course name before deleting
-            $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = ?");
-            $stmt->execute([$course_id_to_delete]);
-            $course = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($course) {
-                $logger->log(
-                    'course_deleted',
-                    "Admin deleted course '{$course['course_name']}' (ID: {$course_id_to_delete})",
-                    'admin',
-                    $_SESSION['user_id'],
-                    'course',
-                    $course_id_to_delete
-                );
-
-                $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+            $course_id_to_delete = (int)$_POST['id'];
+            $admin_password = $_POST['admin_password'];
+            
+            // Verify admin password
+            $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+            $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+            $stmt->execute();
+            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$admin || !password_verify($admin_password, $admin['password'])) {
+                $error_message = 'Invalid password. Deletion cancelled.';
+            } else {
+                // Password verified, proceed with deletion
+                // Get course name before deleting
+                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = ?");
                 $stmt->execute([$course_id_to_delete]);
+                $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                header("Location: courses.php?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
-                exit;
+                if ($course) {
+                    $logger->log(
+                        'course_deleted',
+                        "Admin deleted course '{$course['course_name']}' (ID: {$course_id_to_delete})",
+                        'admin',
+                        $_SESSION['user_id'],
+                        'course',
+                        $course_id_to_delete
+                    );
+
+                    $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+                    $stmt->execute([$course_id_to_delete]);
+
+                    header("Location: courses.php?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
+                    exit;
+                } else {
+                    $error_message = 'Course not found.';
+                }
             }
-
-            $error_message = 'Course not found.';
         } catch (PDOException $e) {
             $error_message = 'Cannot delete course: ' . $e->getMessage();
         }
@@ -739,7 +751,7 @@ if ($page === 'view') {
                                     <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto"></div>
                                 </div>
 
-                                <div class="text-center mb-8">
+                                <div class="text-center mb-6">
                                     <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
                                         <div class="flex items-center justify-center space-x-3 mb-2">
                                             <div class="bg-blue-100 rounded-lg p-2">
@@ -748,27 +760,34 @@ if ($page === 'view') {
                                             <span class="font-semibold text-gray-900 text-lg" id="courseNameToDelete"></span>
                                         </div>
                                     </div>
-                                    <p class="text-gray-600 leading-relaxed">
-                                        This action will permanently remove the course from your system. All associated data will be lost and cannot be recovered.
+                                    <p class="text-gray-600 leading-relaxed mb-4">
+                                        This action will permanently remove the course from your system.
                                     </p>
-                                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                        <div class="flex items-center justify-center space-x-2 text-red-700">
-                                            <i class="fas fa-info-circle text-sm"></i>
-                                            <span class="text-sm font-medium">This action cannot be undone</span>
-                                        </div>
-                                    </div>
+                                    <p class="text-sm text-red-600 font-medium">
+                                        Enter your admin password to confirm this action.
+                                    </p>
                                 </div>
 
-                                <div class="flex flex-col sm:flex-row-reverse gap-3">
-                                    <button type="button" id="confirmDeleteBtn" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
-                                        <i class="fas fa-trash mr-2"></i>
-                                        Delete Course
-                                    </button>
-                                    <button type="button" onclick="closeDeleteModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                </div>
+                                <form id="deleteForm" method="POST" action="courses.php?page=index">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" id="deleteCourseId" value="">
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Admin Password</label>
+                                        <input type="password" name="admin_password" id="adminPassword" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                               placeholder="Enter your password">
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row-reverse gap-3">
+                                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-trash mr-2"></i>
+                                            Delete Course
+                                        </button>
+                                        <button type="button" onclick="closeDeleteModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <i class="fas fa-times mr-2"></i>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -779,14 +798,20 @@ if ($page === 'view') {
                         function confirmDelete(courseName, courseId) {
                             courseToDelete = courseId;
                             document.getElementById('courseNameToDelete').textContent = courseName;
+                            document.getElementById('deleteCourseId').value = courseId;
+                            document.getElementById('adminPassword').value = '';
                             document.getElementById('deleteModal').classList.remove('hidden');
                             document.body.classList.add('overflow-hidden');
+                            setTimeout(() => {
+                                document.getElementById('adminPassword').focus();
+                            }, 100);
                         }
 
                         function closeDeleteModal() {
                             courseToDelete = null;
                             document.getElementById('deleteModal').classList.add('hidden');
                             document.body.classList.remove('overflow-hidden');
+                            document.getElementById('adminPassword').value = '';
                         }
 
                         function closeSuccessModal() {
@@ -798,12 +823,6 @@ if ($page === 'view') {
                             url.searchParams.delete('course_name');
                             window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
                         }
-
-                        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-                            if (courseToDelete) {
-                                window.location.href = `courses.php?page=index&delete=${courseToDelete}`;
-                            }
-                        });
 
                         document.addEventListener('keydown', function(event) {
                             if (event.key === 'Escape') {

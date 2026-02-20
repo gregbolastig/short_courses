@@ -42,33 +42,47 @@ if ($page === 'index') {
         ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks']
     ];
 
-    // Delete
-    if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
+    // Delete with password verification
+    if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['action'] === 'delete' && is_numeric($_POST['id'])) {
         try {
-            $item_id = (int)$_GET['delete'];
-            $stmt = $conn->prepare("SELECT document_name FROM checklist WHERE id = ?");
-            $stmt->execute([$item_id]);
-            $item = $stmt->fetch(PDO::FETCH_ASSOC);
+            $item_id = (int)$_POST['id'];
+            $admin_password = $_POST['admin_password'];
+            
+            // Verify admin password
+            $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+            $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+            $stmt->execute();
+            $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$admin || !password_verify($admin_password, $admin['password'])) {
+                $error_message = 'Invalid password. Deletion cancelled.';
+            } else {
+                // Password verified, proceed with deletion
+                $stmt = $conn->prepare("SELECT document_name FROM checklist WHERE id = ?");
+                $stmt->execute([$item_id]);
+                $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $stmt = $conn->prepare("DELETE FROM checklist WHERE id = ?");
-            $stmt->execute([$item_id]);
+                $stmt = $conn->prepare("DELETE FROM checklist WHERE id = ?");
+                $stmt->execute([$item_id]);
 
-            if ($item) {
-                $logger->log(
-                    'checklist_deleted',
-                    "Admin deleted checklist item '{$item['document_name']}' (ID: {$item_id})",
-                    'admin',
-                    $_SESSION['user_id'],
-                    'checklist',
-                    $item_id
-                );
+                if ($item) {
+                    $logger->log(
+                        'checklist_deleted',
+                        "Admin deleted checklist item '{$item['document_name']}' (ID: {$item_id})",
+                        'admin',
+                        $_SESSION['user_id'],
+                        'checklist',
+                        $item_id
+                    );
+                }
+
+                $success_message = 'Checklist item deleted successfully!';
             }
-
-            $success_message = 'Checklist item deleted successfully!';
         } catch (PDOException $e) {
             $error_message = 'Cannot delete checklist item: ' . $e->getMessage();
         }
     }
+
 
     // Toast success from add/edit
     if (isset($_GET['success'])) {
@@ -505,7 +519,7 @@ if ($page === 'edit') {
                                     </h3>
                                     <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto"></div>
                                 </div>
-                                <div class="text-center mb-8">
+                                <div class="text-center mb-6">
                                     <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
                                         <div class="flex items-center justify-center space-x-3 mb-2">
                                             <div class="bg-blue-100 rounded-lg p-2">
@@ -514,26 +528,33 @@ if ($page === 'edit') {
                                             <span class="font-semibold text-gray-900 text-lg" id="itemNameToDelete"></span>
                                         </div>
                                     </div>
-                                    <p class="text-gray-600 leading-relaxed">
-                                        This action will permanently remove the checklist item from your system. All associated data will be lost and cannot be recovered.
+                                    <p class="text-gray-600 leading-relaxed mb-4">
+                                        This action will permanently remove the checklist item from your system.
                                     </p>
-                                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                        <div class="flex items-center justify-center space-x-2 text-red-700">
-                                            <i class="fas fa-info-circle text-sm"></i>
-                                            <span class="text-sm font-medium">This action cannot be undone</span>
-                                        </div>
+                                    <p class="text-sm text-red-600 font-medium">
+                                        Enter your admin password to confirm this action.
+                                    </p>
+                                </div>
+                                <form id="deleteForm" method="POST" action="checklist.php?page=index">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" id="deleteItemId" value="">
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Admin Password</label>
+                                        <input type="password" name="admin_password" id="adminPassword" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                               placeholder="Enter your password">
                                     </div>
-                                </div>
-                                <div class="flex flex-col sm:flex-row gap-3">
-                                    <button type="button" id="confirmDeleteBtn" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
-                                        <i class="fas fa-trash mr-2"></i>
-                                        Delete Item
-                                    </button>
-                                    <button type="button" onclick="closeDeleteModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-times mr-2"></i>
-                                        Cancel
-                                    </button>
-                                </div>
+                                    <div class="flex flex-col sm:flex-row gap-3">
+                                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-trash mr-2"></i>
+                                            Delete Item
+                                        </button>
+                                        <button type="button" onclick="closeDeleteModal()" class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <i class="fas fa-times mr-2"></i>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -554,21 +575,21 @@ if ($page === 'edit') {
                         function confirmDelete(itemName, itemId) {
                             itemToDelete = itemId;
                             document.getElementById('itemNameToDelete').textContent = itemName;
+                            document.getElementById('deleteItemId').value = itemId;
+                            document.getElementById('adminPassword').value = '';
                             document.getElementById('deleteModal').classList.remove('hidden');
                             document.body.classList.add('overflow-hidden');
+                            setTimeout(() => {
+                                document.getElementById('adminPassword').focus();
+                            }, 100);
                         }
 
                         function closeDeleteModal() {
                             itemToDelete = null;
                             document.getElementById('deleteModal').classList.add('hidden');
                             document.body.classList.remove('overflow-hidden');
+                            document.getElementById('adminPassword').value = '';
                         }
-
-                        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-                            if (itemToDelete) {
-                                window.location.href = 'checklist.php?page=index&delete=' + itemToDelete;
-                            }
-                        });
 
                         document.addEventListener('keydown', function(event) {
                             if (event.key === 'Escape') {

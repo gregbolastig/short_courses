@@ -207,6 +207,67 @@ if ($page === 'index' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
     }
 }
 
+// ========================================================================
+// DELETE ACTION HANDLER
+// ========================================================================
+
+if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['action'] === 'delete' && is_numeric($_POST['id'])) {
+    $application_id = (int)$_POST['id'];
+    $admin_password = $_POST['admin_password'];
+    
+    // Verify admin password
+    try {
+        $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+        $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->execute();
+        $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$admin || !password_verify($admin_password, $admin['password'])) {
+            $_SESSION['toast_message'] = 'Invalid password. Deletion cancelled.';
+            $_SESSION['toast_type'] = 'error';
+            header('Location: course_application.php?page=index');
+            exit;
+        }
+        
+        // Password verified, proceed with deletion
+        // Get application details for logging
+        $stmt = $conn->prepare("SELECT student_id, course_id FROM course_applications WHERE application_id = :id");
+        $stmt->bindParam(':id', $application_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($app_data) {
+            // Delete the application
+            $stmt = $conn->prepare("DELETE FROM course_applications WHERE application_id = :id");
+            $stmt->bindParam(':id', $application_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            // Log the action
+            if (isset($logger)) {
+                $logger->log(
+                    'course_application_deleted',
+                    'Course Application',
+                    $application_id,
+                    "Deleted course application ID: {$application_id}",
+                    $_SESSION['user_id']
+                );
+            }
+            
+            $_SESSION['toast_message'] = 'Course application deleted successfully.';
+            $_SESSION['toast_type'] = 'success';
+        } else {
+            $_SESSION['toast_message'] = 'Application not found.';
+            $_SESSION['toast_type'] = 'error';
+        }
+    } catch (PDOException $e) {
+        $_SESSION['toast_message'] = 'Error deleting application: ' . $e->getMessage();
+        $_SESSION['toast_type'] = 'error';
+    }
+    
+    header('Location: course_application.php?page=index');
+    exit;
+}
+
 // -------------------------------------------------------------------------
 // Route-specific data
 // -------------------------------------------------------------------------
@@ -308,8 +369,8 @@ if ($page === 'index') {
         $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
         $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Advisers for modal
-        $stmt = $conn->query("SELECT adviser_name FROM advisers WHERE is_active = 1 ORDER BY adviser_name");
+        // Advisers from faculty table for modal
+        $stmt = $conn->query("SELECT faculty_id, name as adviser_name, status FROM faculty WHERE status = 'Active' ORDER BY name");
         $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $error_message = 'Database error: ' . $e->getMessage();
@@ -325,6 +386,10 @@ if ($page === 'index') {
 $application = null;
 if ($page === 'view') {
     $page_title = 'View Course Application';
+    $breadcrumb_items = [
+        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'course_application.php?page=index'],
+        ['title' => 'View Application', 'icon' => 'fas fa-eye']
+    ];
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
         $error_message = 'Invalid application ID.';
     } else {
@@ -351,6 +416,18 @@ if ($page === 'view') {
 
             if (!$application) {
                 $error_message = 'Application not found.';
+            } else {
+                // Fetch course history for this student
+                $stmt = $conn->prepare("
+                    SELECT ca.*, c.course_name, ca.reviewed_at, ca.applied_at
+                    FROM course_applications ca
+                    LEFT JOIN courses c ON ca.course_id = c.course_id
+                    WHERE ca.student_id = :student_id
+                    ORDER BY ca.applied_at DESC
+                ");
+                $stmt->bindParam(':student_id', $application['student_id'], PDO::PARAM_INT);
+                $stmt->execute();
+                $course_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         } catch (PDOException $e) {
             $error_message = 'Database error: ' . $e->getMessage();
@@ -361,6 +438,10 @@ if ($page === 'view') {
 // Edit-specific data
 if ($page === 'edit') {
     $page_title = 'Edit Course Application';
+    $breadcrumb_items = [
+        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'course_application.php?page=index'],
+        ['title' => 'Edit Application', 'icon' => 'fas fa-edit']
+    ];
     $application_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     $courses_for_edit = [];
     $advisers_for_edit = [];
@@ -391,8 +472,8 @@ if ($page === 'edit') {
         $stmt = $conn->query("SELECT course_id, course_name, nc_levels FROM courses WHERE is_active = 1 ORDER BY course_name");
         $courses_for_edit = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Get all advisers
-        $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers WHERE is_active = 1 ORDER BY adviser_name");
+        // Get all advisers from faculty table
+        $stmt = $conn->query("SELECT faculty_id, name as adviser_name, status FROM faculty WHERE status = 'Active' ORDER BY name");
         $advisers_for_edit = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         $error_message = 'Database error: ' . $e->getMessage();
@@ -922,35 +1003,33 @@ if ($page === 'edit') {
                 <div class="py-4 md:py-6">
                     <div class="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
                         <?php if ($error_message): ?>
-                            <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                                <div class="flex items-center">
-                                    <i class="fas fa-exclamation-circle mr-2"></i>
-                                    <?php echo htmlspecialchars($error_message); ?>
+                            <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-exclamation-triangle text-red-400"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="text-center">
-                                <a href="course_application.php?page=index" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors duration-200">
-                                    <i class="fas fa-arrow-left mr-2"></i>Back to Applications List
-                                </a>
                             </div>
                         <?php else: ?>
                             <div class="mb-6 md:mb-8">
-                                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                                    <div class="mb-4 md:mb-0">
-                                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Course Application Details</h1>
-                                        <p class="text-gray-600">Application for <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?></p>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                    <div>
+                                        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Course Application Details</h1>
+                                        <p class="text-lg text-gray-600 mt-2">Complete information for <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?></p>
                                     </div>
-                                    <div class="flex flex-col sm:flex-row gap-3">
-                                        <a href="course_application.php?page=index" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm">
-                                            <i class="fas fa-arrow-left mr-2"></i>Back to Applications
+                                    <div class="flex items-center space-x-4">
+                                        <a href="course_application.php?page=edit&id=<?php echo (int)$application['application_id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-edit mr-2"></i>Edit Application
                                         </a>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Status + Student summary (truncated for brevity, same as original view.php) -->
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6 md:mb-8">
-                                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
+                            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-6 md:mb-8">
+                                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 md:px-8 py-8 md:py-12">
                                     <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
                                         <div class="flex-shrink-0">
                                             <?php
@@ -1019,133 +1098,177 @@ if ($page === 'edit') {
 
                             <!-- Details sections -->
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-                                <!-- Personal & Contact Information -->
-                                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+                                <!-- Personal Information -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
                                     <div class="flex items-center mb-6">
-                                        <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-10 h-10 flex items-center justify-center mr-3 shadow-lg">
-                                            <i class="fas fa-user text-white text-sm"></i>
+                                        <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-user text-white text-xl"></i>
                                         </div>
-                                        <h3 class="text-lg font-bold text-gray-900">Personal Information</h3>
+                                        <h3 class="text-xl font-bold text-gray-900">Personal Information</h3>
                                     </div>
-                                    <div class="space-y-4 text-sm text-gray-700">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Full Name</p>
-                                                <p class="font-semibold text-gray-900">
-                                                    <?php echo htmlspecialchars(trim($application['first_name'] . ' ' . ($application['middle_name'] ? $application['middle_name'] . ' ' : '') . $application['last_name'])); ?>
-                                                    <?php if ($application['extension_name']): ?>
-                                                        <?php echo ' ' . htmlspecialchars($application['extension_name']); ?>
-                                                    <?php endif; ?>
-                                                </p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">First Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['first_name']); ?></p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Birthday / Age</p>
-                                                <p class="font-medium text-gray-900">
-                                                    <?php echo $application['birthday'] ? date('F j, Y', strtotime($application['birthday'])) : 'N/A'; ?>
-                                                    <?php if (!empty($application['age'])): ?>
-                                                        <span class="text-gray-500"> • <?php echo (int)$application['age']; ?> years old</span>
-                                                    <?php endif; ?>
-                                                </p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Middle Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['middle_name'] ?: 'N/A'); ?></p>
                                             </div>
                                         </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Sex</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['sex'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Last Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['last_name']); ?></p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Civil Status</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['civil_status'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Extension</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['extension_name'] ?: 'N/A'); ?></p>
                                             </div>
                                         </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Email</p>
-                                                <p class="font-medium text-gray-900 break-all"><?php echo htmlspecialchars($application['email'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Birthday</label>
+                                                <p class="text-sm text-gray-900"><?php echo $application['birthday'] ? date('F j, Y', strtotime($application['birthday'])) : 'N/A'; ?></p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Contact Number</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['contact_number'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Age</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['age'] ?? 'N/A'); ?> years old</p>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Gender</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['sex'] ?? 'N/A'); ?></p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Civil Status</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['civil_status'] ?? 'N/A'); ?></p>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="mt-8">
-                                        <div class="flex items-center mb-4">
-                                            <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-10 h-10 flex items-center justify-center mr-3 shadow-lg">
-                                                <i class="fas fa-map-marker-alt text-white text-sm"></i>
-                                            </div>
-                                            <h3 class="text-lg font-bold text-gray-900">Address Information</h3>
+                                <!-- Contact Information -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                                    <div class="flex items-center mb-6">
+                                        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-phone text-green-600 text-xl"></i>
                                         </div>
-                                        <div class="space-y-3 text-sm text-gray-700">
+                                        <h3 class="text-xl font-bold text-gray-900">Contact Information</h3>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Current Address</p>
-                                                <p class="font-medium text-gray-900">
-                                                    <?php
-                                                    $parts = array_filter([
-                                                        $application['street_address'] ?? '',
-                                                        $application['barangay'] ?? '',
-                                                        $application['city'] ?? '',
-                                                        $application['province'] ?? ''
-                                                    ]);
-                                                    echo $parts ? htmlspecialchars(implode(', ', $parts)) : 'N/A';
-                                                    ?>
-                                                </p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Email Address</label>
+                                                <p class="text-sm text-gray-900 break-all"><?php echo htmlspecialchars($application['email'] ?? 'N/A'); ?></p>
                                             </div>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Contact Number</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['contact_number'] ?? 'N/A'); ?></p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500 mb-1">ULI Number</label>
+                                            <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['uli']); ?></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Address Information -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                                    <div class="flex items-center mb-6">
+                                        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-map-marker-alt text-green-600 text-xl"></i>
+                                        </div>
+                                        <h3 class="text-xl font-bold text-gray-900">Address Information</h3>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1"><i class="fas fa-map text-green-600 mr-1"></i>Province</label>
+                                                <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($application['province'] ?? 'N/A'); ?></p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1"><i class="fas fa-city text-green-600 mr-1"></i>City/Municipality</label>
+                                                <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($application['city'] ?? 'N/A'); ?></p>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1"><i class="fas fa-home text-green-600 mr-1"></i>Barangay</label>
+                                                <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($application['barangay'] ?? 'N/A'); ?></p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1"><i class="fas fa-road text-gray-400 mr-1"></i>Street / Subdivision</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['street_address'] ?: 'N/A'); ?></p>
+                                            </div>
+                                        </div>
+                                        <div class="pt-4 border-t border-gray-200">
+                                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                                <i class="fas fa-baby text-green-600 mr-2"></i>Place of Birth
+                                            </h4>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div>
-                                                    <p class="text-gray-500 text-xs uppercase mb-1">Birth Province</p>
-                                                    <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['birth_province'] ?? 'N/A'); ?></p>
+                                                    <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fas fa-map text-green-600 mr-1"></i>Province</label>
+                                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($application['birth_province'] ?? 'N/A'); ?></p>
                                                 </div>
                                                 <div>
-                                                    <p class="text-gray-500 text-xs uppercase mb-1">Birth City / Municipality</p>
-                                                    <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['birth_city'] ?? 'N/A'); ?></p>
+                                                    <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fas fa-city text-green-600 mr-1"></i>City/Municipality</label>
+                                                    <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($application['birth_city'] ?? 'N/A'); ?></p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Course & Guardian Information -->
-                                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+                                <!-- Course Application -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
                                     <div class="flex items-center mb-6">
-                                        <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-10 h-10 flex items-center justify-center mr-3 shadow-lg">
-                                            <i class="fas fa-book text-white text-sm"></i>
+                                        <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-book text-purple-600 text-xl"></i>
                                         </div>
-                                        <h3 class="text-lg font-bold text-gray-900">Course Application</h3>
+                                        <h3 class="text-xl font-bold text-gray-900">Course Application</h3>
                                     </div>
-                                    <div class="space-y-4 text-sm text-gray-700">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Course</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['course_name'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Course</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['course_name'] ?? 'N/A'); ?></p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">NC Level</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['nc_level'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">NC Level</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['nc_level'] ?? 'N/A'); ?></p>
                                             </div>
                                         </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Training Start</p>
-                                                <p class="font-medium text-gray-900">
-                                                    <?php echo $application['training_start'] ? date('M j, Y', strtotime($application['training_start'])) : 'Not set'; ?>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Training Start</label>
+                                                <p class="text-sm text-gray-900">
+                                                    <?php echo $application['training_start'] ? date('F j, Y', strtotime($application['training_start'])) : 'Not set'; ?>
                                                 </p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Training End</p>
-                                                <p class="font-medium text-gray-900">
-                                                    <?php echo $application['training_end'] ? date('M j, Y', strtotime($application['training_end'])) : 'Not set'; ?>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Training End</label>
+                                                <p class="text-sm text-gray-900">
+                                                    <?php echo $application['training_end'] ? date('F j, Y', strtotime($application['training_end'])) : 'Not set'; ?>
                                                 </p>
                                             </div>
                                         </div>
-                                        <div>
-                                            <p class="text-gray-500 text-xs uppercase mb-1">Adviser</p>
-                                            <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['adviser'] ?? 'Not assigned'); ?></p>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Status</p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Adviser</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['adviser'] ?? 'Not assigned'); ?></p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Applied Date</label>
+                                                <p class="text-sm text-gray-900"><?php echo date('F j, Y', strtotime($application['applied_at'])); ?></p>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Status</label>
                                                 <?php
                                                 $status_class = '';
                                                 switch ($application['status']) {
@@ -1166,78 +1289,322 @@ if ($page === 'edit') {
                                                 </span>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Reviewed By</p>
-                                                <p class="font-medium text-gray-900">
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Reviewed By</label>
+                                                <p class="text-sm text-gray-900">
                                                     <?php echo htmlspecialchars($application['reviewed_by_name'] ?? 'Not reviewed'); ?>
                                                 </p>
                                             </div>
                                         </div>
+                                        <?php if ($application['notes']): ?>
                                         <div>
-                                            <p class="text-gray-500 text-xs uppercase mb-1">Notes</p>
-                                            <p class="font-medium text-gray-900 whitespace-pre-line">
-                                                <?php echo $application['notes'] ? htmlspecialchars($application['notes']) : 'No notes recorded.'; ?>
+                                            <label class="block text-sm font-medium text-gray-500 mb-1">Notes</label>
+                                            <p class="text-sm text-gray-900 whitespace-pre-line">
+                                                <?php echo htmlspecialchars($application['notes']); ?>
                                             </p>
                                         </div>
+                                        <?php endif; ?>
                                     </div>
+                                </div>
 
-                                    <div class="mt-8">
-                                        <div class="flex items-center mb-4">
-                                            <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-10 h-10 flex items-center justify-center mr-3 shadow-lg">
-                                                <i class="fas fa-users text-white text-sm"></i>
-                                            </div>
-                                            <h3 class="text-lg font-bold text-gray-900">Parent / Guardian</h3>
+                                <!-- Parent / Guardian Information -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                                    <div class="flex items-center mb-6">
+                                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-users text-orange-600 text-xl"></i>
                                         </div>
-                                        <div class="space-y-3 text-sm text-gray-700">
+                                        <h3 class="text-xl font-bold text-gray-900">Parent / Guardian Information</h3>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Guardian Name</p>
-                                                <p class="font-medium text-gray-900">
-                                                    <?php
-                                                    $gname = trim(($application['guardian_first_name'] ?? '') . ' ' . ($application['guardian_middle_name'] ?? '') . ' ' . ($application['guardian_last_name'] ?? ''));
-                                                    echo $gname ? htmlspecialchars($gname) : 'N/A';
-                                                    ?>
-                                                    <?php if (!empty($application['guardian_extension'])): ?>
-                                                        <span class="text-gray-500">
-                                                            (<?php echo htmlspecialchars($application['guardian_extension']); ?>)
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">First Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['guardian_first_name'] ?: 'N/A'); ?></p>
                                             </div>
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Guardian Contact</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['parent_contact'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Middle Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['guardian_middle_name'] ?: 'N/A'); ?></p>
                                             </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Last Name</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['guardian_last_name'] ?: 'N/A'); ?></p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">Extension</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['guardian_extension'] ?: 'N/A'); ?></p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500 mb-1">Contact Number</label>
+                                            <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['parent_contact'] ?? 'N/A'); ?></p>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="mt-8">
-                                        <div class="flex items-center mb-4">
-                                            <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl w-10 h-10 flex items-center justify-center mr-3 shadow-lg">
-                                                <i class="fas fa-school text-white text-sm"></i>
-                                            </div>
-                                            <h3 class="text-lg font-bold text-gray-900">Education</h3>
+                                <!-- Education Information -->
+                                <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+                                    <div class="flex items-center mb-6">
+                                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl w-12 h-12 flex items-center justify-center mr-4 shadow-lg">
+                                            <i class="fas fa-school text-blue-600 text-xl"></i>
                                         </div>
-                                        <div class="space-y-3 text-sm text-gray-700">
+                                        <h3 class="text-xl font-bold text-gray-900">Education Information</h3>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500 mb-1">Last School Attended</label>
+                                            <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['last_school'] ?? 'N/A'); ?></p>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
-                                                <p class="text-gray-500 text-xs uppercase mb-1">Last School Attended</p>
-                                                <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['last_school'] ?? 'N/A'); ?></p>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">School Province</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['school_province'] ?? 'N/A'); ?></p>
                                             </div>
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <p class="text-gray-500 text-xs uppercase mb-1">School Province</p>
-                                                    <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['school_province'] ?? 'N/A'); ?></p>
-                                                </div>
-                                                <div>
-                                                    <p class="text-gray-500 text-xs uppercase mb-1">School City / Municipality</p>
-                                                    <p class="font-medium text-gray-900"><?php echo htmlspecialchars($application['school_city'] ?? 'N/A'); ?></p>
-                                                </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-1">School City / Municipality</label>
+                                                <p class="text-sm text-gray-900"><?php echo htmlspecialchars($application['school_city'] ?? 'N/A'); ?></p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Course History Section -->
+                            <?php if (!empty($course_history)): ?>
+                                <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 md:px-8 py-5 border-b border-blue-700">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center">
+                                                <div class="bg-white bg-opacity-20 rounded-xl w-12 h-12 flex items-center justify-center mr-4 backdrop-blur-sm shadow-lg">
+                                                    <i class="fas fa-history text-white text-xl"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-xl font-bold text-white">Course History</h3>
+                                                    <p class="text-sm text-blue-100 mt-1">Complete record of all course applications</p>
+                                                </div>
+                                            </div>
+                                            <span class="bg-white text-blue-900 text-sm font-bold px-4 py-2 rounded-full shadow-lg">
+                                                <?php echo count($course_history); ?> Course<?php echo count($course_history) > 1 ? 's' : ''; ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="p-6 md:p-8">
+                                        <div class="hidden md:block overflow-x-auto">
+                                            <table class="min-w-full divide-y divide-gray-200">
+                                                <thead class="bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NC Level</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adviser</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Training Period</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="bg-white divide-y divide-gray-200">
+                                                    <?php foreach ($course_history as $course): ?>
+                                                        <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                                            <td class="px-6 py-4">
+                                                                <div class="flex items-center">
+                                                                    <div class="w-8 h-8 bg-blue-900 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                                        <i class="fas fa-book text-blue-900 text-sm"></i>
+                                                                    </div>
+                                                                    <div class="text-sm font-medium text-gray-900">
+                                                                        <?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                    <?php echo htmlspecialchars($course['nc_level'] ?? 'N/A'); ?>
+                                                                </span>
+                                                            </td>
+                                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                <?php echo htmlspecialchars($course['adviser'] ?? 'Not Assigned'); ?>
+                                                            </td>
+                                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                                    <div class="flex flex-col">
+                                                                        <span class="text-xs text-gray-500">Start: <?php echo date('M j, Y', strtotime($course['training_start'])); ?></span>
+                                                                        <span class="text-xs text-gray-500">End: <?php echo date('M j, Y', strtotime($course['training_end'])); ?></span>
+                                                                    </div>
+                                                                <?php else: ?>
+                                                                    <span class="text-gray-400">Not Set</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
+                                                            </td>
+                                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                                <?php
+                                                                $status_class = '';
+                                                                $status_icon = '';
+                                                                switch ($course['status']) {
+                                                                    case 'completed':
+                                                                        $status_class = 'bg-green-100 text-green-800';
+                                                                        $status_icon = 'fas fa-check-circle';
+                                                                        break;
+                                                                    case 'approved':
+                                                                        $status_class = 'bg-blue-100 text-blue-800';
+                                                                        $status_icon = 'fas fa-thumbs-up';
+                                                                        break;
+                                                                    case 'rejected':
+                                                                        $status_class = 'bg-red-100 text-red-800';
+                                                                        $status_icon = 'fas fa-times-circle';
+                                                                        break;
+                                                                    default:
+                                                                        $status_class = 'bg-yellow-100 text-yellow-800';
+                                                                        $status_icon = 'fas fa-clock';
+                                                                }
+                                                                ?>
+                                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo $status_class; ?>">
+                                                                    <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                                    <?php echo ucfirst($course['status']); ?>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="md:hidden space-y-4">
+                                            <?php foreach ($course_history as $course): ?>
+                                                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                    <div class="flex items-start justify-between mb-3">
+                                                        <div class="flex items-center flex-1">
+                                                            <div class="w-10 h-10 bg-blue-900 bg-opacity-10 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+                                                                <i class="fas fa-book text-blue-900"></i>
+                                                            </div>
+                                                            <div class="flex-1 min-w-0">
+                                                                <h4 class="text-sm font-semibold text-gray-900 truncate">
+                                                                    <?php echo htmlspecialchars($course['course_name'] ?? 'N/A'); ?>
+                                                                </h4>
+                                                                <p class="text-xs text-gray-500">
+                                                                    Applied: <?php echo date('M j, Y', strtotime($course['applied_at'])); ?>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <?php
+                                                        $status_class = '';
+                                                        $status_icon = '';
+                                                        switch ($course['status']) {
+                                                            case 'completed':
+                                                                $status_class = 'bg-green-100 text-green-800';
+                                                                $status_icon = 'fas fa-check-circle';
+                                                                break;
+                                                            case 'approved':
+                                                                $status_class = 'bg-blue-100 text-blue-800';
+                                                                $status_icon = 'fas fa-thumbs-up';
+                                                                break;
+                                                            case 'rejected':
+                                                                $status_class = 'bg-red-100 text-red-800';
+                                                                $status_icon = 'fas fa-times-circle';
+                                                                break;
+                                                            default:
+                                                                $status_class = 'bg-yellow-100 text-yellow-800';
+                                                                $status_icon = 'fas fa-clock';
+                                                        }
+                                                        ?>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $status_class; ?> flex-shrink-0 ml-2">
+                                                            <i class="<?php echo $status_icon; ?> mr-1"></i>
+                                                            <?php echo ucfirst($course['status']); ?>
+                                                        </span>
+                                                    </div>
+                                                    <div class="space-y-2 text-sm">
+                                                        <div class="flex items-center">
+                                                            <span class="text-gray-500 w-24">NC Level:</span>
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                <?php echo htmlspecialchars($course['nc_level'] ?? 'N/A'); ?>
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center">
+                                                            <span class="text-gray-500 w-24">Adviser:</span>
+                                                            <span class="text-gray-900"><?php echo htmlspecialchars($course['adviser'] ?? 'Not Assigned'); ?></span>
+                                                        </div>
+                                                        <?php if ($course['training_start'] && $course['training_end']): ?>
+                                                            <div class="flex items-center">
+                                                                <span class="text-gray-500 w-24">Training:</span>
+                                                                <span class="text-gray-900 text-xs">
+                                                                    <?php echo date('M j, Y', strtotime($course['training_start'])); ?> -
+                                                                    <?php echo date('M j, Y', strtotime($course['training_end'])); ?>
+                                                                </span>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="mt-6 md:mt-8 bg-white rounded-2xl shadow-xl border border-gray-100 p-12">
+                                    <div class="text-center">
+                                        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                                            <i class="fas fa-history text-gray-400 text-3xl"></i>
+                                        </div>
+                                        <h4 class="text-lg font-semibold text-gray-900 mb-2">No Course History</h4>
+                                        <p class="text-gray-500">This student has no other course applications on record.</p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="mt-8 md:mt-12 flex justify-center pb-8">
+                                <button onclick="confirmViewDelete(<?php echo (int)$application['application_id']; ?>, '<?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?>')"
+                                        class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                    <i class="fas fa-trash mr-2"></i>Delete Application
+                                </button>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
+
+                <script>
+                    function confirmViewDelete(applicationId, studentName) {
+                        const modal = document.createElement('div');
+                        modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300';
+                        modal.innerHTML = `
+                            <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md mx-4 transform transition-all border border-gray-100">
+                                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-full shadow-lg mb-6">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-inner">
+                                        <i class="fas fa-exclamation-triangle text-white text-xl"></i>
+                                    </div>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-900 text-center mb-3">Delete Application</h3>
+                                <div class="w-12 h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-full mx-auto mb-6"></div>
+                                <p class="text-base text-gray-600 text-center mb-4 leading-relaxed">
+                                    Are you sure you want to delete the application for <strong class="text-gray-900">${studentName}</strong>?
+                                </p>
+                                <p class="text-sm text-red-600 text-center mb-6 font-medium">
+                                    Enter your admin password to confirm this action.
+                                </p>
+                                <form id="deleteForm" method="POST" action="course_application.php">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="${applicationId}">
+                                    <div class="mb-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Admin Password</label>
+                                        <input type="password" name="admin_password" required
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                               placeholder="Enter your password" autofocus>
+                                    </div>
+                                    <div class="flex flex-col-reverse sm:flex-row gap-3">
+                                        <button type="button" onclick="this.closest('.fixed').remove()"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <i class="fas fa-times mr-2"></i>Cancel
+                                        </button>
+                                        <button type="submit"
+                                                class="flex-1 inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform transition-all duration-200 hover:scale-105">
+                                            <i class="fas fa-trash mr-2"></i>Delete
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        modal.addEventListener('click', function(e) {
+                            if (e.target === modal) modal.remove();
+                        });
+                    }
+                </script>
 
             <?php elseif ($page === 'edit'): ?>
                 <div class="py-4 md:py-6">
@@ -1251,12 +1618,6 @@ if ($page === 'edit') {
                                             Student: <span class="font-semibold text-blue-600"><?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?></span>
                                         </p>
                                     <?php endif; ?>
-                                </div>
-                                <div class="flex items-center space-x-4">
-                                    <a href="course_application.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
-                                        <i class="fas fa-arrow-left mr-2"></i>
-                                        Back to Applications
-                                    </a>
                                 </div>
                             </div>
                         </div>
