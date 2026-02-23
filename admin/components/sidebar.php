@@ -26,9 +26,9 @@
                                     strpos($_SERVER['PHP_SELF'], '/students/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/course_application/') !== false || 
                                     strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
-                    $dashboard_path = $in_subfolder ? '../dashboard.php' : 'dashboard.php';
+                    $dashboard_path = $in_subfolder ? '../admin-dashboard.php' : 'admin-dashboard.php';
                 ?>
-                <a href="<?php echo $dashboard_path; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
+                <a href="<?php echo $dashboard_path; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin-dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
                         <i class="fas fa-tachometer-alt text-lg"></i>
                     </div>
@@ -37,8 +37,8 @@
                 
                 <!-- Manage Students -->
                 <?php 
-                    $is_students_page = (basename($_SERVER['PHP_SELF']) === 'students.php') || (strpos($_SERVER['PHP_SELF'], '/students/') !== false);
-                    $students_path = $is_students_page ? 'students.php?page=index' : ($in_subfolder ? '../students.php?page=index' : 'students.php?page=index');
+                    $is_students_page = (basename($_SERVER['PHP_SELF']) === 'admin-manage-students.php') || (strpos($_SERVER['PHP_SELF'], '/students/') !== false);
+                    $students_path = $is_students_page ? 'admin-manage-students.php?page=index' : ($in_subfolder ? '../admin-manage-students.php?page=index' : 'admin-manage-students.php?page=index');
                 ?>
                 <a href="<?php echo $students_path; ?>" class="<?php echo $is_students_page ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
@@ -49,8 +49,8 @@
                 
                 <!-- Manage Course Applications -->
                 <?php 
-                    $is_course_app_page = (basename($_SERVER['PHP_SELF']) === 'course_application.php');
-                    $course_app_path = $is_course_app_page ? 'course_application.php?page=index' : ($in_subfolder ? '../course_application.php?page=index' : 'course_application.php?page=index');
+                    $is_course_app_page = (basename($_SERVER['PHP_SELF']) === 'admin-course-application.php');
+                    $course_app_path = $is_course_app_page ? 'admin-course-application.php?page=index' : ($in_subfolder ? '../admin-course-application.php?page=index' : 'admin-course-application.php?page=index');
                 ?>
                 <a href="<?php echo $course_app_path; ?>" class="<?php echo $is_course_app_page ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-2 md:px-3 py-2.5 md:py-3 text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
@@ -73,8 +73,8 @@
                     <div id="manage-submenu" class="hidden mt-1 space-y-1 ml-2">
                         <!-- Manage Courses -->
                         <?php 
-                            $is_courses_page = (basename($_SERVER['PHP_SELF']) === 'courses.php') || (strpos($_SERVER['PHP_SELF'], '/courses/') !== false);
-                            $courses_path = $is_courses_page ? 'courses.php' : ($in_subfolder ? '../courses.php' : 'courses.php');
+                            $is_courses_page = (basename($_SERVER['PHP_SELF']) === 'admin-manage-courses.php') || (strpos($_SERVER['PHP_SELF'], '/courses/') !== false);
+                            $courses_path = $is_courses_page ? 'admin-manage-courses.php' : ($in_subfolder ? '../admin-manage-courses.php' : 'admin-manage-courses.php');
                         ?>
                         <a href="<?php echo $courses_path; ?>" class="<?php echo $is_courses_page ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
                             <i class="fas fa-graduation-cap text-sm mr-3 flex-shrink-0"></i>
@@ -83,8 +83,8 @@
                         
                         <!-- Manage Checklist -->
                         <?php 
-                            $is_checklist_page = (basename($_SERVER['PHP_SELF']) === 'checklist.php') || (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
-                            $checklist_path = $is_checklist_page ? 'checklist.php?page=index' : ($in_subfolder ? '../checklist.php?page=index' : 'checklist.php?page=index');
+                            $is_checklist_page = (basename($_SERVER['PHP_SELF']) === 'admin-manage-checklist.php') || (strpos($_SERVER['PHP_SELF'], '/checklist/') !== false);
+                            $checklist_path = $is_checklist_page ? 'admin-manage-checklist.php?page=index' : ($in_subfolder ? '../admin-manage-checklist.php?page=index' : 'admin-manage-checklist.php?page=index');
                         ?>
                         <a href="<?php echo $checklist_path; ?>" class="<?php echo $is_checklist_page ? 'bg-blue-700 text-white' : 'text-blue-200 hover:bg-blue-700 hover:text-white'; ?> group flex items-center pl-10 md:pl-12 pr-2 md:pr-3 py-2 md:py-2.5 text-sm rounded-lg transition-all duration-200">
                             <i class="fas fa-tasks text-sm mr-3 flex-shrink-0"></i>
@@ -156,7 +156,7 @@
                                 </span>
                             </div>
                             <div class="mt-2">
-                                <a href="<?php echo $in_subfolder ? '../pending_approvals.php' : 'pending_approvals.php'; ?>" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
+                                <a href="<?php echo $in_subfolder ? '../admin-pending-approvals.php' : 'admin-pending-approvals.php'; ?>" class="text-xs text-yellow-700 hover:text-yellow-800 font-medium flex items-center">
                                     <i class="fas fa-arrow-right mr-1"></i>
                                     Review pending approvals
                                 </a>
@@ -184,7 +184,7 @@
                                 </div>
                             </a>
                             <?php 
-                                $system_activity_path = $in_subfolder ? '../system_activity.php' : 'system_activity.php';
+                                $system_activity_path = $in_subfolder ? '../admin-system-activity.php' : 'admin-system-activity.php';
                             ?>
                             <a href="<?php echo $system_activity_path; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-purple-100 rounded-lg p-2 mr-3">
@@ -237,7 +237,7 @@
             <!-- Mobile Navigation -->
             <nav class="mt-3 flex-1 px-2 space-y-1">
                 <!-- Dashboard -->
-                <a href="<?php echo $dashboard_path; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
+                <a href="<?php echo $dashboard_path; ?>" class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin-dashboard.php') ? 'bg-blue-800 text-white shadow-lg' : 'text-blue-200 hover:bg-blue-800 hover:text-white'; ?> group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg">
                     <div class="flex items-center justify-center w-10 h-10 flex-shrink-0">
                         <i class="fas fa-tachometer-alt text-lg"></i>
                     </div>

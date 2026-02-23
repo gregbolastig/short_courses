@@ -106,7 +106,7 @@ if ($page === 'index') {
                     $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
                     $stmt->execute([$course_id_to_delete]);
 
-                    header("Location: courses.php?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
+                    header("Location: admin-manage-admin-manage-courses.php?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
                     exit;
                 } else {
                     $error_message = 'Course not found.';
@@ -170,7 +170,7 @@ if ($page === 'index') {
 if ($page === 'add') {
     $page_title = 'Add Course';
     $breadcrumb_items = [
-        ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap', 'url' => 'courses.php?page=index'],
+        ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap', 'url' => 'admin-manage-courses.php?page=index'],
         ['title' => 'Add Course', 'icon' => 'fas fa-plus']
     ];
 
@@ -195,7 +195,7 @@ if ($page === 'add') {
                 $course_id
             );
 
-            header("Location: courses.php?page=index&success=created&course_name=" . urlencode($course_name));
+            header("Location: admin-manage-admin-manage-courses.php?page=index&success=created&course_name=" . urlencode($course_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
@@ -213,7 +213,7 @@ if ($page === 'edit') {
 
     $course_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($course_id <= 0) {
-        header('Location: courses.php?page=index');
+        header('Location: admin-manage-admin-manage-courses.php?page=index');
         exit;
     }
 
@@ -223,12 +223,12 @@ if ($page === 'edit') {
         $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$course) {
-            header('Location: courses.php?page=index');
+            header('Location: admin-manage-admin-manage-courses.php?page=index');
             exit;
         }
 
         $breadcrumb_items = [
-            ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap', 'url' => 'courses.php?page=index'],
+            ['title' => 'Manage Courses', 'icon' => 'fas fa-graduation-cap', 'url' => 'admin-manage-courses.php?page=index'],
             ['title' => 'Edit: ' . $course['course_name'], 'icon' => 'fas fa-edit']
         ];
     } catch (PDOException $e) {
@@ -254,7 +254,7 @@ if ($page === 'edit') {
                 $course_id
             );
 
-            header("Location: courses.php?page=index&success=updated&course_name=" . urlencode($course_name));
+            header("Location: admin-manage-admin-manage-courses.php?page=index&success=updated&course_name=" . urlencode($course_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
@@ -409,7 +409,7 @@ if ($page === 'view') {
     $student_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
     if ($student_id <= 0) {
-        header('Location: courses.php?page=students');
+        header('Location: admin-manage-admin-manage-courses.php?page=students');
         exit;
     }
 
@@ -420,7 +420,7 @@ if ($page === 'view') {
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$student) {
-            header('Location: courses.php?page=students');
+            header('Location: admin-manage-admin-manage-courses.php?page=students');
             exit;
         }
 
@@ -484,11 +484,11 @@ if ($page === 'view') {
                                         <p class="text-lg text-gray-600 mt-2">Organize and manage your educational course offerings</p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="courses.php?page=add" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                        <a href="admin-manage-courses.php?page=add" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-plus mr-2"></i>
                                             Add New Course
                                         </a>
-                                        <a href="courses.php?page=students" class="inline-flex items-center px-6 py-3 border border-blue-300 text-base font-semibold rounded-lg shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                        <a href="admin-manage-courses.php?page=students" class="inline-flex items-center px-6 py-3 border border-blue-300 text-base font-semibold rounded-lg shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                             <i class="fas fa-users mr-2"></i>
                                             Student Enrollments
                                         </a>
@@ -519,7 +519,7 @@ if ($page === 'view') {
                                             <h3 class="text-xl font-bold text-gray-900">Course Directory</h3>
                                         </div>
                                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                                            <form method="GET" action="courses.php" class="relative">
+                                            <form method="GET" action="admin-manage-courses.php" class="relative">
                                                 <input type="hidden" name="page" value="index">
                                                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                     <i class="fas fa-search text-gray-400"></i>
@@ -528,7 +528,7 @@ if ($page === 'view') {
                                                        placeholder="Search courses..."
                                                        class="block w-full sm:w-80 pl-12 pr-4 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-all duration-200">
                                                 <?php if ($search !== ''): ?>
-                                                    <a href="courses.php?page=index" class="absolute inset-y-0 right-0 pr-4 flex items-center">
+                                                    <a href="admin-manage-courses.php?page=index" class="absolute inset-y-0 right-0 pr-4 flex items-center">
                                                         <i class="fas fa-times text-gray-400 hover:text-gray-600 transition-colors duration-200"></i>
                                                     </a>
                                                 <?php endif; ?>
@@ -547,7 +547,7 @@ if ($page === 'view') {
                                             <?php echo $search !== '' ? 'No courses match your search criteria. Try adjusting your search terms.' : 'Ready to get started? Create your first course and begin building your educational offerings.'; ?>
                                         </p>
                                         <?php if ($search === ''): ?>
-                                            <a href="courses.php?page=add" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                            <a href="admin-manage-courses.php?page=add" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                                 <i class="fas fa-plus mr-3"></i>
                                                 Create Your First Course
                                             </a>
@@ -592,7 +592,7 @@ if ($page === 'view') {
                                                         </td>
                                                         <td class="px-8 py-6">
                                                             <div class="flex items-center justify-center space-x-3">
-                                                                <a href="courses.php?page=edit&id=<?php echo (int)$row['course_id']; ?>"
+                                                                <a href="admin-manage-courses.php?page=edit&id=<?php echo (int)$row['course_id']; ?>"
                                                                    class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105 shadow-sm">
                                                                     <i class="fas fa-edit mr-2"></i>Edit
                                                                 </a>
@@ -634,7 +634,7 @@ if ($page === 'view') {
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center space-x-3">
-                                                    <a href="courses.php?page=edit&id=<?php echo (int)$row['course_id']; ?>"
+                                                    <a href="admin-manage-courses.php?page=edit&id=<?php echo (int)$row['course_id']; ?>"
                                                        class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
                                                         <i class="fas fa-edit mr-2"></i>Edit Course
                                                     </a>
@@ -660,7 +660,7 @@ if ($page === 'view') {
 
                                             <div class="flex items-center space-x-2">
                                                 <?php if ($p > 1): ?>
-                                                    <a href="courses.php?page=index&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-courses.php?page=index&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                         <i class="fas fa-chevron-left mr-2"></i>Previous
                                                     </a>
@@ -671,14 +671,14 @@ if ($page === 'view') {
                                                         <?php if ($i === $p): ?>
                                                             <span class="inline-flex items-center justify-center w-10 h-10 border-2 border-blue-500 rounded-lg text-sm font-bold text-white bg-blue-600 shadow-md"><?php echo $i; ?></span>
                                                         <?php else: ?>
-                                                            <a href="courses.php?page=index&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                            <a href="admin-manage-courses.php?page=index&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                                class="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"><?php echo $i; ?></a>
                                                         <?php endif; ?>
                                                     <?php endfor; ?>
                                                 </div>
 
                                                 <?php if ($p < $total_pages): ?>
-                                                    <a href="courses.php?page=index&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-courses.php?page=index&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                         Next<i class="fas fa-chevron-right ml-2"></i>
                                                     </a>
@@ -768,7 +768,7 @@ if ($page === 'view') {
                                     </p>
                                 </div>
 
-                                <form id="deleteForm" method="POST" action="courses.php?page=index">
+                                <form id="deleteForm" method="POST" action="admin-manage-courses.php?page=index">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" id="deleteCourseId" value="">
                                     <div class="mb-6">
@@ -853,7 +853,7 @@ if ($page === 'view') {
                                         <p class="text-lg text-gray-600 mt-2">Create a new course offering for your educational program</p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="courses.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                        <a href="admin-manage-courses.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                             <i class="fas fa-arrow-left mr-2"></i>
                                             Back to Courses
                                         </a>
@@ -885,7 +885,7 @@ if ($page === 'view') {
                                 </div>
 
                                 <div class="p-8">
-                                    <form method="POST" action="courses.php?page=add" class="space-y-8">
+                                    <form method="POST" action="admin-manage-courses.php?page=add" class="space-y-8">
                                         <div>
                                             <label for="course_name" class="block text-lg font-semibold text-gray-700 mb-3">
                                                 Course Name <span class="text-red-500">*</span>
@@ -908,7 +908,7 @@ if ($page === 'view') {
                                                 Create Course
                                             </button>
 
-                                            <a href="courses.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <a href="admin-manage-courses.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                 <i class="fas fa-times mr-3"></i>
                                                 Cancel
                                             </a>
@@ -932,7 +932,7 @@ if ($page === 'view') {
                                         </p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="courses.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                        <a href="admin-manage-courses.php?page=index" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-semibold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                             <i class="fas fa-arrow-left mr-2"></i>
                                             Back to Courses
                                         </a>
@@ -965,7 +965,7 @@ if ($page === 'view') {
                                     </div>
 
                                     <div class="p-8">
-                                        <form method="POST" action="courses.php?page=edit&id=<?php echo (int)$course_id; ?>" class="space-y-8">
+                                        <form method="POST" action="admin-manage-courses.php?page=edit&id=<?php echo (int)$course_id; ?>" class="space-y-8">
                                             <div>
                                                 <label for="course_name" class="block text-lg font-semibold text-gray-700 mb-3">
                                                     Course Name <span class="text-red-500">*</span>
@@ -988,7 +988,7 @@ if ($page === 'view') {
                                                     Update Course
                                                 </button>
 
-                                                <a href="courses.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                                <a href="admin-manage-courses.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                     <i class="fas fa-times mr-3"></i>
                                                     Cancel
                                                 </a>
@@ -1007,7 +1007,7 @@ if ($page === 'view') {
                             <nav class="flex mb-6" aria-label="Breadcrumb">
                                 <ol class="inline-flex items-center space-x-1 md:space-x-3">
                                     <li class="inline-flex items-center">
-                                        <a href="dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200">
+                                        <a href="admin-dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200">
                                             <i class="fas fa-home mr-2"></i>
                                             Dashboard
                                         </a>
@@ -1015,7 +1015,7 @@ if ($page === 'view') {
                                     <li>
                                         <div class="flex items-center">
                                             <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                                            <a href="courses.php?page=index" class="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2 transition-colors duration-200">Manage Courses</a>
+                                            <a href="admin-manage-courses.php?page=index" class="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2 transition-colors duration-200">Manage Courses</a>
                                         </div>
                                     </li>
                                     <li>
@@ -1034,7 +1034,7 @@ if ($page === 'view') {
                                         <p class="text-gray-600 mt-2">Manage student registrations, approvals, and course assignments</p>
                                     </div>
                                     <div class="flex items-center space-x-3">
-                                        <a href="courses.php?page=index" class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                        <a href="admin-manage-courses.php?page=index" class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
                                             <i class="fas fa-graduation-cap mr-2"></i>
                                             Manage Courses
                                         </a>
@@ -1132,7 +1132,7 @@ if ($page === 'view') {
                                             Student Course Management
                                         </h3>
                                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                                            <form method="GET" action="courses.php" class="relative">
+                                            <form method="GET" action="admin-manage-courses.php" class="relative">
                                                 <input type="hidden" name="page" value="students">
                                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                     <i class="fas fa-search text-gray-400"></i>
@@ -1141,7 +1141,7 @@ if ($page === 'view') {
                                                        placeholder="Search students..."
                                                        class="block w-full sm:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 text-sm">
                                                 <?php if ($search !== ''): ?>
-                                                    <a href="courses.php?page=students" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                    <a href="admin-manage-courses.php?page=students" class="absolute inset-y-0 right-0 pr-3 flex items-center">
                                                         <i class="fas fa-times text-gray-400 hover:text-gray-600"></i>
                                                     </a>
                                                 <?php endif; ?>
@@ -1219,7 +1219,7 @@ if ($page === 'view') {
                                                         </td>
                                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                             <div class="flex items-center space-x-3">
-                                                                <a href="courses.php?page=view&id=<?php echo (int)$row['id']; ?>"
+                                                                <a href="admin-manage-courses.php?page=view&id=<?php echo (int)$row['id']; ?>"
                                                                    class="text-primary-600 hover:text-primary-900 flex items-center">
                                                                     <i class="fas fa-eye mr-1"></i>View
                                                                 </a>
@@ -1229,7 +1229,7 @@ if ($page === 'view') {
                                                                        class="text-green-600 hover:text-green-900 flex items-center">
                                                                         <i class="fas fa-check mr-1"></i>Approve
                                                                     </button>
-                                                                    <a href="courses.php?page=students&action=reject&id=<?php echo (int)$row['id']; ?>"
+                                                                    <a href="admin-manage-courses.php?page=students&action=reject&id=<?php echo (int)$row['id']; ?>"
                                                                        class="text-red-600 hover:text-red-900 flex items-center"
                                                                        onclick="return confirm('Are you sure you want to reject this student?')">
                                                                         <i class="fas fa-times mr-1"></i>Reject
@@ -1277,7 +1277,7 @@ if ($page === 'view') {
                                                     </div>
                                                 </div>
                                                 <div class="mt-3 flex items-center space-x-4 text-sm">
-                                                    <a href="courses.php?page=view&id=<?php echo (int)$row['id']; ?>" class="text-blue-600 hover:text-blue-900">
+                                                    <a href="admin-manage-courses.php?page=view&id=<?php echo (int)$row['id']; ?>" class="text-blue-600 hover:text-blue-900">
                                                         <i class="fas fa-eye mr-1"></i>View
                                                     </a>
                                                     <?php if ($row['status'] === 'pending'): ?>
@@ -1285,7 +1285,7 @@ if ($page === 'view') {
                                                            class="text-green-600 hover:text-green-900">
                                                             <i class="fas fa-check mr-1"></i>Approve
                                                         </button>
-                                                        <a href="courses.php?page=students&action=reject&id=<?php echo (int)$row['id']; ?>"
+                                                        <a href="admin-manage-courses.php?page=students&action=reject&id=<?php echo (int)$row['id']; ?>"
                                                            class="text-red-600 hover:text-red-900"
                                                            onclick="return confirm('Are you sure you want to reject this student?')">
                                                             <i class="fas fa-times mr-1"></i>Reject
@@ -1307,7 +1307,7 @@ if ($page === 'view') {
 
                                             <div class="flex items-center space-x-2">
                                                 <?php if ($p > 1): ?>
-                                                    <a href="courses.php?page=students&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-courses.php?page=students&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
                                                         <i class="fas fa-chevron-left mr-1"></i>Previous
                                                     </a>
@@ -1318,14 +1318,14 @@ if ($page === 'view') {
                                                         <?php if ($i === $p): ?>
                                                             <span class="inline-flex items-center justify-center w-8 h-8 border border-blue-500 rounded text-sm font-medium text-white bg-blue-600 shadow-md"><?php echo $i; ?></span>
                                                         <?php else: ?>
-                                                            <a href="courses.php?page=students&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                            <a href="admin-manage-courses.php?page=students&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                                class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"><?php echo $i; ?></a>
                                                         <?php endif; ?>
                                                     <?php endfor; ?>
                                                 </div>
 
                                                 <?php if ($p < $total_pages): ?>
-                                                    <a href="courses.php?page=students&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-courses.php?page=students&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
                                                         Next<i class="fas fa-chevron-right ml-1"></i>
                                                     </a>
@@ -1343,7 +1343,7 @@ if ($page === 'view') {
                             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeApprovalModal()"></div>
 
                             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                <form id="approvalForm" method="POST" action="courses.php?page=students">
+                                <form id="approvalForm" method="POST" action="admin-manage-courses.php?page=students">
                                     <input type="hidden" name="action" value="approve">
                                     <input type="hidden" name="student_id" id="modalStudentId">
 
@@ -1435,7 +1435,7 @@ if ($page === 'view') {
                     <div class="py-4 md:py-6">
                         <div class="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
                             <div class="mb-6">
-                                <a href="courses.php?page=students" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
+                                <a href="admin-manage-courses.php?page=students" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200">
                                     <i class="fas fa-arrow-left mr-2"></i>
                                     Back to Student Enrollments
                                 </a>
@@ -1527,7 +1527,7 @@ if ($page === 'view') {
                                                         <i class="fas fa-check mr-2"></i>
                                                         Approve Student
                                                     </button>
-                                                    <a href="courses.php?page=students&action=reject&id=<?php echo (int)$student['id']; ?>"
+                                                    <a href="admin-manage-courses.php?page=students&action=reject&id=<?php echo (int)$student['id']; ?>"
                                                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                                                        onclick="return confirm('Are you sure you want to reject this student?')">
                                                         <i class="fas fa-times mr-2"></i>
@@ -1547,7 +1547,7 @@ if ($page === 'view') {
                             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeApprovalModal()"></div>
 
                             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                <form id="approvalForm" method="POST" action="courses.php?page=students">
+                                <form id="approvalForm" method="POST" action="admin-manage-courses.php?page=students">
                                     <input type="hidden" name="action" value="approve">
                                     <input type="hidden" name="student_id" id="modalStudentId">
 

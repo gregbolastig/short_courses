@@ -226,7 +226,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         if (!$admin || !password_verify($admin_password, $admin['password'])) {
             $_SESSION['toast_message'] = 'Invalid password. Deletion cancelled.';
             $_SESSION['toast_type'] = 'error';
-            header('Location: students.php?page=index');
+            header('Location: admin-manage-admin-manage-students.php?page=index');
             exit;
         }
         
@@ -244,7 +244,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         $_SESSION['toast_type'] = 'error';
     }
     
-    header('Location: students.php?page=index');
+    header('Location: admin-manage-admin-manage-students.php?page=index');
     exit;
 }
 
@@ -310,7 +310,7 @@ $course_history = [];
 if ($page === 'view') {
     $page_title = 'View Student';
     $breadcrumb_items = [
-        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'students.php?page=index'],
+        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'admin-manage-students.php?page=index'],
         ['title' => 'View Student', 'icon' => 'fas fa-eye']
     ];
 
@@ -350,12 +350,12 @@ $edit_errors = [];
 if ($page === 'edit') {
     $page_title = 'Edit Student';
     $breadcrumb_items = [
-        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'students.php?page=index'],
+        ['title' => 'Students', 'icon' => 'fas fa-users', 'url' => 'admin-manage-students.php?page=index'],
         ['title' => 'Edit Student', 'icon' => 'fas fa-edit']
     ];
 
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-        header('Location: students.php?page=index');
+        header('Location: admin-manage-admin-manage-students.php?page=index');
         exit;
     }
 
@@ -369,7 +369,7 @@ if ($page === 'edit') {
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$student) {
-            header('Location: students.php?page=index');
+            header('Location: admin-manage-admin-manage-students.php?page=index');
             exit;
         }
     } catch (PDOException $e) {
@@ -518,7 +518,7 @@ if ($page === 'edit') {
 
                     $_SESSION['toast_message'] = 'Student information updated successfully!';
                     $_SESSION['toast_type'] = 'success';
-                    header("Location: students.php?page=view&id=" . $student_id);
+                    header("Location: admin-manage-admin-manage-students.php?page=view&id=" . $student_id);
                     exit;
                 } else {
                     $errors[] = 'Update failed. Please try again.';
@@ -781,7 +781,7 @@ if ($page === 'edit') {
                                     </div>
                                 </div>
                                 <div class="flex justify-start pt-4 border-t border-gray-200">
-                                    <a href="students.php?page=index"
+                                    <a href="admin-manage-students.php?page=index"
                                        class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
                                         <i class="fas fa-times mr-2"></i>Clear Filters
                                     </a>
@@ -811,7 +811,7 @@ if ($page === 'edit') {
                                     </div>
                                     <h3 class="text-lg md:text-xl font-medium text-gray-900 mb-2">No students found</h3>
                                     <p class="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">No students match your current search criteria. Try adjusting your filters.</p>
-                                    <a href="students.php?page=index" class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm">
+                                    <a href="admin-manage-students.php?page=index" class="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 shadow-sm">
                                         <i class="fas fa-refresh mr-2"></i>Clear Filters
                                     </a>
                                 </div>
@@ -861,11 +861,11 @@ if ($page === 'edit') {
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div class="flex items-center justify-end space-x-2">
-                                                            <a href="students.php?page=view&id=<?php echo (int)$row['id']; ?>"
+                                                            <a href="admin-manage-students.php?page=view&id=<?php echo (int)$row['id']; ?>"
                                                                class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>
                                                             </a>
-                                                            <a href="students.php?page=edit&id=<?php echo (int)$row['id']; ?>"
+                                                            <a href="admin-manage-students.php?page=edit&id=<?php echo (int)$row['id']; ?>"
                                                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-semibold rounded-md text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
                                                                 <i class="fas fa-edit mr-1"></i>
                                                             </a>
@@ -916,11 +916,11 @@ if ($page === 'edit') {
                                                 Registered: <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
                                             </div>
                                             <div class="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-100">
-                                                <a href="students.php?page=view&id=<?php echo (int)$row['id']; ?>"
+                                                <a href="admin-manage-students.php?page=view&id=<?php echo (int)$row['id']; ?>"
                                                    class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors duration-200">
                                                     <i class="fas fa-eye mr-1"></i>View
                                                 </a>
-                                                <a href="students.php?page=edit&id=<?php echo (int)$row['id']; ?>"
+                                                <a href="admin-manage-students.php?page=edit&id=<?php echo (int)$row['id']; ?>"
                                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-semibold rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
                                                     <i class="fas fa-edit mr-1"></i>Edit
                                                 </a>
@@ -1007,7 +1007,7 @@ if ($page === 'edit') {
                                 <p class="text-sm text-red-600 text-center mb-6 font-medium">
                                     Enter your admin password to confirm this action.
                                 </p>
-                                <form id="deleteForm" method="POST" action="students.php">
+                                <form id="deleteForm" method="POST" action="admin-manage-students.php">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="${studentId}">
                                     <div class="mb-6">
@@ -1057,7 +1057,7 @@ if ($page === 'edit') {
                                         <p class="text-lg text-gray-600 mt-2">Complete information for <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="students.php?page=edit&id=<?php echo (int)$student['id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                        <a href="admin-manage-students.php?page=edit&id=<?php echo (int)$student['id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-edit mr-2"></i>Edit Student
                                         </a>
                                     </div>
@@ -1570,7 +1570,7 @@ if ($page === 'edit') {
                                 <p class="text-sm text-red-600 text-center mb-6 font-medium">
                                     Enter your admin password to confirm this action.
                                 </p>
-                                <form id="deleteForm" method="POST" action="students.php">
+                                <form id="deleteForm" method="POST" action="admin-manage-students.php">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="${studentId}">
                                     <div class="mb-6">
@@ -1700,7 +1700,7 @@ if ($page === 'edit') {
                         <?php if ($student): ?>
                             <form id="edit-form"
                                   method="POST"
-                                  action="students.php?page=edit&id=<?php echo (int)$student['id']; ?>"
+                                  action="admin-manage-students.php?page=edit&id=<?php echo (int)$student['id']; ?>"
                                   enctype="multipart/form-data"
                                   class="space-y-8">
                                 <input type="hidden" name="existing_profile_picture" value="<?php echo htmlspecialchars($student['profile_picture'] ?? ''); ?>">
@@ -2085,7 +2085,7 @@ if ($page === 'edit') {
                                                     class="inline-flex items-center justify-center px-8 py-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                                                 <i class="fas fa-save mr-2"></i>Update Student Information
                                             </button>
-                                            <a href="students.php?page=view&id=<?php echo (int)$student['id']; ?>" id="cancel-btn"
+                                            <a href="admin-manage-students.php?page=view&id=<?php echo (int)$student['id']; ?>" id="cancel-btn"
                                                class="inline-flex items-center justify-center px-8 py-4 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 shadow-sm hover:shadow-md">
                                                 <i class="fas fa-times mr-2"></i>Cancel Changes
                                             </a>

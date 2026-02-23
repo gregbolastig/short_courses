@@ -12,7 +12,7 @@ $student = null;
 
 // Get student ID from URL
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: dashboard.php');
+    header('Location: admin-dashboard.php');
     exit;
 }
 
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute() && $stmt->rowCount() > 0) {
                 $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
                 // Redirect after 2 seconds
-                header("refresh:2;url=dashboard.php");
+                header("refresh:2;url=admin-dashboard.php");
             } else {
                 $error_message = 'Failed to approve course completion. Student may not be in approved status.';
             }
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->commit();
             $success_message = 'Course completion rejected successfully.';
             // Redirect after 2 seconds
-            header("refresh:2;url=dashboard.php");
+            header("refresh:2;url=admin-dashboard.php");
         } catch (PDOException $e) {
             if ($conn->inTransaction()) {
                 $conn->rollback();
@@ -100,7 +100,7 @@ try {
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$student) {
-        header('Location: dashboard.php');
+        header('Location: admin-dashboard.php');
         exit;
     }
     
@@ -149,7 +149,7 @@ try {
             <nav class="flex mb-6" aria-label="Breadcrumb">
                 <ol class="inline-flex items-center space-x-1 md:space-x-3">
                     <li class="inline-flex items-center">
-                        <a href="dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
+                        <a href="admin-dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
                             <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
                         </a>
                     </li>
@@ -349,7 +349,7 @@ try {
                                 <i class="fas fa-times mr-2"></i>Reject Completion
                             </button>
                             
-                            <a href="dashboard.php" 
+                            <a href="admin-dashboard.php" 
                                class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
                                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
                             </a>

@@ -150,7 +150,7 @@ if ($page === 'index') {
 if ($page === 'add') {
     $page_title = 'Add Checklist Item';
     $breadcrumb_items = [
-        ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks', 'url' => 'checklist.php?page=index'],
+        ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks', 'url' => 'admin-manage-checklist.php?page=index'],
         ['title' => 'Add Item', 'icon' => 'fas fa-plus']
     ];
 
@@ -173,7 +173,7 @@ if ($page === 'add') {
                 $conn->lastInsertId()
             );
 
-            header("Location: checklist.php?page=index&success=created&name=" . urlencode($document_name));
+            header("Location: admin-manage-admin-manage-checklist.php?page=index&success=created&name=" . urlencode($document_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
@@ -192,7 +192,7 @@ if ($page === 'edit') {
 
     $item_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($item_id <= 0) {
-        header('Location: checklist.php?page=index');
+        header('Location: admin-manage-admin-manage-checklist.php?page=index');
         exit;
     }
 
@@ -202,12 +202,12 @@ if ($page === 'edit') {
         $checklist_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$checklist_item || !isset($checklist_item['document_name'])) {
-            header('Location: checklist.php?page=index');
+            header('Location: admin-manage-admin-manage-checklist.php?page=index');
             exit;
         }
 
         $breadcrumb_items = [
-            ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks', 'url' => 'checklist.php?page=index'],
+            ['title' => 'Manage Checklist', 'icon' => 'fas fa-tasks', 'url' => 'admin-manage-checklist.php?page=index'],
             ['title' => 'Edit: ' . $checklist_item['document_name'], 'icon' => 'fas fa-edit']
         ];
     } catch (PDOException $e) {
@@ -233,7 +233,7 @@ if ($page === 'edit') {
                 $item_id
             );
 
-            header("Location: checklist.php?page=index&success=updated&name=" . urlencode($document_name));
+            header("Location: admin-manage-admin-manage-checklist.php?page=index&success=updated&name=" . urlencode($document_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
@@ -291,7 +291,7 @@ if ($page === 'edit') {
                                         <p class="text-lg text-gray-600 mt-2">Manage document requirements for student enrollment</p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="checklist.php?page=add" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                        <a href="admin-manage-checklist.php?page=add" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-plus mr-2"></i>
                                             Add New Item
                                         </a>
@@ -335,7 +335,7 @@ if ($page === 'edit') {
                                             <h3 class="text-xl font-bold text-gray-900">Document Requirements</h3>
                                         </div>
                                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                                            <form method="GET" action="checklist.php" class="relative flex-1 sm:flex-initial" id="searchForm">
+                                            <form method="GET" action="admin-manage-checklist.php" class="relative flex-1 sm:flex-initial" id="searchForm">
                                                 <input type="hidden" name="page" value="index">
                                                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                     <i class="fas fa-search text-gray-400"></i>
@@ -345,7 +345,7 @@ if ($page === 'edit') {
                                                        class="block w-full sm:w-80 pl-12 <?php echo $search !== '' ? 'pr-20' : 'pr-4'; ?> py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-all duration-200"
                                                        oninput="handleSearch()">
                                                 <?php if ($search !== ''): ?>
-                                                    <a href="checklist.php?page=index" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200" title="Clear search">
+                                                    <a href="admin-manage-checklist.php?page=index" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200" title="Clear search">
                                                         <i class="fas fa-times"></i>
                                                     </a>
                                                 <?php else: ?>
@@ -368,7 +368,7 @@ if ($page === 'edit') {
                                             <?php echo $search !== '' ? 'No items match your search criteria. Try adjusting your search terms.' : 'Ready to get started? Add your first checklist item to begin managing document requirements.'; ?>
                                         </p>
                                         <?php if ($search === ''): ?>
-                                            <a href="checklist.php?page=add" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                            <a href="admin-manage-checklist.php?page=add" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                                 <i class="fas fa-plus mr-3"></i>
                                                 Add Your First Item
                                             </a>
@@ -412,7 +412,7 @@ if ($page === 'edit') {
                                                         </td>
                                                         <td class="px-8 py-6">
                                                             <div class="flex items-center justify-center space-x-3">
-                                                                <a href="checklist.php?page=edit&id=<?php echo (int)$item['id']; ?>"
+                                                                <a href="admin-manage-checklist.php?page=edit&id=<?php echo (int)$item['id']; ?>"
                                                                    class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105 shadow-sm">
                                                                     <i class="fas fa-edit mr-2"></i>Edit
                                                                 </a>
@@ -450,7 +450,7 @@ if ($page === 'edit') {
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center space-x-3">
-                                                    <a href="checklist.php?page=edit&id=<?php echo (int)$item['id']; ?>"
+                                                    <a href="admin-manage-checklist.php?page=edit&id=<?php echo (int)$item['id']; ?>"
                                                        class="flex-1 inline-flex items-center justify-center px-4 py-3 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
                                                         <i class="fas fa-edit mr-2"></i>Edit Item
                                                     </a>
@@ -475,7 +475,7 @@ if ($page === 'edit') {
                                             </div>
                                             <div class="flex items-center space-x-2">
                                                 <?php if ($p > 1): ?>
-                                                    <a href="checklist.php?page=index&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-checklist.php?page=index&p=<?php echo $p - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                         <i class="fas fa-chevron-left mr-2"></i>Previous
                                                     </a>
@@ -485,13 +485,13 @@ if ($page === 'edit') {
                                                         <?php if ($i === $p): ?>
                                                             <span class="inline-flex items-center justify-center w-10 h-10 border-2 border-blue-500 rounded-lg text-sm font-bold text-white bg-blue-600 shadow-md"><?php echo $i; ?></span>
                                                         <?php else: ?>
-                                                            <a href="checklist.php?page=index&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                            <a href="admin-manage-checklist.php?page=index&p=<?php echo $i; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                                class="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"><?php echo $i; ?></a>
                                                         <?php endif; ?>
                                                     <?php endfor; ?>
                                                 </div>
                                                 <?php if ($p < $total_pages): ?>
-                                                    <a href="checklist.php?page=index&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
+                                                    <a href="admin-manage-checklist.php?page=index&p=<?php echo $p + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>"
                                                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                         Next<i class="fas fa-chevron-right ml-2"></i>
                                                     </a>
@@ -535,7 +535,7 @@ if ($page === 'edit') {
                                         Enter your admin password to confirm this action.
                                     </p>
                                 </div>
-                                <form id="deleteForm" method="POST" action="checklist.php?page=index">
+                                <form id="deleteForm" method="POST" action="admin-manage-checklist.php?page=index">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" id="deleteItemId" value="">
                                     <div class="mb-6">
@@ -649,7 +649,7 @@ if ($page === 'edit') {
                                 </div>
 
                                 <div class="p-8">
-                                    <form method="POST" action="checklist.php?page=add" class="space-y-8">
+                                    <form method="POST" action="admin-manage-checklist.php?page=add" class="space-y-8">
                                         <div>
                                             <label for="document_name" class="block text-lg font-semibold text-gray-700 mb-3">
                                                 Document Name <span class="text-red-500">*</span>
@@ -674,7 +674,7 @@ if ($page === 'edit') {
                                                 <i class="fas fa-save mr-3"></i>
                                                 Create Checklist Item
                                             </button>
-                                            <a href="checklist.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <a href="admin-manage-checklist.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                 <i class="fas fa-times mr-3"></i>
                                                 Cancel
                                             </a>
@@ -724,7 +724,7 @@ if ($page === 'edit') {
                                         </div>
                                     </div>
                                     <div class="p-8">
-                                        <form method="POST" action="checklist.php?page=edit&id=<?php echo (int)$item_id; ?>" class="space-y-8">
+                                        <form method="POST" action="admin-manage-checklist.php?page=edit&id=<?php echo (int)$item_id; ?>" class="space-y-8">
                                             <div>
                                                 <label for="document_name" class="block text-lg font-semibold text-gray-700 mb-3">
                                                     Document Name <span class="text-red-500">*</span>
@@ -748,7 +748,7 @@ if ($page === 'edit') {
                                                     <i class="fas fa-save mr-3"></i>
                                                     Update Checklist Item
                                                 </button>
-                                                <a href="checklist.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                                <a href="admin-manage-checklist.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                     <i class="fas fa-times mr-3"></i>
                                                     Cancel
                                                 </a>

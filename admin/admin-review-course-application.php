@@ -17,7 +17,7 @@ $advisers = [];
 
 // Get application ID from URL
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: dashboard.php');
+    header('Location: admin-dashboard.php');
     exit;
 }
 
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $success_message = 'Course application approved successfully! The student can now proceed with the course.';
                 // Redirect after 2 seconds to allow user to read the message
-                header("refresh:2;url=dashboard.php");
+                header("refresh:2;url=admin-dashboard.php");
                 
             } catch (Exception $e) {
                 // Rollback the transaction on error
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success_message = 'Course application rejected.';
                 $is_rejection = true;
                 // Redirect after 2 seconds
-                header("refresh:2;url=dashboard.php");
+                header("refresh:2;url=admin-dashboard.php");
             } else {
                 $error_message = 'Failed to reject course application.';
             }
@@ -206,7 +206,7 @@ try {
     $application = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$application) {
-        header('Location: dashboard.php');
+        header('Location: admin-dashboard.php');
         exit;
     }
     
@@ -333,7 +333,7 @@ try {
             <nav class="flex mb-6" aria-label="Breadcrumb">
                 <ol class="inline-flex items-center space-x-1 md:space-x-3">
                     <li class="inline-flex items-center">
-                        <a href="dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-900">
+                        <a href="admin-dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-900">
                             <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
                         </a>
                     </li>

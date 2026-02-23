@@ -14,7 +14,7 @@ $advisers = [];
 
 // Get student ID from URL
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header('Location: dashboard.php');
+    header('Location: admin-dashboard.php');
     exit;
 }
 
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($stmt->execute()) {
                         $success_message = 'Course application approved successfully! Student data has been moved to the students table with status "approved".';
-                        header("refresh:2;url=dashboard.php");
+                        header("refresh:2;url=admin-dashboard.php");
                     } else {
                         $error_message = 'Failed to approve course application.';
                     }
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn->commit();
                     
                     $success_message = 'Course completion approved successfully! Student can now apply for new courses.';
-                    header("refresh:2;url=dashboard.php");
+                    header("refresh:2;url=admin-dashboard.php");
                 } catch (PDOException $e) {
                     $conn->rollBack();
                     $error_message = 'Failed to approve course completion: ' . $e->getMessage();
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $conn->commit();
                 $success_message = 'Course completion rejected successfully.';
-                header("refresh:2;url=dashboard.php");
+                header("refresh:2;url=admin-dashboard.php");
             } else {
                 // Regular student registration rejection
                 $stmt = $conn->prepare("UPDATE students SET 
@@ -201,7 +201,7 @@ try {
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$student) {
-        header('Location: dashboard.php');
+        header('Location: admin-dashboard.php');
         exit;
     }
     

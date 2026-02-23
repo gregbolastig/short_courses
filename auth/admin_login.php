@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once '../config/database.php';
+require_once '../includes/system_activity_logger.php';
 
 // Initialize variables
 $error = '';
@@ -11,7 +13,7 @@ if (!isset($_SESSION['csrf_token'])) {
 
 // Check if user is already logged in
 if (isset($_SESSION['user_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
-    header('Location: ../admin/dashboard.php');
+    header('Location: ../admin/admin-dashboard.php');
     exit();
 }
 
@@ -26,30 +28,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Invalid email format.';
-        } elseif ($email === 'admin@admin.com' && $password === 'admin123') {
-            session_regenerate_id(true);
-            
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['user_id'] = 1;
-            $_SESSION['role'] = 'admin';
-            $_SESSION['username'] = 'Admin';
-            $_SESSION['admin_email'] = $email;
-            $_SESSION['email'] = $email;
-            $_SESSION['login_time'] = time();
-            $_SESSION['login_success'] = true;
-            
-            if ($remember) {
-                setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/', '', false, true);
-            } else {
-                if (isset($_COOKIE['remember_email'])) {
-                    setcookie('remember_email', '', time() - 3600, '/', '', false, true);
-                }
-            }
-            
-            header('Location: ../admin/dashboard.php');
-            exit();
         } else {
-            $error = 'Invalid email or password.';
+            try {
+                // Connect to database
+                $database = new Database();
+                $conn = $database->getConnection();
+                
+                // Query user from database
+                $stmt = $conn->prepare("SELECT id, username, email, password, role FROM shortcourse_users WHERE email = :email AND role = 'admin'");
+                $stmt->bindParam(':email', $email);
+                $stmt->execute();
+                
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($user && password_verify($password, $user['password'])) {
+                    // Login successful
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['admin_logged_in'] = true;
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['admin_email'] = $user['email'];
+                    $_SESSION['email'] = $user['email'];
+                    $_SESSION['login_time'] = time();
+                    $_SESSION['login_success'] = true;
+                    
+                    // Log the login activity
+                    logSystemActivity(
+                        'login',
+                        'Admin user logged in: ' . $user['username'],
+                        'admin',
+                        $user['id'],
+                        null,
+                        null
+                    );
+                    
+                    // Handle remember me
+                    if ($remember) {
+                        setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+                    } else {
+                        if (isset($_COOKIE['remember_email'])) {
+                            setcookie('remember_email', '', time() - 3600, '/', '', false, true);
+                        }
+                    }
+                    
+                    header('Location: ../admin/admin-dashboard.php');
+                    exit();
+                } else {
+                    $error = 'Invalid email or password.';
+                    
+                    // Log failed login attempt
+                    logSystemActivity(
+                        'login_failed',
+                        'Failed admin login attempt for email: ' . $email,
+                        'system',
+                        null,
+                        null,
+                        null
+                    );
+                }
+            } catch (PDOException $e) {
+                $error = 'Database error. Please try again later.';
+                error_log('Admin login error: ' . $e->getMessage());
+            }
         }
     }
 }

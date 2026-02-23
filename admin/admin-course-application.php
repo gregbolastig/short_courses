@@ -225,7 +225,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         if (!$admin || !password_verify($admin_password, $admin['password'])) {
             $_SESSION['toast_message'] = 'Invalid password. Deletion cancelled.';
             $_SESSION['toast_type'] = 'error';
-            header('Location: course_application.php?page=index');
+            header('Location: admin-course-application.php?page=index');
             exit;
         }
         
@@ -264,7 +264,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         $_SESSION['toast_type'] = 'error';
     }
     
-    header('Location: course_application.php?page=index');
+    header('Location: admin-course-application.php?page=index');
     exit;
 }
 
@@ -387,7 +387,7 @@ $application = null;
 if ($page === 'view') {
     $page_title = 'View Course Application';
     $breadcrumb_items = [
-        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'course_application.php?page=index'],
+        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'admin-course-application.php?page=index'],
         ['title' => 'View Application', 'icon' => 'fas fa-eye']
     ];
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -439,7 +439,7 @@ if ($page === 'view') {
 if ($page === 'edit') {
     $page_title = 'Edit Course Application';
     $breadcrumb_items = [
-        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'course_application.php?page=index'],
+        ['title' => 'Course Applications', 'icon' => 'fas fa-file-alt', 'url' => 'admin-course-application.php?page=index'],
         ['title' => 'Edit Application', 'icon' => 'fas fa-edit']
     ];
     $application_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -447,7 +447,7 @@ if ($page === 'edit') {
     $advisers_for_edit = [];
 
     if (!$application_id) {
-        header('Location: course_application.php?page=index');
+        header('Location: admin-course-application.php?page=index');
         exit;
     }
 
@@ -464,7 +464,7 @@ if ($page === 'edit') {
         $application = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$application) {
-            header('Location: course_application.php?page=index');
+            header('Location: admin-course-application.php?page=index');
             exit;
         }
 
@@ -512,7 +512,7 @@ if ($page === 'edit') {
                 $application_id
             );
 
-            header("Location: course_application.php?page=index&success=updated");
+            header("Location: admin-course-application.php?page=index&success=updated");
             exit;
         } catch (PDOException $e) {
             $error_message = 'Database error: ' . $e->getMessage();
@@ -670,7 +670,7 @@ if ($page === 'edit') {
                                     </div>
                                 </div>
                                 <div class="flex justify-start pt-4 border-t border-gray-200">
-                                    <a href="course_application.php?page=index"
+                                    <a href="admin-course-application.php?page=index"
                                        class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200">
                                         <i class="fas fa-times mr-2"></i>Clear Filters
                                     </a>
@@ -776,12 +776,12 @@ if ($page === 'edit') {
                                                     </td>
                                                     <td class="px-6 py-4 text-center">
                                                         <div class="flex items-center justify-center space-x-2">
-                                                            <a href="course_application.php?page=view&id=<?php echo (int)$app['application_id']; ?>"
+                                                            <a href="admin-course-application.php?page=view&id=<?php echo (int)$app['application_id']; ?>"
                                                                class="inline-flex items-center px-3 py-1.5 border border-indigo-300 text-xs font-semibold rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
                                                                title="View Details">
                                                                 <i class="fas fa-eye mr-1"></i>
                                                             </a>
-                                                            <a href="course_application.php?page=edit&id=<?php echo (int)$app['application_id']; ?>"
+                                                            <a href="admin-course-application.php?page=edit&id=<?php echo (int)$app['application_id']; ?>"
                                                                class="inline-flex items-center px-3 py-1.5 border border-blue-300 text-xs font-semibold rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                                                                title="Edit Application">
                                                                 <i class="fas fa-edit mr-1"></i>
@@ -858,11 +858,11 @@ if ($page === 'edit') {
                                                 </div>
                                             </div>
                                             <div class="flex items-center justify-center space-x-2 mt-4 flex-wrap gap-2">
-                                                <a href="course_application.php?page=view&id=<?php echo (int)$app['application_id']; ?>"
+                                                <a href="admin-course-application.php?page=view&id=<?php echo (int)$app['application_id']; ?>"
                                                    class="inline-flex items-center justify-center px-4 py-2 border border-indigo-300 text-sm font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                                                     <i class="fas fa-eye mr-2"></i>View
                                                 </a>
-                                                <a href="course_application.php?page=edit&id=<?php echo (int)$app['application_id']; ?>"
+                                                <a href="admin-course-application.php?page=edit&id=<?php echo (int)$app['application_id']; ?>"
                                                    class="inline-flex items-center justify-center px-4 py-2 border border-blue-300 text-sm font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                     <i class="fas fa-edit mr-2"></i>Edit
                                                 </a>
@@ -1021,7 +1021,7 @@ if ($page === 'edit') {
                                         <p class="text-lg text-gray-600 mt-2">Complete information for <?php echo htmlspecialchars($application['first_name'] . ' ' . $application['last_name']); ?></p>
                                     </div>
                                     <div class="flex items-center space-x-4">
-                                        <a href="course_application.php?page=edit&id=<?php echo (int)$application['application_id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
+                                        <a href="admin-course-application.php?page=edit&id=<?php echo (int)$application['application_id']; ?>" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform transition-all duration-200 hover:scale-105">
                                             <i class="fas fa-edit mr-2"></i>Edit Application
                                         </a>
                                     </div>
@@ -1577,7 +1577,7 @@ if ($page === 'edit') {
                                 <p class="text-sm text-red-600 text-center mb-6 font-medium">
                                     Enter your admin password to confirm this action.
                                 </p>
-                                <form id="deleteForm" method="POST" action="course_application.php">
+                                <form id="deleteForm" method="POST" action="admin-course-application.php">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="${applicationId}">
                                     <div class="mb-6">
@@ -1726,7 +1726,7 @@ if ($page === 'edit') {
                                                 <i class="fas fa-save mr-3"></i>
                                                 Update Application
                                             </button>
-                                            <a href="course_application.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                            <a href="admin-course-application.php?page=index" class="flex-1 inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-lg font-semibold rounded-xl shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                                 <i class="fas fa-times mr-3"></i>
                                                 Cancel
                                             </a>
