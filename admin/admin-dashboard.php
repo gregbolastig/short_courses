@@ -26,6 +26,11 @@ if (isset($_SESSION['error_message'])) {
 
 // Handle approval/rejection actions
 if (isset($_POST['action']) && isset($_POST['student_id'])) {
+    // Debug: Log the POST data
+    error_log("POST action received: " . $_POST['action']);
+    error_log("Student ID: " . $_POST['student_id']);
+    error_log("POST data: " . print_r($_POST, true));
+    
     $action = $_POST['action'];
     $student_id = $_POST['student_id'];
     
@@ -34,7 +39,18 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             $database = new Database();
             $conn = $database->getConnection();
             
-            // Check current student status
+            // Check if there's an approved course application for this student
+            $stmt = $conn->prepare("SELECT ca.application_id, ca.course_id, ca.nc_level, ca.adviser, ca.training_start, ca.training_end,
+                                           s.status as student_status, s.first_name, s.last_name
+                                    FROM course_applications ca
+                                    JOIN students s ON ca.student_id = s.id
+                                    WHERE ca.student_id = :id AND ca.status = 'approved'
+                                    LIMIT 1");
+            $stmt->bindParam(':id', $student_id);
+            $stmt->execute();
+            $approved_application = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Also check student status
             $stmt = $conn->prepare("SELECT status, course FROM students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
             $stmt->execute();
@@ -42,8 +58,8 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             
             if (!$current_student) {
                 $error_message = 'Student not found.';
-            } elseif ($current_student['status'] === 'approved' && !empty($current_student['course'])) {
-                // Course application completion approval (status: approved -> completed)
+            } elseif ($approved_application) {
+                // Course application completion approval (approved course application -> completed)
                 // Get the training data that admin entered in the approval modal
                 $course_id = $_POST['course'] ?? '';
                 $nc_level = $_POST['nc_level'] ?? '';
@@ -53,85 +69,70 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                 
                 // Validate required fields (adviser is optional)
                 if (empty($course_id) || empty($nc_level) || empty($training_start) || empty($training_end)) {
-                    $error_message = 'Please fill in all required fields.';
-                } else {
-                    $conn->beginTransaction();
+                    $_SESSION['error_message'] = 'Please fill in all required fields.';
+                    header("Location: admin-dashboard.php");
+                    exit;
+                }
+                
+                $conn->beginTransaction();
+                
+                try {
+                    // Get course name from course_id
+                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt->bindParam(':course_id', $course_id);
+                    $stmt->execute();
+                    $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
                     
-                    try {
-                        // Get course name from course_id
-                        $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
-                        $stmt->bindParam(':course_id', $course_id);
-                        $stmt->execute();
-                        $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if (!$course_data) {
-                            $error_message = 'Invalid course selected.';
-                        } else {
-                            $course_name = $course_data['course_name'];
-                            
-                            // Update students table with completion and training data
-                            $stmt = $conn->prepare("UPDATE students SET 
-                                status = 'completed',
-                                approved_by = :admin_id,
-                                approved_at = NOW(),
-                                course = :course,
-                                nc_level = :nc_level,
-                                training_start = :training_start,
-                                training_end = :training_end,
-                                adviser = :adviser
-                                WHERE id = :id AND status = 'approved'");
-                            
-                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                            $stmt->bindParam(':course', $course_name);
-                            $stmt->bindParam(':nc_level', $nc_level);
-                            $stmt->bindParam(':training_start', $training_start);
-                            $stmt->bindParam(':training_end', $training_end);
-                            $stmt->bindParam(':adviser', $adviser);
-                            $stmt->bindParam(':id', $student_id);
-                            $stmt->execute();
-                            
-                            // Also update course_applications table with the same data to mark as completed
-                            $stmt = $conn->prepare("UPDATE course_applications SET 
-                                status = 'completed',
-                                course_id = :course_id,
-                                nc_level = :nc_level,
-                                training_start = :training_start,
-                                training_end = :training_end,
-                                adviser = :adviser,
-                                reviewed_by = :admin_id,
-                                reviewed_at = NOW()
-                                WHERE student_id = :id AND status = 'approved'");
-                            
-                            $stmt->bindParam(':course_id', $course_id);
-                            $stmt->bindParam(':nc_level', $nc_level);
-                            $stmt->bindParam(':training_start', $training_start);
-                            $stmt->bindParam(':training_end', $training_end);
-                            $stmt->bindParam(':adviser', $adviser);
-                            $stmt->bindParam(':admin_id', $_SESSION['user_id']);
-                            $stmt->bindParam(':id', $student_id);
-                            $stmt->execute();
-                            
-                            $conn->commit();
-                            
-                            // Log course completion approval
-                            $logger->log(
-                                'course_completion_approved',
-                                "Admin approved course completion for student ID: {$student_id} in course '{$course_name}'",
-                                'admin',
-                                $_SESSION['user_id'],
-                                'student',
-                                $student_id
-                            );
-                            
-                            $success_message = 'Course completion approved successfully! Status updated from "approved" to "completed". Student can now apply for new courses.';
-                            // Redirect to refresh and show updated status
-                            header("Location: admin-dashboard.php?approved=" . $student_id);
-                            exit;
-                        }
-                    } catch (PDOException $e) {
+                    if (!$course_data) {
                         $conn->rollBack();
-                        $error_message = 'Failed to approve course completion: ' . $e->getMessage();
+                        $_SESSION['error_message'] = 'Invalid course selected.';
+                        header("Location: admin-dashboard.php");
+                        exit;
                     }
+                    
+                    $course_name = $course_data['course_name'];
+                    
+                    // Update course_applications table to mark as completed
+                    $stmt = $conn->prepare("UPDATE course_applications SET 
+                        status = 'completed',
+                        course_id = :course_id,
+                        nc_level = :nc_level,
+                        training_start = :training_start,
+                        training_end = :training_end,
+                        adviser = :adviser,
+                        reviewed_by = :admin_id,
+                        reviewed_at = NOW()
+                        WHERE student_id = :id AND status = 'approved'");
+                    
+                    $stmt->bindParam(':course_id', $course_id);
+                    $stmt->bindParam(':nc_level', $nc_level);
+                    $stmt->bindParam(':training_start', $training_start);
+                    $stmt->bindParam(':training_end', $training_end);
+                    $stmt->bindParam(':adviser', $adviser);
+                    $stmt->bindParam(':admin_id', $_SESSION['user_id']);
+                    $stmt->bindParam(':id', $student_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    
+                    // Log course completion approval
+                    $logger->log(
+                        'course_completion_approved',
+                        "Admin approved course completion for student ID: {$student_id} ({$approved_application['first_name']} {$approved_application['last_name']}) in course '{$course_name}'",
+                        'admin',
+                        $_SESSION['user_id'],
+                        'student',
+                        $student_id
+                    );
+                    
+                    $_SESSION['success_message'] = 'Course completion approved successfully! The course application has been marked as completed.';
+                    header("Location: admin-dashboard.php?approved=" . $student_id);
+                    exit;
+                } catch (PDOException $e) {
+                    $conn->rollBack();
+                    $_SESSION['error_message'] = 'Failed to approve course completion: ' . $e->getMessage();
+                    header("Location: admin-dashboard.php");
+                    exit;
                 }
             } elseif ($current_student['status'] === 'pending' && empty($current_student['course'])) {
                 // Student registration approval (status: pending -> completed)
@@ -405,9 +406,10 @@ try {
     $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_approved_pages = ceil($total_approved_count / $approved_per_page);
     
-    // Get approved applications (from course_applications with JOIN to get course name and training details from students table)
+    // Get approved applications (from course_applications with JOIN to get course name and training details from course_applications table)
     $stmt = $conn->prepare("SELECT ca.application_id, ca.student_id, ca.course_id, ca.nc_level, ca.reviewed_at as approved_at,
-                                   s.uli, s.first_name, s.last_name, s.email, s.adviser, s.training_start, s.training_end,
+                                   ca.adviser, ca.training_start, ca.training_end,
+                                   s.uli, s.first_name, s.last_name, s.email,
                                    c.course_name as course
                            FROM course_applications ca
                            JOIN students s ON ca.student_id = s.id
@@ -1284,7 +1286,7 @@ try {
                                                         </div>
                                                         
                                                         <div class="flex items-center space-x-3 mt-3 pt-3 border-t border-gray-100">
-                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                            <a href="admin-review-course-application.php?id=<?php echo $application['application_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-xs font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>Review
                                                             </a>
@@ -1358,7 +1360,7 @@ try {
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                         <div class="flex items-center space-x-3">
-                                                            <a href="review_course_application.php?id=<?php echo $application['application_id']; ?>" 
+                                                            <a href="admin-review-course-application.php?id=<?php echo $application['application_id']; ?>" 
                                                                class="inline-flex items-center px-3 py-1.5 bg-blue-900 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors duration-200">
                                                                 <i class="fas fa-eye mr-1"></i>Review
                                                             </a>
@@ -1456,7 +1458,7 @@ try {
                                     <a href="admin-manage-students.php?page=index" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>View All Students
                                     </a>
-                                    <a href="pending_approvals.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
+                                    <a href="admin-pending-approvals.php" class="block text-blue-900 hover:text-blue-800 text-sm font-medium">
                                         <i class="fas fa-arrow-right mr-1"></i>Pending Approvals (<?php echo $pending_approvals; ?>)
                                     </a>
                                 </div>
@@ -1648,25 +1650,39 @@ try {
     </div>
     
     <script>
-    // Handle approval form submission with toast notification
+    // Handle approval form submission
     document.getElementById('approvalForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        console.log('Form submission started');
         
         const submitBtn = document.getElementById('approveSubmitBtn');
         const btnText = document.getElementById('approveBtnText');
         
-        // Show toast notification
-        showApprovalToast();
+        // Validate form fields
+        const course = document.getElementById('course').value;
+        const ncLevel = document.getElementById('nc_level').value;
+        const trainingStart = document.getElementById('training_start').value;
+        const trainingEnd = document.getElementById('training_end').value;
         
+        console.log('Form values:', { course, ncLevel, trainingStart, trainingEnd });
+        
+        if (!course || !ncLevel || !trainingStart || !trainingEnd) {
+            console.error('Validation failed: Missing required fields');
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        console.log('Validation passed, submitting form');
+        
+        // Show loading state
         if (submitBtn && btnText) {
             submitBtn.disabled = true;
             btnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
         }
         
-        // Submit form after showing toast
-        setTimeout(() => {
-            this.submit();
-        }, 800);
+        // Submit form
+        this.submit();
     });
     
     // Update status display dynamically after page load (if coming from approval)

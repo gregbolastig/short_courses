@@ -23,6 +23,12 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $application_id = $_GET['id'];
 
+// Set breadcrumb items for header
+$breadcrumb_items = [
+    ['title' => 'Dashboard', 'icon' => 'fas fa-tachometer-alt', 'url' => 'admin-dashboard.php'],
+    ['title' => 'Review Course Application', 'icon' => 'fas fa-file-alt']
+];
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -329,23 +335,6 @@ try {
         
         <!-- Page Content -->
         <main class="p-4 md:p-6 lg:p-8">
-            <!-- Breadcrumb -->
-            <nav class="flex mb-6" aria-label="Breadcrumb">
-                <ol class="inline-flex items-center space-x-1 md:space-x-3">
-                    <li class="inline-flex items-center">
-                        <a href="admin-dashboard.php" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-900">
-                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
-                        </a>
-                    </li>
-                    <li aria-current="page">
-                        <div class="flex items-center">
-                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
-                            <span class="text-sm font-medium text-gray-500">Review Course Application</span>
-                        </div>
-                    </li>
-                </ol>
-            </nav>
-
             <!-- Page Header -->
             <div class="mb-6 md:mb-8">
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Review Course Application</h1>
