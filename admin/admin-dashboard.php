@@ -1669,42 +1669,6 @@ try {
         }, 800);
     });
     
-    // Toast notification function
-    function showApprovalToast() {
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]';
-        toast.innerHTML = `
-            <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
-                <div class="flex items-center space-x-3">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                            <i class="fas fa-check-circle text-white text-lg"></i>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-semibold text-sm mb-1">Course Approved!</p>
-                        <p class="text-xs text-green-100">The course has been marked as completed successfully.</p>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        
-        // Trigger animation
-        setTimeout(() => {
-            toast.classList.add('opacity-100', 'translate-y-0');
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(-50%) translateY(0)';
-        }, 10);
-        
-        // Remove toast after 3 seconds
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-    
     // Update status display dynamically after page load (if coming from approval)
     window.addEventListener('load', function() {
         // Check if coming from approval redirect

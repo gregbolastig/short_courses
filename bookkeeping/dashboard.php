@@ -181,15 +181,8 @@ $conn = $database->getConnection();
         </div>
     </div>
 
-    <!-- Success/Error Toast -->
-    <div id="toast" class="fixed bottom-4 right-4 hidden">
-        <div class="bg-white rounded-lg shadow-lg p-4 max-w-sm">
-            <div class="flex items-center">
-                <i id="toastIcon" class="text-2xl mr-3"></i>
-                <p id="toastMessage" class="text-gray-700"></p>
-            </div>
-        </div>
-    </div>
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 
     <script>
         let allStudents = [];
@@ -465,24 +458,78 @@ $conn = $database->getConnection();
             });
         });
 
-        // Show toast notification
-        function showToast(message, type) {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toastIcon');
-            const messageEl = document.getElementById('toastMessage');
-
-            if (type === 'success') {
-                icon.className = 'fas fa-check-circle text-green-500 text-2xl mr-3';
-            } else {
-                icon.className = 'fas fa-exclamation-circle text-red-500 text-2xl mr-3';
+        // Standardized Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) {
+                console.warn('Toast container not found');
+                return;
             }
-
-            messageEl.textContent = message;
-            toast.classList.remove('hidden');
-
+            
+            const toast = document.createElement('div');
+            toast.className = 'transform transition-all duration-300 ease-in-out translate-x-full opacity-0 pointer-events-auto';
+            
+            const config = {
+                success: {
+                    bg: 'bg-gradient-to-r from-green-600 to-green-700',
+                    border: 'border-green-500',
+                    icon: 'fa-check-circle'
+                },
+                error: {
+                    bg: 'bg-gradient-to-r from-red-600 to-red-700',
+                    border: 'border-red-500',
+                    icon: 'fa-exclamation-circle'
+                }
+            };
+            
+            const style = config[type] || config.success;
+            
+            toast.innerHTML = `
+                <div class="${style.bg} text-white px-6 py-4 rounded-lg shadow-2xl border ${style.border} flex items-center space-x-3 min-w-[320px] max-w-md">
+                    <i class="fas ${style.icon} text-xl flex-shrink-0"></i>
+                    <span class="flex-1 font-medium text-sm">${escapeHtml(message)}</span>
+                    <button onclick="removeToast(this)" class="text-white hover:text-gray-200 transition flex-shrink-0 ml-2 focus:outline-none">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
             setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 3000);
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+            
+            const autoRemoveTimeout = setTimeout(() => {
+                removeToastElement(toast);
+            }, 5000);
+            
+            toast.dataset.timeoutId = autoRemoveTimeout;
+        }
+        
+        function removeToast(button) {
+            const toast = button.closest('.transform');
+            if (toast) {
+                if (toast.dataset.timeoutId) {
+                    clearTimeout(parseInt(toast.dataset.timeoutId));
+                }
+                removeToastElement(toast);
+            }
+        }
+        
+        function removeToastElement(toast) {
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Add enter key support for search

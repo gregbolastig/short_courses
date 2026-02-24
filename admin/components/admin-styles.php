@@ -54,6 +54,3 @@ button[onclick="toggleSidebar()"] {
     @apply transition-transform duration-300 text-xs;
 }
 </style>
-
-<!-- Toast Notification Container -->
-<div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col space-y-2"></div>

@@ -1128,106 +1128,57 @@ include '../components/header.php';
         </div>
     </div>
     
-    <!-- Success Toast Notification -->
-    <div id="successToast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-check-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-semibold text-sm mb-1">Success!</p>
-                    <p class="text-xs text-green-100">
-                        Profile updated successfully!
-                    </p>
-                </div>
-                <button onclick="closeSuccessToast()" class="flex-shrink-0 text-white hover:text-green-100 transition-colors">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <style>
-        #successToast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    </style>
+
     
     <script>
         <?php if (!empty($success_message)): ?>
-        // Show success toast on page load and auto-dismiss after 3 seconds
+        // Show success toast on page load
         document.addEventListener('DOMContentLoaded', function() {
-            showSuccessToast();
-            setTimeout(function() {
-                closeSuccessToast();
-            }, 3000);
+            showToast('Profile updated successfully!', 'success');
         });
         <?php endif; ?>
         
         <?php if ($just_registered): ?>
         // Show registration success toast
         document.addEventListener('DOMContentLoaded', function() {
-            showRegistrationSuccessToast();
-        });
-        
-        function showRegistrationSuccessToast() {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
             const toast = document.createElement('div');
-            toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]';
+            toast.className = 'transform transition-all duration-300 ease-in-out translate-x-full opacity-0 pointer-events-auto';
+            
             toast.innerHTML = `
-                <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-5 rounded-lg shadow-2xl border border-green-500 max-w-lg">
-                    <div class="flex items-start space-x-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-white rounded-full p-2">
-                                <i class="fas fa-check-circle text-green-600 text-2xl"></i>
-                            </div>
+                <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 flex items-start space-x-3 min-w-[320px] max-w-md">
+                    <div class="flex-shrink-0">
+                        <div class="bg-white rounded-full p-2">
+                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
                         </div>
-                        <div class="flex-1">
-                            <h3 class="font-bold text-lg mb-1">Registration Successful!</h3>
-                            <p class="text-sm text-green-100">Your registration is pending admin approval. You will be notified once approved.</p>
-                        </div>
-                        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="flex-shrink-0 text-white hover:text-green-200">
-                            <i class="fas fa-times text-lg"></i>
-                        </button>
                     </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-base mb-1">Registration Successful!</h3>
+                        <p class="text-sm text-green-100">Your registration is pending admin approval. You will be notified once approved.</p>
+                    </div>
+                    <button onclick="removeToast(this)" class="text-white hover:text-gray-200 transition flex-shrink-0 ml-2 focus:outline-none">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             `;
-            document.body.appendChild(toast);
             
-            // Trigger animation
+            container.appendChild(toast);
+            
+            // Trigger slide-in animation from right
             setTimeout(() => {
-                toast.style.opacity = '1';
-                toast.style.transform = 'translateX(-50%) translateY(0)';
+                toast.classList.remove('translate-x-full', 'opacity-0');
             }, 10);
             
-            // Remove toast after 8 seconds
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(-50%) translateY(-20px)';
-                setTimeout(() => toast.remove(), 300);
+            // Auto remove after 8 seconds
+            const autoRemoveTimeout = setTimeout(() => {
+                removeToastElement(toast);
             }, 8000);
-        }
+            
+            toast.dataset.timeoutId = autoRemoveTimeout;
+        });
         <?php endif; ?>
-        
-        function showSuccessToast() {
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-        }
-        
-        function closeSuccessToast() {
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 300);
-        }
     </script>
     
     <?php include '../components/footer.php'; ?> 

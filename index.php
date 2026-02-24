@@ -692,47 +692,11 @@ include 'student/components/header.php';
         document.getElementById('registrarModal').classList.add('hidden');
     }
 
-    // Show error toast notification
-    function showErrorToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] transition-all duration-300 opacity-0 translate-y-[-20px]';
-        toast.innerHTML = `
-            <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
-                <div class="flex items-center space-x-3">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-exclamation-circle text-lg"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="font-semibold">Error</h3>
-                        <p class="text-sm text-red-100 mt-1">${message}</p>
-                    </div>
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="flex-shrink-0 text-white hover:text-red-200">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        
-        // Trigger animation
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(-50%) translateY(0)';
-        }, 10);
-        
-        // Remove toast after 5 seconds
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
-    }
-
     // Show errors on page load if any
     <?php if (!empty($errors) && $search_performed): ?>
         document.addEventListener('DOMContentLoaded', function() {
             <?php foreach ($errors as $error): ?>
-                showErrorToast(<?php echo json_encode($error); ?>);
+                showToast(<?php echo json_encode($error); ?>, 'error');
             <?php endforeach; ?>
         });
     <?php endif; ?>

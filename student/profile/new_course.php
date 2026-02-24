@@ -586,57 +586,18 @@ include '../components/header.php';
     
     <script>
         <?php if (isset($show_success_modal) && $show_success_modal): ?>
-        // Auto-show success toast on page load and auto-dismiss after 3 seconds
+        // Auto-show success toast on page load
         document.addEventListener('DOMContentLoaded', function() {
-            showSuccessToast();
+            showToast('Your application for <?php echo htmlspecialchars($applied_course_name ?? 'the course'); ?> has been submitted successfully and is now pending admin review.', 'success');
+            // Redirect to profile after toast shows
             setTimeout(function() {
-                closeSuccessToast();
-                // Redirect to profile after toast closes
-                setTimeout(function() {
-                    window.location.href = 'profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>';
-                }, 500);
-            }, 3000);
+                window.location.href = 'profile.php?uli=<?php echo urlencode($_GET['uli'] ?? ''); ?>';
+            }, 3500);
         });
         <?php endif; ?>
         
-        function showSuccessToast() {
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-        }
-        
-        function closeSuccessToast() {
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 300);
-        }
-        
         function showErrorToast(message) {
-            const toast = document.getElementById('errorToast');
-            const messageElement = document.getElementById('errorToastMessage');
-            messageElement.textContent = message;
-            toast.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-            // Auto-dismiss after 3 seconds
-            setTimeout(() => {
-                closeErrorToast();
-            }, 3000);
-        }
-        
-        function closeErrorToast() {
-            const toast = document.getElementById('errorToast');
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 300);
+            showToast(message, 'error');
         }
         
         function showApplicationModal() {
@@ -725,52 +686,5 @@ include '../components/header.php';
             }
         }
     </script>
-    
-    <!-- Success Toast Notification -->
-    <div id="successToast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-check-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-semibold text-sm mb-1">Application Submitted!</p>
-                    <p class="text-xs text-green-100">
-                        Your application for <strong><?php echo htmlspecialchars($applied_course_name ?? 'the course'); ?></strong> has been submitted successfully and is now pending admin review.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Error Toast Notification -->
-    <div id="errorToast" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-exclamation-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-semibold text-sm mb-1">Validation Error</p>
-                    <p class="text-xs text-red-100" id="errorToastMessage"></p>
-                </div>
-                <button onclick="closeErrorToast()" class="flex-shrink-0 text-white hover:text-red-100 transition-colors">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <style>
-        #successToast.show,
-        #errorToast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    </style>
     
     <?php include '../components/footer.php'; ?>

@@ -915,19 +915,11 @@ try {
         }
         
         function showApprovalToast() {
-            const notification = document.getElementById('successNotification');
-            notification.classList.remove('hidden');
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
+            showToast('Application approved successfully!', 'success');
         }
         
         function showRejectionToast() {
-            const notification = document.getElementById('rejectionNotification');
-            notification.classList.remove('hidden');
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
+            showToast('Application rejected', 'warning');
         }
         
         // Close modal on Escape key
@@ -963,147 +955,22 @@ try {
         });
         
         <?php if ($error_message): ?>
-        // Show error notification on page load and auto-dismiss after 3 seconds
+        // Show error notification on page load
         document.addEventListener('DOMContentLoaded', function() {
-            showErrorNotification();
-            setTimeout(function() {
-                closeErrorNotification();
-            }, 3000);
+            showToast('<?php echo addslashes($error_message); ?>', 'error');
         });
         <?php endif; ?>
         
         <?php if ($success_message): ?>
-        // Show success notification on page load and auto-dismiss after 3 seconds
+        // Show success notification on page load
         document.addEventListener('DOMContentLoaded', function() {
             <?php if (isset($is_rejection) && $is_rejection): ?>
-            showRejectionNotification();
-            setTimeout(function() {
-                closeRejectionNotification();
-            }, 3000);
+            showToast('The course application has been rejected successfully.', 'warning');
             <?php else: ?>
-            showSuccessNotification();
-            setTimeout(function() {
-                closeSuccessNotification();
-            }, 3000);
+            showToast('<?php echo addslashes($success_message); ?>', 'success');
             <?php endif; ?>
         });
         <?php endif; ?>
-        
-        function showErrorNotification() {
-            const notification = document.getElementById('errorNotification');
-            notification.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-        }
-        
-        function closeErrorNotification() {
-            const notification = document.getElementById('errorNotification');
-            notification.classList.remove('show');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 300);
-        }
-        
-        function showSuccessNotification() {
-            const notification = document.getElementById('successNotification');
-            notification.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-        }
-        
-        function closeSuccessNotification() {
-            const notification = document.getElementById('successNotification');
-            notification.classList.remove('show');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 300);
-        }
-        
-        function showRejectionNotification() {
-            const notification = document.getElementById('rejectionNotification');
-            notification.classList.remove('hidden');
-            // Trigger animation
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-        }
-        
-        function closeRejectionNotification() {
-            const notification = document.getElementById('rejectionNotification');
-            notification.classList.remove('show');
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 300);
-        }
     </script>
-    
-    <!-- Error Notification Toast -->
-    <div id="errorNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-exclamation-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-medium text-sm">
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Success Notification Toast -->
-    <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-check-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-semibold text-sm mb-1">Application Approved!</p>
-                    <p class="text-xs text-green-100">
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Rejection Notification Toast -->
-    <div id="rejectionNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 translate-y-[-20px]">
-        <div class="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-orange-500 max-w-md">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0">
-                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-times-circle text-white text-lg"></i>
-                    </div>
-                </div>
-                <div class="flex-1">
-                    <p class="font-semibold text-sm mb-1">Application Rejected</p>
-                    <p class="text-xs text-orange-100">
-                        The course application has been rejected successfully.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <style>
-        #errorNotification.show,
-        #successNotification.show,
-        #rejectionNotification.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-    </style>
 </body>
 </html>

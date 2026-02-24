@@ -667,12 +667,6 @@ if ($page === 'edit') {
             .modal-overlay.show .modal-content {
                 transform: scale(1);
             }
-            /* System Toast notification styles */
-            #successNotification.show,
-            #errorNotification.show {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
         </style>
         <script src="../student/components/api-utils.js"></script>
     <?php endif; ?>
@@ -1599,43 +1593,6 @@ if ($page === 'edit') {
                     }
                 </script>
             <?php elseif ($page === 'edit'): ?>
-                <!-- Success Notification Toast (from original design) -->
-                <div id="successNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 -translate-y-5">
-                    <div class="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-green-500 max-w-md">
-                        <div class="flex items-center space-x-3">
-                            <div class="flex-shrink-0">
-                                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-check-circle text-white text-lg"></i>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-semibold text-sm mb-1">Success!</p>
-                                <p class="text-xs text-green-100" id="successMessage">
-                                    Student information updated successfully!
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Error Notification Toast (from original design) -->
-                <div id="errorNotification" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 -translate-y-5">
-                    <div class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-red-500 max-w-md">
-                        <div class="flex items-center space-x-3">
-                            <div class="flex-shrink-0">
-                                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-exclamation-circle text-white text-lg"></i>
-                                </div>
-                            </div>
-                            <div class="flex-1">
-                                <p class="font-medium text-sm" id="errorMessage">
-                                    An error occurred
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Confirmation Modal (from original design) -->
                 <div id="confirmModal" class="modal-overlay" style="display: none;">
                     <div class="modal-content">
@@ -2129,57 +2086,19 @@ if ($page === 'edit') {
                     }
 
                     function showSuccessNotification(message) {
-                        const notification = document.getElementById('successNotification');
-                        const messageElement = document.getElementById('successMessage');
-                        if (message) {
-                            messageElement.textContent = message;
-                        }
-                        notification.classList.remove('hidden');
-                        setTimeout(() => {
-                            notification.classList.add('show');
-                        }, 10);
-                        setTimeout(() => {
-                            closeSuccessNotification();
-                        }, 3000);
-                    }
-
-                    function closeSuccessNotification() {
-                        const notification = document.getElementById('successNotification');
-                        notification.classList.remove('show');
-                        setTimeout(() => {
-                            notification.classList.add('hidden');
-                        }, 300);
+                        showToast(message, 'success');
                     }
 
                     function showErrorNotification(message) {
-                        const notification = document.getElementById('errorNotification');
-                        const messageElement = document.getElementById('errorMessage');
-                        if (message) {
-                            messageElement.textContent = message;
-                        }
-                        notification.classList.remove('hidden');
-                        setTimeout(() => {
-                            notification.classList.add('show');
-                        }, 10);
-                        setTimeout(() => {
-                            closeErrorNotification();
-                        }, 3000);
-                    }
-
-                    function closeErrorNotification() {
-                        const notification = document.getElementById('errorNotification');
-                        notification.classList.remove('show');
-                        setTimeout(() => {
-                            notification.classList.add('hidden');
-                        }, 300);
+                        showToast(message, 'error');
                     }
 
                     // Session-based toast from PHP
                     <?php if (isset($_SESSION['toast_message'])): ?>
                         <?php if (($_SESSION['toast_type'] ?? 'success') === 'success'): ?>
-                            showSuccessNotification('<?php echo addslashes($_SESSION['toast_message']); ?>');
+                            showToast('<?php echo addslashes($_SESSION['toast_message']); ?>', 'success');
                         <?php else: ?>
-                            showErrorNotification('<?php echo addslashes($_SESSION['toast_message']); ?>');
+                            showToast('<?php echo addslashes($_SESSION['toast_message']); ?>', 'error');
                         <?php endif; ?>
                         <?php
                         unset($_SESSION['toast_message']);
