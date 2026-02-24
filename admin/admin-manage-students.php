@@ -318,6 +318,74 @@ if ($page === 'view') {
         $error_message = 'Invalid student ID.';
     } else {
         $student_id = (int)$_GET['id'];
+        
+        // Handle profile picture upload
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile_picture') {
+            if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+                $allowed_types = ['image/jpeg', 'image/jpg', 'image/png'];
+                $file_type = $_FILES['profile_picture']['type'];
+                $file_size = $_FILES['profile_picture']['size'];
+
+                if (!in_array($file_type, $allowed_types, true)) {
+                    $error_message = 'Profile picture must be JPG, JPEG, or PNG';
+                } elseif ($file_size > 10 * 1024 * 1024) {
+                    $error_message = 'Profile picture must be less than 10MB';
+                } else {
+                    $upload_dir = '../uploads/profiles/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+
+                    $file_extension = pathinfo($_FILES['profile_picture']['name'], PATHINFO_EXTENSION);
+                    $filename = uniqid('', true) . '.' . $file_extension;
+                    $full_upload_path = $upload_dir . $filename;
+
+                    if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $full_upload_path)) {
+                        // Get old profile picture path
+                        $stmt = $conn->prepare("SELECT profile_picture FROM students WHERE id = :id");
+                        $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
+                        $stmt->execute();
+                        $old_student = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        // Delete old profile picture if exists
+                        if (!empty($old_student['profile_picture'])) {
+                            $old_path = strpos($old_student['profile_picture'], '../') === 0
+                                ? $old_student['profile_picture']
+                                : '../' . $old_student['profile_picture'];
+                            if (file_exists($old_path)) {
+                                @unlink($old_path);
+                            }
+                        }
+                        
+                        // Update database
+                        $new_profile_path = 'uploads/profiles/' . $filename;
+                        $stmt = $conn->prepare("UPDATE students SET profile_picture = :profile_picture WHERE id = :id");
+                        $stmt->bindParam(':profile_picture', $new_profile_path);
+                        $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
+                        $stmt->execute();
+                        
+                        // Log the update
+                        $logger->log(
+                            'student_profile_picture_updated',
+                            "Admin updated profile picture for student ID: {$student_id}",
+                            'admin',
+                            $_SESSION['user_id'],
+                            'student',
+                            $student_id
+                        );
+                        
+                        $_SESSION['success_message'] = 'Profile picture updated successfully!';
+                        header("Location: admin-manage-students.php?page=view&id={$student_id}");
+                        exit;
+                    } else {
+                        $error_message = 'Failed to upload profile picture';
+                    }
+                }
+            } else {
+                $error_message = 'Please select a profile picture to upload';
+            }
+        }
+        
         try {
             $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
             $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
@@ -341,6 +409,12 @@ if ($page === 'view') {
         } catch (PDOException $e) {
             $error_message = 'Database error: ' . $e->getMessage();
         }
+    }
+    
+    // Check for success message from session
+    if (isset($_SESSION['success_message'])) {
+        $success_message = $_SESSION['success_message'];
+        unset($_SESSION['success_message']);
     }
 }
 
@@ -970,6 +1044,13 @@ if ($page === 'edit') {
                 </div>
 
                 <script>
+                    // Show success toast if message exists
+                    <?php if (!empty($success_message)): ?>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        showToast('<?php echo addslashes($success_message); ?>', 'success');
+                    });
+                    <?php endif; ?>
+                    
                     document.addEventListener('DOMContentLoaded', function() {
                         const searchInput = document.getElementById('search');
                         if (!searchInput) return;
@@ -1079,11 +1160,16 @@ if ($page === 'edit') {
                                                 <div class="relative group">
                                                     <img src="<?php echo htmlspecialchars($profile_picture_url); ?>"
                                                          alt="Profile Picture"
+                                                         id="viewProfilePicture"
                                                          class="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg"
                                                          onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='block';">
                                                     <div class="absolute -bottom-1 -right-1 bg-green-500 text-white p-1.5 rounded-full shadow-lg">
                                                         <i class="fas fa-check text-xs"></i>
                                                     </div>
+                                                    <!-- Edit button overlay -->
+                                                    <button onclick="openProfilePictureModal()" type="button" class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <i class="fas fa-camera text-white text-xl"></i>
+                                                    </button>
                                                 </div>
                                                 <div class="relative group" style="display: none;">
                                                     <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white bg-opacity-20 border-4 border-white shadow-lg flex items-center justify-center">
@@ -1100,13 +1186,17 @@ if ($page === 'edit') {
                                             <?php else: ?>
                                                 <div class="relative group">
                                                     <div class="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white bg-opacity-20 border-4 border-white shadow-lg flex items-center justify-center">
-                                                        <span class="text-2xl md:text-3xl font-bold text-white">
+                                                        <span class="text-2xl md:text-3xl font-bold text-white" id="viewProfileInitials">
                                                             <?php echo strtoupper(substr($student['first_name'], 0, 1) . substr($student['last_name'], 0, 1)); ?>
                                                         </span>
                                                     </div>
                                                     <div class="absolute -bottom-1 -right-1 bg-gray-400 text-white p-1.5 rounded-full shadow-lg">
                                                         <i class="fas fa-camera text-xs"></i>
                                                     </div>
+                                                    <!-- Edit button overlay -->
+                                                    <button onclick="openProfilePictureModal()" type="button" class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <i class="fas fa-camera text-white text-xl"></i>
+                                                    </button>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -1591,6 +1681,85 @@ if ($page === 'edit') {
                             if (e.target === modal) modal.remove();
                         });
                     }
+                </script>
+                
+                <!-- Profile Picture Upload Modal -->
+                <div id="profilePictureModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-medium text-gray-900">Update Profile Picture</h3>
+                                <button onclick="closeProfilePictureModal()" class="text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <form id="profilePictureForm" method="POST" enctype="multipart/form-data" class="space-y-4">
+                                <input type="hidden" name="action" value="update_profile_picture">
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Select New Picture</label>
+                                    <div class="flex flex-col items-center">
+                                        <div class="mb-4">
+                                            <img id="profilePreview" src="" alt="Preview" class="w-32 h-32 rounded-full object-cover border-4 border-gray-200 hidden">
+                                            <div id="profilePlaceholder" class="w-32 h-32 rounded-full bg-gray-200 border-4 border-gray-300 flex items-center justify-center">
+                                                <i class="fas fa-camera text-gray-400 text-3xl"></i>
+                                            </div>
+                                        </div>
+                                        <input type="file" id="profilePictureInput" name="profile_picture" accept="image/jpeg,image/jpg,image/png" required
+                                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                        <p class="mt-2 text-xs text-gray-500">JPG, JPEG or PNG. Max 10MB.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 pt-4">
+                                    <button type="button" onclick="closeProfilePictureModal()" class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md hover:bg-gray-400 transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md hover:bg-blue-700 transition-colors">
+                                        <i class="fas fa-upload mr-2"></i>Upload
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <script>
+                    function openProfilePictureModal() {
+                        document.getElementById('profilePictureModal').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                    }
+                    
+                    function closeProfilePictureModal() {
+                        document.getElementById('profilePictureModal').classList.add('hidden');
+                        document.body.style.overflow = 'auto';
+                        document.getElementById('profilePictureForm').reset();
+                        document.getElementById('profilePreview').classList.add('hidden');
+                        document.getElementById('profilePlaceholder').classList.remove('hidden');
+                    }
+                    
+                    // Preview image before upload
+                    document.getElementById('profilePictureInput')?.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const preview = document.getElementById('profilePreview');
+                                const placeholder = document.getElementById('profilePlaceholder');
+                                preview.src = e.target.result;
+                                preview.classList.remove('hidden');
+                                placeholder.classList.add('hidden');
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                    
+                    // Close modal on Escape key
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            closeProfilePictureModal();
+                        }
+                    });
                 </script>
             <?php elseif ($page === 'edit'): ?>
                 <!-- Confirmation Modal (from original design) -->
