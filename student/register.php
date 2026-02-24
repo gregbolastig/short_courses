@@ -147,28 +147,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $database = new Database();
             $conn = $database->getConnection();
             
+            if (!$conn) {
+                $errors[] = 'Database connection failed';
+                error_log("Database connection failed in registration");
+            } else {
+                // Verify table exists
+                $stmt = $conn->prepare("SHOW TABLES LIKE 'shortcourse_students'");
+                $stmt->execute();
+                if (!$stmt->fetch()) {
+                    $errors[] = 'Database table shortcourse_students does not exist';
+                    error_log("Table shortcourse_students does not exist");
+                }
+            }
+            
             // Check for unique student_id
-            $stmt = $conn->prepare("SELECT id FROM students WHERE student_id = :student_id");
+            $stmt = $conn->prepare("SELECT id FROM shortcourse_students WHERE student_id = :student_id");
             $stmt->bindParam(':student_id', $student_id);
             $stmt->execute();
             
             // Generate new student_id if current one exists
             while ($stmt->fetch()) {
                 $student_id = 'STU' . date('Y') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-                $stmt = $conn->prepare("SELECT id FROM students WHERE student_id = :student_id");
+                $stmt = $conn->prepare("SELECT id FROM shortcourse_students WHERE student_id = :student_id");
                 $stmt->bindParam(':student_id', $student_id);
                 $stmt->execute();
             } 
            
-            $sql = "INSERT INTO students (
+            // Combine birth province and city into place_of_birth
+            $place_of_birth = ($_POST['birth_city'] ?? '') . ', ' . ($_POST['birth_province'] ?? '');
+           
+            $sql = "INSERT INTO shortcourse_students (
                 student_id, first_name, middle_name, last_name, extension_name, birthday, age, sex, civil_status,
-                contact_number, province, city, barangay, street_address, birth_province, birth_city,
+                contact_number, province, city, barangay, street_address, place_of_birth,
                 guardian_last_name, guardian_first_name, guardian_middle_name, guardian_extension, parent_contact, 
                 email, profile_picture, uli, last_school, school_province, school_city, 
                 verification_code, is_verified, status
             ) VALUES (
                 :student_id, :first_name, :middle_name, :last_name, :extension_name, :birthday, :age, :sex, :civil_status,
-                :contact_number, :province, :city, :barangay, :street_address, :birth_province, :birth_city,
+                :contact_number, :province, :city, :barangay, :street_address, :place_of_birth,
                 :guardian_last_name, :guardian_first_name, :guardian_middle_name, :guardian_extension, :parent_contact,
                 :email, :profile_picture, :uli, :last_school, :school_province, :school_city,
                 :verification_code, TRUE, 'pending'
@@ -194,8 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
-            $stmt->bindParam(':birth_province', $_POST['birth_province']);
-            $stmt->bindParam(':birth_city', $_POST['birth_city']);
+            $stmt->bindParam(':place_of_birth', $place_of_birth);
             $stmt->bindParam(':guardian_last_name', $_POST['guardian_last_name']);
             $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
             $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
@@ -243,6 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
         } catch (PDOException $e) {
+            // Log the detailed error for debugging
+            error_log("Registration Error: " . $e->getMessage());
+            error_log("Error Code: " . $e->getCode());
+            error_log("SQL State: " . $e->errorInfo[0] ?? 'N/A');
+            
             if ($e->getCode() == 23000) {
                 $errors[] = 'Email or ULI already exists. Please use different values.';
             } else {

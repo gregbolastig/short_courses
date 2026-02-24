@@ -19,11 +19,10 @@ CREATE TABLE students (
     student_number VARCHAR(20) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     enrollment_date DATE,
+    batch VARCHAR(20) NULL,
     role ENUM('Student') DEFAULT 'Student',
     status ENUM('Active', 'Inactive', 'Graduated') DEFAULT 'Active'
 );
-ALTER TABLE students
-ADD COLUMN batch VARCHAR(20) NULL AFTER enrollment_date;
 
 -- Create Admins Table
 CREATE TABLE admins (
@@ -54,6 +53,29 @@ lab_hours TINYINT NULL,
 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     category ENUM('Core', 'Minor') NOT NULL
+);
+
+-- Create faculty table before faculty_subject_assignment
+CREATE TABLE IF NOT EXISTS faculty (
+    faculty_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    gender ENUM('Male', 'Female') NOT NULL,
+    address VARCHAR(255),
+    date_of_birth DATE,
+    contact_number VARCHAR(20),
+    employee_number VARCHAR(20) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    department VARCHAR(100),
+    hire_date DATE,
+    role ENUM('Faculty') DEFAULT 'Faculty',
+    status ENUM('Active', 'Inactive', 'Retired') DEFAULT 'Active',
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_employee_number (employee_number),
+    INDEX idx_status (status),
+    INDEX idx_name (name)
 );
 
 CREATE TABLE faculty_subject_assignment (
@@ -178,9 +200,6 @@ CREATE TABLE cor_verification (
 
 ALTER TABLE student_enrollment 
 MODIFY COLUMN status ENUM('Enrolled', 'Dropped', 'Completed', 'Failed', 'INC') DEFAULT 'Enrolled';
-
-ALTER TABLE students
-ADD COLUMN batch VARCHAR(20) NULL AFTER enrollment_date;
 
 -- Add start_date and end_date to faculty_subject_assignment table
 ALTER TABLE faculty_subject_assignment
@@ -342,28 +361,6 @@ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 -- ============================================================================
 -- SEED DATA - FACULTY
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS faculty (
-    faculty_id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    gender ENUM('Male', 'Female') NOT NULL,
-    address VARCHAR(255),
-    date_of_birth DATE,
-    contact_number VARCHAR(20),
-    employee_number VARCHAR(20) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    department VARCHAR(100),
-    hire_date DATE,
-    role ENUM('Faculty') DEFAULT 'Faculty',
-    status ENUM('Active', 'Inactive', 'Retired') DEFAULT 'Active',
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    INDEX idx_email (email),
-    INDEX idx_employee_number (employee_number),
-    INDEX idx_status (status),
-    INDEX idx_name (name)
-);
 
 INSERT INTO `faculty` 
 (`faculty_id`, `name`, `email`, `gender`, `address`, `date_of_birth`, `contact_number`, `employee_number`, `password`, `department`, `hire_date`, `role`, `status`) 
@@ -374,7 +371,9 @@ VALUES
 
 
 
-------------------------SHORT COURSES------------------------
+-- ============================================================================
+-- SHORT COURSES SYSTEM
+-- ============================================================================
 
 -- ============================================================================
 -- USERS & AUTHENTICATION
@@ -468,6 +467,8 @@ CREATE TABLE IF NOT EXISTS shortcourse_students (
     barangay VARCHAR(100) NOT NULL,
     street_address VARCHAR(200),
     place_of_birth VARCHAR(200) NOT NULL,
+    birth_province VARCHAR(100),
+    birth_city VARCHAR(100),
 
 -- Guardian Information
     guardian_last_name VARCHAR(100) NOT NULL,
@@ -519,13 +520,10 @@ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
 CREATE TABLE IF NOT EXISTS shortcourse_courses (
     course_id INT AUTO_INCREMENT PRIMARY KEY,
-    course_name VARCHAR(200) NOT NULL UNIQUE,
-    course_code VARCHAR(20) UNIQUE,
-    description TEXT,
-    duration_hours INT,
-    nc_levels VARCHAR(100) DEFAULT 'NC I,NC II',
+    course_name VARCHAR(200) NOT NULL,
+    course_code VARCHAR(20),
     is_active BOOLEAN DEFAULT TRUE,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
     deleted_by INT NULL,
@@ -632,3 +630,128 @@ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES shortcourse_students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ============================================================================
+-- SCHEMA UPDATE: Remove UNIQUE constraints from shortcourse_courses
+-- ============================================================================
+-- This section removes UNIQUE constraints to allow duplicate course names and codes
+-- Safe to run on existing databases - will only execute if constraints exist
+-- ============================================================================
+
+-- Remove UNIQUE constraint on course_name if it exists
+-- This handles existing databases that may still have the constraint
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_courses' 
+     AND INDEX_NAME = 'course_name' 
+     AND NON_UNIQUE = 0) > 0,
+    'ALTER TABLE shortcourse_courses DROP INDEX course_name',
+    'SELECT "UNIQUE constraint on course_name does not exist - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Remove UNIQUE constraint on course_code if it exists
+-- This handles existing databases that may still have the constraint
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_courses' 
+     AND INDEX_NAME = 'course_code' 
+     AND NON_UNIQUE = 0) > 0,
+    'ALTER TABLE shortcourse_courses DROP INDEX course_code',
+    'SELECT "UNIQUE constraint on course_code does not exist - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Ensure regular index exists for course_name performance
+-- This will only create the index if it doesn't already exist
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_courses' 
+     AND INDEX_NAME = 'idx_course_name') = 0,
+    'CREATE INDEX idx_course_name ON shortcourse_courses(course_name)',
+    'SELECT "Regular index idx_course_name already exists - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Ensure regular index exists for course_code performance
+-- This will only create the index if it doesn't already exist
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_courses' 
+     AND INDEX_NAME = 'idx_course_code') = 0,
+    'CREATE INDEX idx_course_code ON shortcourse_courses(course_code)',
+    'SELECT "Regular index idx_course_code already exists - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verify the changes
+SELECT 
+    INDEX_NAME,
+    NON_UNIQUE,
+    COLUMN_NAME
+FROM INFORMATION_SCHEMA.STATISTICS 
+WHERE TABLE_SCHEMA = DATABASE() 
+AND TABLE_NAME = 'shortcourse_courses' 
+AND COLUMN_NAME IN ('course_name', 'course_code')
+ORDER BY COLUMN_NAME, INDEX_NAME;
+
+-- ============================================================================
+-- VERIFICATION: Test duplicate course insertion capability
+-- ============================================================================
+-- Uncomment the lines below to test that duplicates can now be inserted
+-- 
+-- INSERT INTO shortcourse_courses (course_name, course_code, is_active) VALUES ('Test Duplicate Course', 'TEST001', 1);
+-- INSERT INTO shortcourse_courses (course_name, course_code, is_active) VALUES ('Test Duplicate Course', 'TEST001', 1);
+-- SELECT course_id, course_name, course_code FROM shortcourse_courses WHERE course_name = 'Test Duplicate Course';
+-- DELETE FROM shortcourse_courses WHERE course_name = 'Test Duplicate Course';
+-- 
+-- Expected result: Two courses with the same name AND same course_code should be inserted successfully
+-- ============================================================================
+
+-- ============================================================================
+-- SCHEMA UPDATE: Add birth location fields to shortcourse_students
+-- ============================================================================
+-- Add birth_province and birth_city columns if they don't exist
+-- ============================================================================
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_students' 
+     AND COLUMN_NAME = 'birth_province') = 0,
+    'ALTER TABLE shortcourse_students ADD COLUMN birth_province VARCHAR(100) AFTER place_of_birth',
+    'SELECT "Column birth_province already exists - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @sql = (SELECT IF(
+    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
+     WHERE TABLE_SCHEMA = DATABASE() 
+     AND TABLE_NAME = 'shortcourse_students' 
+     AND COLUMN_NAME = 'birth_city') = 0,
+    'ALTER TABLE shortcourse_students ADD COLUMN birth_city VARCHAR(100) AFTER birth_province',
+    'SELECT "Column birth_city already exists - no action needed" as message'
+));
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

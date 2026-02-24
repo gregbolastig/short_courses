@@ -14,7 +14,7 @@ $logger = new SystemActivityLogger($conn);
 
 // Used by sidebar notification badge (optional but nice to keep consistent)
 try {
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_students WHERE status = 'pending'");
     $pending_approvals = (int)($stmt->fetch(PDO::FETCH_ASSOC)['pending'] ?? 0);
 } catch (PDOException $e) {
     $pending_approvals = 0;
@@ -30,30 +30,30 @@ if (!in_array($page, $allowed_pages, true)) {
 // Prevent param collision with routing: use `p` for pagination
 $p = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
 
-// Shared success modal state (used on index page)
-$show_success_modal = false;
-$success_modal_message = '';
-$success_modal_course_name = '';
+// Shared success toast state (used on index page)
+$show_success_toast = false;
+$success_toast_message = '';
+$success_toast_course_name = '';
 
 if (isset($_GET['success'])) {
     $success_type = (string)$_GET['success'];
-    $show_success_modal = true;
+    $show_success_toast = true;
 
     switch ($success_type) {
         case 'created':
-            $success_modal_message = 'Course created successfully!';
-            $success_modal_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
+            $success_toast_message = 'Course created successfully!';
+            $success_toast_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
             break;
         case 'updated':
-            $success_modal_message = 'Course updated successfully!';
-            $success_modal_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
+            $success_toast_message = 'Course updated successfully!';
+            $success_toast_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
             break;
         case 'deleted':
-            $success_modal_message = 'Course deleted successfully!';
-            $success_modal_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
+            $success_toast_message = 'Course deleted successfully!';
+            $success_toast_course_name = isset($_GET['course_name']) ? (string)$_GET['course_name'] : '';
             break;
         default:
-            $show_success_modal = false;
+            $show_success_toast = false;
     }
 }
 
@@ -89,7 +89,7 @@ if ($page === 'index') {
             } else {
                 // Password verified, proceed with deletion
                 // Get course name before deleting
-                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = ?");
+                $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = ?");
                 $stmt->execute([$course_id_to_delete]);
                 $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -103,10 +103,10 @@ if ($page === 'index') {
                         $course_id_to_delete
                     );
 
-                    $stmt = $conn->prepare("DELETE FROM courses WHERE course_id = ?");
+                    $stmt = $conn->prepare("DELETE FROM shortcourse_courses WHERE course_id = ?");
                     $stmt->execute([$course_id_to_delete]);
 
-                    header("Location: admin-manage-admin-manage-courses.php?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
+                    header("Location: " . basename(__FILE__) . "?page=index&success=deleted&course_name=" . urlencode($course['course_name']));
                     exit;
                 } else {
                     $error_message = 'Course not found.';
@@ -132,7 +132,7 @@ if ($page === 'index') {
         }
 
         // Get total count
-        $count_sql = "SELECT COUNT(*) as total FROM courses {$search_condition}";
+        $count_sql = "SELECT COUNT(*) as total FROM shortcourse_courses {$search_condition}";
         $stmt = $conn->prepare($count_sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -142,7 +142,7 @@ if ($page === 'index') {
         $total_pages = (int)ceil($total_courses / $per_page);
 
         // Get courses
-        $sql = "SELECT * FROM courses {$search_condition} ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT * FROM shortcourse_courses {$search_condition} ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $conn->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -153,7 +153,7 @@ if ($page === 'index') {
         $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Stats
-        $stmt = $conn->query("SELECT COUNT(*) as total FROM courses");
+        $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_courses");
         $total_courses_count = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
     } catch (PDOException $e) {
         $error_message = "Database error: " . $e->getMessage();
@@ -181,7 +181,7 @@ if ($page === 'add') {
                 throw new RuntimeException('Course name is required.');
             }
 
-            $stmt = $conn->prepare("INSERT INTO courses (course_name) VALUES (?)");
+            $stmt = $conn->prepare("INSERT INTO shortcourse_courses (course_name) VALUES (?)");
             $stmt->execute([$course_name]);
 
             $course_id = (int)$conn->lastInsertId();
@@ -195,10 +195,12 @@ if ($page === 'add') {
                 $course_id
             );
 
-            header("Location: admin-manage-admin-manage-courses.php?page=index&success=created&course_name=" . urlencode($course_name));
+            header("Location: " . basename(__FILE__) . "?page=index&success=created&course_name=" . urlencode($course_name));
             exit;
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
         } catch (Throwable $e) {
-            $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
+            $error_message = $e->getMessage();
         }
     }
 }
@@ -213,17 +215,17 @@ if ($page === 'edit') {
 
     $course_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($course_id <= 0) {
-        header('Location: admin-manage-admin-manage-courses.php?page=index');
+        header('Location: ' . basename(__FILE__) . '?page=index');
         exit;
     }
 
     try {
-        $stmt = $conn->prepare("SELECT * FROM courses WHERE course_id = ?");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_courses WHERE course_id = ?");
         $stmt->execute([$course_id]);
         $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$course) {
-            header('Location: admin-manage-admin-manage-courses.php?page=index');
+            header('Location: ' . basename(__FILE__) . '?page=index');
             exit;
         }
 
@@ -242,7 +244,7 @@ if ($page === 'edit') {
                 throw new RuntimeException('Course name is required.');
             }
 
-            $stmt = $conn->prepare("UPDATE courses SET course_name = ? WHERE course_id = ?");
+            $stmt = $conn->prepare("UPDATE shortcourse_courses SET course_name = ? WHERE course_id = ?");
             $stmt->execute([$course_name, $course_id]);
 
             $logger->log(
@@ -254,10 +256,12 @@ if ($page === 'edit') {
                 $course_id
             );
 
-            header("Location: admin-manage-admin-manage-courses.php?page=index&success=updated&course_name=" . urlencode($course_name));
+            header("Location: " . basename(__FILE__) . "?page=index&success=updated&course_name=" . urlencode($course_name));
             exit;
+        } catch (PDOException $e) {
+            $error_message = 'Database error: ' . $e->getMessage();
         } catch (Throwable $e) {
-            $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
+            $error_message = $e->getMessage();
         }
     }
 }
@@ -284,7 +288,7 @@ if ($page === 'students') {
             $training_end = (string)($_POST['training_end'] ?? '');
             $adviser_name = (string)($_POST['adviser'] ?? '');
 
-            $stmt = $conn->prepare("SELECT course_name, nc_level FROM courses WHERE course_id = :course_id");
+            $stmt = $conn->prepare("SELECT course_name, nc_level FROM shortcourse_courses WHERE course_id = :course_id");
             $stmt->bindParam(':course_id', $course_id_selected, PDO::PARAM_INT);
             $stmt->execute();
             $course_row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -293,7 +297,7 @@ if ($page === 'students') {
                 throw new RuntimeException('Selected course not found.');
             }
 
-            $stmt = $conn->prepare("UPDATE students SET
+            $stmt = $conn->prepare("UPDATE shortcourse_students SET
                 status = 'approved',
                 approved_by = :admin_id,
                 approved_at = NOW(),
@@ -326,7 +330,7 @@ if ($page === 'students') {
     if (isset($_GET['action'], $_GET['id']) && $_GET['action'] === 'reject') {
         try {
             $student_id = (int)$_GET['id'];
-            $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+            $stmt = $conn->prepare("UPDATE shortcourse_students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
             $stmt->bindParam(':admin_id', $_SESSION['user_id'], PDO::PARAM_INT);
             $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
 
@@ -342,13 +346,13 @@ if ($page === 'students') {
 
     // Data + pagination
     try {
-        $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+        $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_students");
         $total_students = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-        $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+        $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_students WHERE status = 'pending'");
         $pending_approvals = (int)($stmt->fetch(PDO::FETCH_ASSOC)['pending'] ?? 0);
 
-        $stmt = $conn->query("SELECT COUNT(*) as approved FROM students WHERE status = 'approved'");
+        $stmt = $conn->query("SELECT COUNT(*) as approved FROM shortcourse_students WHERE status = 'approved'");
         $approved_students = (int)($stmt->fetch(PDO::FETCH_ASSOC)['approved'] ?? 0);
 
         $per_page = 10;
@@ -367,7 +371,7 @@ if ($page === 'students') {
             $params[':search4'] = $search_param;
         }
 
-        $count_sql = "SELECT COUNT(*) as total FROM students {$search_condition}";
+        $count_sql = "SELECT COUNT(*) as total FROM shortcourse_students {$search_condition}";
         $stmt = $conn->prepare($count_sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -377,7 +381,7 @@ if ($page === 'students') {
         $total_pages = (int)ceil($total_students_count / $per_page);
 
         $sql = "SELECT id, uli, first_name, last_name, email, status, course, nc_level, adviser, created_at
-                FROM students {$search_condition}
+                FROM shortcourse_students {$search_condition}
                 ORDER BY created_at DESC
                 LIMIT :limit OFFSET :offset";
         $stmt = $conn->prepare($sql);
@@ -389,7 +393,7 @@ if ($page === 'students') {
         $stmt->execute();
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt = $conn->query("SELECT course_id, course_name, nc_level FROM courses WHERE is_active = 1 ORDER BY course_name");
+        $stmt = $conn->query("SELECT course_id, course_name, nc_level FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
         $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
@@ -409,22 +413,22 @@ if ($page === 'view') {
     $student_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
     if ($student_id <= 0) {
-        header('Location: admin-manage-admin-manage-courses.php?page=students');
+        header('Location: ' . basename(__FILE__) . '?page=students');
         exit;
     }
 
     try {
-        $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE id = :id");
         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
         $stmt->execute();
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$student) {
-            header('Location: admin-manage-admin-manage-courses.php?page=students');
+            header('Location: ' . basename(__FILE__) . '?page=students');
             exit;
         }
 
-        $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+        $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_students WHERE status = 'pending'");
         $pending_approvals = (int)($stmt->fetch(PDO::FETCH_ASSOC)['pending'] ?? 0);
 
         $stmt = $conn->query("SELECT adviser_id, adviser_name FROM advisers ORDER BY adviser_name");
@@ -691,49 +695,8 @@ if ($page === 'view') {
                         </div>
                     </div>
 
-                    <!-- Success Modal (from old index.php) -->
-                    <div id="successModal" class="fixed inset-0 z-50 <?php echo $show_success_modal ? '' : 'hidden'; ?> overflow-y-auto" aria-labelledby="success-modal-title" role="dialog" aria-modal="true">
-                        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                            <div class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-all duration-300" aria-hidden="true" onclick="closeSuccessModal()"></div>
-
-                            <div class="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-2xl transform transition-all duration-300 sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-100">
-                                <div class="text-center mb-6">
-                                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gradient-to-br from-green-100 to-green-200 mb-4 shadow-lg">
-                                        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-inner">
-                                            <i class="fas fa-check text-white text-lg"></i>
-                                        </div>
-                                    </div>
-                                    <h3 class="text-xl font-bold text-gray-900 mb-2" id="success-modal-title">Success!</h3>
-                                    <div class="w-12 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto"></div>
-                                </div>
-
-                                <div class="text-center mb-8">
-                                    <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
-                                        <div class="flex items-center justify-center space-x-3 mb-2">
-                                            <div class="bg-green-100 rounded-lg p-2">
-                                                <i class="fas fa-graduation-cap text-green-600"></i>
-                                            </div>
-                                            <span class="font-semibold text-gray-900 text-lg" id="successCourseName"><?php echo htmlspecialchars($success_modal_course_name); ?></span>
-                                        </div>
-                                    </div>
-                                    <p class="text-gray-600 leading-relaxed text-lg font-medium" id="successMessage"><?php echo htmlspecialchars($success_modal_message); ?></p>
-                                    <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                        <div class="flex items-center justify-center space-x-2 text-green-700">
-                                            <i class="fas fa-info-circle text-sm"></i>
-                                            <span class="text-sm font-medium">Operation completed successfully</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-center">
-                                    <button type="button" onclick="closeSuccessModal()" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform transition-all duration-200 hover:scale-105">
-                                        <i class="fas fa-check mr-2"></i>
-                                        Continue
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Toast Container -->
+                    <div id="toast-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 
                     <!-- Delete Confirmation Modal -->
                     <div id="deleteModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -814,14 +777,89 @@ if ($page === 'view') {
                             document.getElementById('adminPassword').value = '';
                         }
 
-                        function closeSuccessModal() {
-                            document.getElementById('successModal').classList.add('hidden');
-                            document.body.classList.remove('overflow-hidden');
+                        // Toast notification function (consistent with admin-scripts.php)
+                        function showToast(message, type = 'success') {
+                            const container = document.getElementById('toast-container');
+                            if (!container) return;
+                            
+                            const toast = document.createElement('div');
+                            toast.className = 'transform transition-all duration-300 ease-in-out translate-x-full opacity-0 pointer-events-auto';
+                            
+                            const config = {
+                                success: {
+                                    bg: 'bg-gradient-to-r from-green-600 to-green-700',
+                                    border: 'border-green-500',
+                                    icon: 'fa-check-circle'
+                                },
+                                error: {
+                                    bg: 'bg-gradient-to-r from-red-600 to-red-700',
+                                    border: 'border-red-500',
+                                    icon: 'fa-exclamation-circle'
+                                },
+                                warning: {
+                                    bg: 'bg-gradient-to-r from-yellow-600 to-yellow-700',
+                                    border: 'border-yellow-500',
+                                    icon: 'fa-exclamation-triangle'
+                                },
+                                info: {
+                                    bg: 'bg-gradient-to-r from-blue-600 to-blue-700',
+                                    border: 'border-blue-500',
+                                    icon: 'fa-info-circle'
+                                }
+                            };
+                            
+                            const style = config[type] || config.info;
+                            
+                            toast.innerHTML = `
+                                <div class="${style.bg} text-white px-6 py-4 rounded-lg shadow-2xl border ${style.border} flex items-center space-x-3 min-w-[320px] max-w-md">
+                                    <i class="fas ${style.icon} text-xl flex-shrink-0"></i>
+                                    <span class="flex-1 font-medium text-sm">${escapeHtml(message)}</span>
+                                    <button onclick="removeToast(this)" class="text-white hover:text-gray-200 transition flex-shrink-0 ml-2 focus:outline-none">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            `;
+                            
+                            container.appendChild(toast);
+                            
+                            // Trigger slide-in animation from right
+                            setTimeout(() => {
+                                toast.classList.remove('translate-x-full', 'opacity-0');
+                            }, 10);
+                            
+                            // Auto remove after 5 seconds
+                            const autoRemoveTimeout = setTimeout(() => {
+                                removeToastElement(toast);
+                            }, 5000);
+                            
+                            // Store timeout ID for manual removal
+                            toast.dataset.timeoutId = autoRemoveTimeout;
+                        }
 
-                            const url = new URL(window.location);
-                            url.searchParams.delete('success');
-                            url.searchParams.delete('course_name');
-                            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
+                        function removeToast(button) {
+                            const toast = button.closest('.transform');
+                            if (toast) {
+                                // Clear auto-remove timeout
+                                if (toast.dataset.timeoutId) {
+                                    clearTimeout(parseInt(toast.dataset.timeoutId));
+                                }
+                                removeToastElement(toast);
+                            }
+                        }
+
+                        function removeToastElement(toast) {
+                            toast.classList.add('translate-x-full', 'opacity-0');
+                            setTimeout(() => {
+                                if (toast.parentNode) {
+                                    toast.remove();
+                                }
+                            }, 300);
+                        }
+
+                        function escapeHtml(text) {
+                            const div = document.createElement('div');
+                            div.textContent = text;
+                            return div.innerHTML;
                         }
 
                         document.addEventListener('keydown', function(event) {
@@ -829,15 +867,22 @@ if ($page === 'view') {
                                 if (!document.getElementById('deleteModal').classList.contains('hidden')) {
                                     closeDeleteModal();
                                 }
-                                if (!document.getElementById('successModal').classList.contains('hidden')) {
-                                    closeSuccessModal();
-                                }
                             }
                         });
 
-                        <?php if ($show_success_modal): ?>
+                        // Show success toast if needed
+                        <?php if ($show_success_toast): ?>
                         document.addEventListener('DOMContentLoaded', function() {
-                            document.body.classList.add('overflow-hidden');
+                            const courseName = <?php echo json_encode($success_toast_course_name); ?>;
+                            const message = <?php echo json_encode($success_toast_message); ?>;
+                            const fullMessage = courseName ? `${message} Course: "${courseName}"` : message;
+                            showToast(fullMessage, 'success');
+                            
+                            // Clean up URL parameters
+                            const url = new URL(window.location);
+                            url.searchParams.delete('success');
+                            url.searchParams.delete('course_name');
+                            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
                         });
                         <?php endif; ?>
                     </script>
@@ -1569,7 +1614,7 @@ if ($page === 'view') {
                                                             <option value="">Select Course</option>
                                                             <?php
                                                             try {
-                                                                $stmt = $conn->query("SELECT course_id, course_name, nc_level FROM courses WHERE is_active = 1 ORDER BY course_name");
+                                                                $stmt = $conn->query("SELECT course_id, course_name, nc_level FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
                                                                 $active_courses_view = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                             } catch (PDOException $e) {
                                                                 $active_courses_view = [];
@@ -1644,3 +1689,60 @@ if ($page === 'view') {
 </body>
 </html>
 
+                        </button>
+                        <button type="button" onclick="closeApprovalModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+                            <i class="fas fa-times mr-2"></i>Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <?php include 'components/admin-scripts.php'; ?>
+    
+    <script>
+        // Add event listeners when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show success toast if needed
+            <?php if ($show_success_toast): ?>
+                const courseName = <?php echo json_encode($success_toast_course_name); ?>;
+                const message = <?php echo json_encode($success_toast_message); ?>;
+                const fullMessage = courseName ? `${message} Course: "${courseName}"` : message;
+                showToast(fullMessage, 'success');
+                
+                // Clean up URL parameters
+                const url = new URL(window.location);
+                url.searchParams.delete('success');
+                url.searchParams.delete('course_name');
+                window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
+            <?php endif; ?>
+        });
+        
+        function showDeleteModal(courseId, courseName) {
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.getElementById('deleteCourseId').value = courseId;
+            document.getElementById('deleteCourseName').textContent = courseName;
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+            document.body.style.overflow = 'auto';
+        }
+        
+        function showApprovalModal(studentId, studentName) {
+            document.getElementById('approvalModal').classList.remove('hidden');
+            document.getElementById('approvalStudentId').value = studentId;
+            document.getElementById('approvalStudentName').textContent = studentName;
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeApprovalModal() {
+            document.getElementById('approvalModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    </script>
+</body>
+</html>

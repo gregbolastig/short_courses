@@ -2,7 +2,7 @@
 // Database configuration and setup
 class Database {
     private $host = 'localhost';
-    private $db_name = 'student_registration_db';
+    private $db_name = 'grading_system';
     private $username = 'root';
     private $password = '';
     private $conn;

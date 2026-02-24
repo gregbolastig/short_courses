@@ -94,9 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->bindParam(':id', $student_id);
                     $stmt->execute();
                     
-                    // Also update course_applications table to mark as completed
+                    // Also update shortcourse_course_applications table to mark as completed
                     // Copy adviser and training dates from students table for historical record
-                    $stmt = $conn->prepare("UPDATE course_applications SET 
+                    $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                         status = 'completed',
                         adviser = :adviser,
                         training_start = :training_start,
@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bindParam(':id', $student_id);
                 $stmt->execute();
                 
-                $stmt = $conn->prepare("UPDATE course_applications SET 
+                $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                     status = 'rejected',
                     reviewed_by = :admin_id,
                     reviewed_at = NOW()
@@ -205,11 +205,11 @@ try {
         exit;
     }
     
-    // If student status is 'approved', fetch course details from course_applications
+    // If student status is 'approved', fetch course details from shortcourse_course_applications
     if ($student['status'] === 'approved') {
         $stmt = $conn->prepare("SELECT ca.*, c.course_name, c.course_code, c.description as course_description
-                               FROM course_applications ca
-                               LEFT JOIN courses c ON ca.course_id = c.course_id
+                               FROM shortcourse_course_applications ca
+                               LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                                WHERE ca.student_id = :id AND ca.status = 'approved'
                                ORDER BY ca.reviewed_at DESC
                                LIMIT 1");
@@ -229,7 +229,7 @@ try {
     }
     
     // Get available courses
-    $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
+    $stmt = $conn->query("SELECT * FROM shortcourse_courses WHERE is_active = TRUE ORDER BY course_name");
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get available advisers from faculty table

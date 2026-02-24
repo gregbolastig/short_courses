@@ -20,7 +20,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $conn = $database->getConnection();
             
             $status = ($action === 'approve') ? 'approved' : 'rejected';
-            $stmt = $conn->prepare("UPDATE students SET status = :status, approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+            $stmt = $conn->prepare("UPDATE shortcourse_students SET status = :status, approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
             $stmt->bindParam(':status', $status);
             $stmt->bindParam(':admin_id', $_SESSION['user_id']);
             $stmt->bindParam(':id', $student_id);
@@ -48,7 +48,7 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    $stmt = $conn->query("SELECT * FROM students WHERE status = 'pending' ORDER BY created_at ASC");
+    $stmt = $conn->query("SELECT * FROM shortcourse_students WHERE status = 'pending' ORDER BY created_at ASC");
     $pending_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {

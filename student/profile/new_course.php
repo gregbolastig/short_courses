@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $conn = $database->getConnection();
         
         // Get student info
-        $stmt = $conn->prepare("SELECT * FROM students WHERE uli = :uli");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE uli = :uli");
         $stmt->bindParam(':uli', $_POST['uli']);
         $stmt->execute();
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($student) {
             // Check if student has any pending course applications
             // Note: Students CAN reapply for rejected courses - only pending applications block new applications
-            $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
+            $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM shortcourse_course_applications WHERE student_id = :student_id AND status = 'pending'");
             $stmt->bindParam(':student_id', $student['id']);
             $stmt->execute();
             $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Only block if student status is 'approved' (not 'completed')
             $approved_count = 0;
             if ($student['status'] === 'approved') {
-                $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+                $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM shortcourse_course_applications WHERE student_id = :student_id AND status = 'approved'");
                 $stmt->bindParam(':student_id', $student['id']);
                 $stmt->execute();
                 $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $errors[] = 'You are already enrolled in this course. You can only apply for a new course after completing your current course.';
             } else {
                 // Insert new course application (duplicates allowed)
-                $stmt = $conn->prepare("INSERT INTO course_applications 
+                $stmt = $conn->prepare("INSERT INTO shortcourse_course_applications 
                     (student_id, course_id, nc_level, status, applied_at) 
                     VALUES (:student_id, :course_id, :nc_level, 'pending', NOW())");
                 
@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $application_id = $conn->lastInsertId();
                     
                     // Get the course name from the courses table
-                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = :course_id");
                     $stmt->bindParam(':course_id', $course_id);
                     $stmt->execute();
                     $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -130,7 +130,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("SELECT * FROM students WHERE uli = :uli");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE uli = :uli");
         $stmt->bindParam(':uli', $_GET['uli']);
         $stmt->execute();
         $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -140,7 +140,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         }
         
         // Get available courses from database
-        $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
+        $stmt = $conn->query("SELECT * FROM shortcourse_courses WHERE is_active = TRUE ORDER BY course_name");
         $available_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Check if student can apply for new courses
@@ -150,7 +150,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         // Students can apply if their status is 'completed' or if they have no active course
         // Check for pending course applications
         // Note: Students CAN reapply after rejection - only pending applications block new applications
-        $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM course_applications WHERE student_id = :student_id AND status = 'pending'");
+        $stmt = $conn->prepare("SELECT COUNT(*) as pending_count FROM shortcourse_course_applications WHERE student_id = :student_id AND status = 'pending'");
         $stmt->bindParam(':student_id', $student_profile['id']);
         $stmt->execute();
         $pending_count = $stmt->fetch(PDO::FETCH_ASSOC)['pending_count'];
@@ -159,7 +159,7 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         // Only block if student status is 'approved' (not 'completed')
         $approved_count = 0;
         if ($student_profile['status'] === 'approved') {
-            $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM course_applications WHERE student_id = :student_id AND status = 'approved'");
+            $stmt = $conn->prepare("SELECT COUNT(*) as approved_count FROM shortcourse_course_applications WHERE student_id = :student_id AND status = 'approved'");
             $stmt->bindParam(':student_id', $student_profile['id']);
             $stmt->execute();
             $approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['approved_count'];
@@ -187,8 +187,8 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         
         // Get pending applications for display (latest to oldest)
         $stmt = $conn->prepare("SELECT ca.*, c.course_name 
-                                FROM course_applications ca 
-                                LEFT JOIN courses c ON ca.course_id = c.course_id 
+                                FROM shortcourse_course_applications ca 
+                                LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id 
                                 WHERE ca.student_id = :student_id AND ca.status = 'pending' 
                                 ORDER BY ca.applied_at DESC");
         $stmt->bindParam(':student_id', $student_profile['id']);
@@ -197,8 +197,8 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         
         // Get rejected applications for display (latest to oldest)
         $stmt = $conn->prepare("SELECT ca.*, c.course_name 
-                                FROM course_applications ca 
-                                LEFT JOIN courses c ON ca.course_id = c.course_id 
+                                FROM shortcourse_course_applications ca 
+                                LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id 
                                 WHERE ca.student_id = :student_id AND ca.status = 'rejected' 
                                 ORDER BY ca.applied_at DESC");
         $stmt->bindParam(':student_id', $student_profile['id']);
@@ -209,8 +209,8 @@ if (isset($_GET['uli']) && !empty($_GET['uli'])) {
         // Show all applications that are approved or completed
         // Sort by reviewed_at (completion date) DESC, then applied_at DESC for latest to oldest
         $stmt = $conn->prepare("SELECT ca.*, c.course_name
-                               FROM course_applications ca
-                               LEFT JOIN courses c ON ca.course_id = c.course_id
+                               FROM shortcourse_course_applications ca
+                               LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                                WHERE ca.student_id = :student_id 
                                AND (ca.status = 'approved' OR ca.status = 'completed')
                                ORDER BY 

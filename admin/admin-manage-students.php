@@ -32,7 +32,7 @@ $p = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
 
 function checkSoftDeleteColumn(PDO $conn): bool {
     try {
-        $stmt = $conn->query("SHOW COLUMNS FROM students LIKE 'deleted_at'");
+        $stmt = $conn->query("SHOW COLUMNS FROM shortcourse_students LIKE 'deleted_at'");
         return $stmt->rowCount() > 0;
     } catch (PDOException $e) {
         return false;
@@ -42,7 +42,7 @@ function checkSoftDeleteColumn(PDO $conn): bool {
 function handleStudentDelete(PDO $conn, SystemActivityLogger $logger, int $student_id, int $user_id): array {
     try {
         // Get student info before delete
-        $stmt = $conn->prepare("SELECT id, first_name, last_name, profile_picture FROM students WHERE id = :id");
+        $stmt = $conn->prepare("SELECT id, first_name, last_name, profile_picture FROM shortcourse_students WHERE id = :id");
         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
         $stmt->execute();
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -52,7 +52,7 @@ function handleStudentDelete(PDO $conn, SystemActivityLogger $logger, int $stude
         }
 
         // Soft delete record
-        $stmt = $conn->prepare("UPDATE students SET deleted_at = NOW() WHERE id = :id");
+        $stmt = $conn->prepare("UPDATE shortcourse_students SET deleted_at = NOW() WHERE id = :id");
         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -123,7 +123,7 @@ function buildWhereClause(string $search, string $filter_course, string $filter_
 }
 
 function getTotalStudents(PDO $conn, string $where_clause, array $params): int {
-    $sql = "SELECT COUNT(*) as total FROM students {$where_clause}";
+    $sql = "SELECT COUNT(*) as total FROM shortcourse_students {$where_clause}";
     $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
@@ -135,7 +135,7 @@ function getTotalStudents(PDO $conn, string $where_clause, array $params): int {
 function getStudents(PDO $conn, string $where_clause, array $params, int $limit, int $offset): array {
     $sql = "SELECT id, student_id, first_name, middle_name, last_name, email, uli, sex,
                    province, city, contact_number, status, created_at
-            FROM students {$where_clause}
+            FROM shortcourse_students {$where_clause}
             ORDER BY created_at DESC
             LIMIT :limit OFFSET :offset";
     $stmt = $conn->prepare($sql);
@@ -150,7 +150,7 @@ function getStudents(PDO $conn, string $where_clause, array $params, int $limit,
 
 function getActiveCourses(PDO $conn): array {
     try {
-        $stmt = $conn->query("SELECT course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+        $stmt = $conn->query("SELECT course_name FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
         return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
     } catch (PDOException $e) {
         return [];
@@ -169,11 +169,11 @@ function getStudentStatistics(PDO $conn, bool $has_soft_delete): array {
 
     try {
         $queries = [
-            'total' => "SELECT COUNT(*) as count FROM students WHERE 1=1{$soft_delete_filter}",
-            'pending' => "SELECT COUNT(*) as count FROM students WHERE status = 'pending'{$soft_delete_filter}",
-            'approved' => "SELECT COUNT(*) as count FROM students WHERE status = 'approved'{$soft_delete_filter}",
-            'rejected' => "SELECT COUNT(*) as count FROM students WHERE status = 'rejected'{$soft_delete_filter}",
-            'completed' => "SELECT COUNT(*) as count FROM students WHERE status = 'completed'{$soft_delete_filter}",
+            'total' => "SELECT COUNT(*) as count FROM shortcourse_students WHERE 1=1{$soft_delete_filter}",
+            'pending' => "SELECT COUNT(*) as count FROM shortcourse_students WHERE status = 'pending'{$soft_delete_filter}",
+            'approved' => "SELECT COUNT(*) as count FROM shortcourse_students WHERE status = 'approved'{$soft_delete_filter}",
+            'rejected' => "SELECT COUNT(*) as count FROM shortcourse_students WHERE status = 'rejected'{$soft_delete_filter}",
+            'completed' => "SELECT COUNT(*) as count FROM shortcourse_students WHERE status = 'completed'{$soft_delete_filter}",
         ];
 
         foreach ($queries as $key => $query) {
@@ -226,7 +226,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         if (!$admin || !password_verify($admin_password, $admin['password'])) {
             $_SESSION['toast_message'] = 'Invalid password. Deletion cancelled.';
             $_SESSION['toast_type'] = 'error';
-            header('Location: admin-manage-admin-manage-students.php?page=index');
+            header('Location: ' . basename(__FILE__) . '?page=index');
             exit;
         }
         
@@ -244,7 +244,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         $_SESSION['toast_type'] = 'error';
     }
     
-    header('Location: admin-manage-admin-manage-students.php?page=index');
+    header('Location: ' . basename(__FILE__) . '?page=index');
     exit;
 }
 
@@ -296,7 +296,7 @@ if ($page === 'index') {
 // View + Edit share some sidebar data
 if ($page === 'view' || $page === 'edit') {
     try {
-        $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+        $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_students WHERE status = 'pending'");
         $pending_approvals = (int)($stmt->fetch(PDO::FETCH_ASSOC)['pending'] ?? 0);
     } catch (PDOException $e) {
         $pending_approvals = 0;
@@ -342,7 +342,7 @@ if ($page === 'view') {
 
                     if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $full_upload_path)) {
                         // Get old profile picture path
-                        $stmt = $conn->prepare("SELECT profile_picture FROM students WHERE id = :id");
+                        $stmt = $conn->prepare("SELECT profile_picture FROM shortcourse_students WHERE id = :id");
                         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
                         $stmt->execute();
                         $old_student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -359,7 +359,7 @@ if ($page === 'view') {
                         
                         // Update database
                         $new_profile_path = 'uploads/profiles/' . $filename;
-                        $stmt = $conn->prepare("UPDATE students SET profile_picture = :profile_picture WHERE id = :id");
+                        $stmt = $conn->prepare("UPDATE shortcourse_students SET profile_picture = :profile_picture WHERE id = :id");
                         $stmt->bindParam(':profile_picture', $new_profile_path);
                         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
                         $stmt->execute();
@@ -387,7 +387,7 @@ if ($page === 'view') {
         }
         
         try {
-            $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+            $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE id = :id");
             $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
             $stmt->execute();
             $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -397,8 +397,8 @@ if ($page === 'view') {
             } else {
                 $stmt = $conn->prepare("
                     SELECT ca.*, c.course_name, ca.reviewed_at, ca.applied_at
-                    FROM course_applications ca
-                    LEFT JOIN courses c ON ca.course_id = c.course_id
+                    FROM shortcourse_course_applications ca
+                    LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                     WHERE ca.student_id = :student_id
                     ORDER BY ca.applied_at DESC
                 ");
@@ -429,7 +429,7 @@ if ($page === 'edit') {
     ];
 
     if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-        header('Location: admin-manage-admin-manage-students.php?page=index');
+        header('Location: ' . basename(__FILE__) . '?page=index');
         exit;
     }
 
@@ -437,13 +437,13 @@ if ($page === 'edit') {
 
     // Load current student
     try {
-        $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE id = :id");
         $stmt->bindParam(':id', $student_id, PDO::PARAM_INT);
         $stmt->execute();
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$student) {
-            header('Location: admin-manage-admin-manage-students.php?page=index');
+            header('Location: ' . basename(__FILE__) . '?page=index');
             exit;
         }
     } catch (PDOException $e) {
@@ -540,7 +540,7 @@ if ($page === 'edit') {
                 $full_contact_number = $_POST['country_code'] . $_POST['contact_number'];
                 $full_parent_contact = $_POST['parent_country_code'] . $_POST['parent_contact'];
 
-                $sql = "UPDATE students SET
+                $sql = "UPDATE shortcourse_students SET
                     first_name = :first_name, middle_name = :middle_name, last_name = :last_name, extension_name = :extension_name,
                     birthday = :birthday, age = :age, sex = :sex, civil_status = :civil_status,
                     contact_number = :contact_number, province = :province, city = :city,
@@ -592,7 +592,7 @@ if ($page === 'edit') {
 
                     $_SESSION['toast_message'] = 'Student information updated successfully!';
                     $_SESSION['toast_type'] = 'success';
-                    header("Location: admin-manage-admin-manage-students.php?page=view&id=" . $student_id);
+                    header("Location: " . basename(__FILE__) . "?page=view&id=" . $student_id);
                     exit;
                 } else {
                     $errors[] = 'Update failed. Please try again.';
@@ -1340,11 +1340,11 @@ if ($page === 'edit') {
                                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fas fa-map text-green-600 mr-1"></i>Province</label>
-                                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_province'] ?: 'N/A'); ?></p>
+                                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_province'] ?? 'N/A'); ?></p>
                                                     </div>
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-500 mb-1"><i class="fas fa-city text-green-600 mr-1"></i>City/Municipality</label>
-                                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_city'] ?: 'N/A'); ?></p>
+                                                        <p class="text-sm text-gray-900 font-medium"><?php echo htmlspecialchars($student['birth_city'] ?? 'N/A'); ?></p>
                                                     </div>
                                                 </div>
                                             </div>

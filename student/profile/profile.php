@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         
         if (empty($errors)) {
-            $stmt = $conn->prepare("UPDATE students SET 
+            $stmt = $conn->prepare("UPDATE shortcourse_students SET 
                 civil_status = :civil_status, 
                 contact_number = :contact_number, 
                 email = :email,
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($stmt->execute()) {
                 $success_message = 'Profile updated successfully!';
                 // Refresh the student profile data
-                $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+                $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE id = :id");
                 $stmt->bindParam(':id', $_POST['student_id']);
                 $stmt->execute();
                 $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -78,14 +78,14 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
         // Determine lookup method - join with courses to get course name
         if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
             $stmt = $conn->prepare("SELECT s.*, c.course_name as course_display_name 
-                                   FROM students s 
-                                   LEFT JOIN courses c ON s.course = c.course_id 
+                                   FROM shortcourse_students s 
+                                   LEFT JOIN shortcourse_courses c ON s.course = c.course_id 
                                    WHERE s.id = :id");
             $stmt->bindParam(':id', $_GET['student_id']);
         } else {
             $stmt = $conn->prepare("SELECT s.*, c.course_name as course_display_name 
-                                   FROM students s 
-                                   LEFT JOIN courses c ON s.course = c.course_id 
+                                   FROM shortcourse_students s 
+                                   LEFT JOIN shortcourse_courses c ON s.course = c.course_id 
                                    WHERE s.uli = :uli");
             $stmt->bindParam(':uli', $_GET['uli']);
         }
@@ -102,8 +102,8 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
             // Get all course applications with their current status
             $stmt = $conn->prepare("
                 SELECT ca.*, COALESCE(c.course_name, ca.course_id) as course_name
-                FROM course_applications ca
-                LEFT JOIN courses c ON ca.course_id = c.course_id
+                FROM shortcourse_course_applications ca
+                LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                 WHERE ca.student_id = :student_id 
                 ORDER BY ca.applied_at DESC
             ");
@@ -121,9 +121,9 @@ if ((isset($_GET['student_id']) && is_numeric($_GET['student_id'])) || (isset($_
                 $stmt = $conn->prepare("
                     SELECT se.*, COALESCE(c.course_name, se.course_id) as course_name, a.adviser_name, ca.applied_at
                     FROM student_enrollments se
-                    LEFT JOIN courses c ON se.course_id = c.course_id
+                    LEFT JOIN shortcourse_courses c ON se.course_id = c.course_id
                     LEFT JOIN advisers a ON se.adviser_id = a.adviser_id
-                    LEFT JOIN course_applications ca ON se.application_id = ca.application_id
+                    LEFT JOIN shortcourse_course_applications ca ON se.application_id = ca.application_id
                     WHERE se.student_id = :student_id 
                     ORDER BY se.enrolled_at DESC
                 ");

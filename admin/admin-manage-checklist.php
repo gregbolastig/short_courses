@@ -173,7 +173,7 @@ if ($page === 'add') {
                 $conn->lastInsertId()
             );
 
-            header("Location: admin-manage-admin-manage-checklist.php?page=index&success=created&name=" . urlencode($document_name));
+            header("Location: " . basename(__FILE__) . "?page=index&success=created&name=" . urlencode($document_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();
@@ -192,7 +192,7 @@ if ($page === 'edit') {
 
     $item_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if ($item_id <= 0) {
-        header('Location: admin-manage-admin-manage-checklist.php?page=index');
+        header('Location: ' . basename(__FILE__) . '?page=index');
         exit;
     }
 
@@ -202,7 +202,7 @@ if ($page === 'edit') {
         $checklist_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$checklist_item || !isset($checklist_item['document_name'])) {
-            header('Location: admin-manage-admin-manage-checklist.php?page=index');
+            header('Location: ' . basename(__FILE__) . '?page=index');
             exit;
         }
 
@@ -233,7 +233,7 @@ if ($page === 'edit') {
                 $item_id
             );
 
-            header("Location: admin-manage-admin-manage-checklist.php?page=index&success=updated&name=" . urlencode($document_name));
+            header("Location: " . basename(__FILE__) . "?page=index&success=updated&name=" . urlencode($document_name));
             exit;
         } catch (Throwable $e) {
             $error_message = $e instanceof PDOException ? ('Database error: ' . $e->getMessage()) : $e->getMessage();

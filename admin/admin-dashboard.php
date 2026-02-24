@@ -42,8 +42,8 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             // Check if there's an approved course application for this student
             $stmt = $conn->prepare("SELECT ca.application_id, ca.course_id, ca.nc_level, ca.adviser, ca.training_start, ca.training_end,
                                            s.status as student_status, s.first_name, s.last_name
-                                    FROM course_applications ca
-                                    JOIN students s ON ca.student_id = s.id
+                                    FROM shortcourse_course_applications ca
+                                    JOIN shortcourse_students s ON ca.student_id = s.id
                                     WHERE ca.student_id = :id AND ca.status = 'approved'
                                     LIMIT 1");
             $stmt->bindParam(':id', $student_id);
@@ -51,7 +51,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
             $approved_application = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Also check student status
-            $stmt = $conn->prepare("SELECT status, course FROM students WHERE id = :id");
+            $stmt = $conn->prepare("SELECT status, course FROM shortcourse_students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
             $stmt->execute();
             $current_student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -78,7 +78,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                 
                 try {
                     // Get course name from course_id
-                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = :course_id");
                     $stmt->bindParam(':course_id', $course_id);
                     $stmt->execute();
                     $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -93,7 +93,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     $course_name = $course_data['course_name'];
                     
                     // Update course_applications table to mark as completed
-                    $stmt = $conn->prepare("UPDATE course_applications SET 
+                    $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                         status = 'completed',
                         course_id = :course_id,
                         nc_level = :nc_level,
@@ -148,7 +148,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                     $error_message = 'Please fill in all required fields.';
                 } else {
                     // Get course name from course_id
-                    $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                    $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = :course_id");
                     $stmt->bindParam(':course_id', $course_id);
                     $stmt->execute();
                     $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -163,7 +163,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                         
                         try {
                             // 1. Create a course_application record for the first course
-                            $stmt = $conn->prepare("INSERT INTO course_applications 
+                            $stmt = $conn->prepare("INSERT INTO shortcourse_course_applications 
                                 (student_id, course_id, nc_level, training_start, training_end, adviser, status, reviewed_by, reviewed_at, applied_at) 
                                 VALUES (:student_id, :course_id, :nc_level, :training_start, :training_end, :adviser, 'completed', :admin_id, NOW(), NOW())");
                             
@@ -177,7 +177,7 @@ if (isset($_POST['action']) && isset($_POST['student_id'])) {
                             $stmt->execute();
                             
                             // 2. Update student status to completed (but don't store course data in students table)
-                            $stmt = $conn->prepare("UPDATE students SET 
+                            $stmt = $conn->prepare("UPDATE shortcourse_students SET 
                                 status = 'completed',
                                 approved_by = :admin_id,
                                 approved_at = NOW()
@@ -231,7 +231,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $conn = $database->getConnection();
             
             // Check if student has status 'approved' (course application approved, need to reject completion)
-            $stmt = $conn->prepare("SELECT status FROM students WHERE id = :id");
+            $stmt = $conn->prepare("SELECT status FROM shortcourse_students WHERE id = :id");
             $stmt->bindParam(':id', $student_id);
             $stmt->execute();
             $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -242,13 +242,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                     $conn->beginTransaction();
                     
                     // Update students table
-                    $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+                    $stmt = $conn->prepare("UPDATE shortcourse_students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
                     $stmt->bindParam(':admin_id', $_SESSION['user_id']);
                     $stmt->bindParam(':id', $student_id);
                     $stmt->execute();
                     
                     // Update course_applications table
-                    $stmt = $conn->prepare("UPDATE course_applications SET status = 'rejected', reviewed_by = :admin_id, reviewed_at = NOW() WHERE student_id = :id AND status = 'approved'");
+                    $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET status = 'rejected', reviewed_by = :admin_id, reviewed_at = NOW() WHERE student_id = :id AND status = 'approved'");
                     $stmt->bindParam(':admin_id', $_SESSION['user_id']);
                     $stmt->bindParam(':id', $student_id);
                     $stmt->execute();
@@ -268,7 +268,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                     $success_message = 'Course completion rejected successfully.';
                 } else {
                     // Regular student registration rejection
-                    $stmt = $conn->prepare("UPDATE students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+                    $stmt = $conn->prepare("UPDATE shortcourse_students SET status = 'rejected', approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
                     $stmt->bindParam(':admin_id', $_SESSION['user_id']);
                     $stmt->bindParam(':id', $student_id);
                     
@@ -304,20 +304,20 @@ try {
     $conn = $database->getConnection();
     
     // Total students
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_students");
     $total_students = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Pending course approvals (from course_applications table - matches Pending Course Applications section)
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM course_applications WHERE status = 'pending'");
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_course_applications WHERE status = 'pending'");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $pending_approvals = $result ? (int)$result['pending'] : 0;
     
     // Completed students
-    $stmt = $conn->query("SELECT COUNT(*) as completed FROM students WHERE status = 'completed'");
+    $stmt = $conn->query("SELECT COUNT(*) as completed FROM shortcourse_students WHERE status = 'completed'");
     $completed_students = $stmt->fetch(PDO::FETCH_ASSOC)['completed'];
     
     // Recent registrations (last 7 days)
-    $stmt = $conn->query("SELECT COUNT(*) as recent FROM students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $stmt = $conn->query("SELECT COUNT(*) as recent FROM shortcourse_students WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
     $recent_registrations = $stmt->fetch(PDO::FETCH_ASSOC)['recent'];
     
     // Pagination for recent students
@@ -332,8 +332,8 @@ try {
     // Note: Completed students are now only visible in students.php
     $stmt = $conn->prepare("SELECT s.id, s.uli, s.first_name, s.last_name, s.email, s.status, s.course, s.nc_level, s.adviser, s.training_start, s.training_end, s.approved_at, s.created_at,
                                    c.course_id
-                           FROM students s
-                           LEFT JOIN courses c ON s.course = c.course_name
+                           FROM shortcourse_students s
+                           LEFT JOIN shortcourse_courses c ON s.course = c.course_name
                            WHERE s.status = 'pending' 
                               OR (s.status = 'approved' AND s.course IS NOT NULL)
                            ORDER BY 
@@ -348,12 +348,12 @@ try {
     $recent_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Update total count for pagination
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
     $total_students_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages = ceil($total_students_count / $per_page);
     
     // Get active courses for approval modal
-    $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+    $stmt = $conn->query("SELECT course_id, course_name FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
     $active_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get advisers from faculty table for approval modal
@@ -362,7 +362,7 @@ try {
     
     // Get student applications count (matches the table display)
     // This includes: pending registrations + approved students with courses
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_students WHERE status = 'pending' OR (status = 'approved' AND course IS NOT NULL)");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $pending_applications = $result ? (int)$result['total'] : 0;
     
@@ -372,17 +372,17 @@ try {
     $app_offset = ($app_page - 1) * $app_per_page;
     
     // Get total count for pagination (pending only)
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'pending'");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_course_applications WHERE status = 'pending'");
     $total_applications_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_app_pages = ceil($total_applications_count / $app_per_page);
     
     // Get recent course applications with pagination (pending only)
     $stmt = $conn->prepare("SELECT ca.*, s.first_name, s.last_name, s.uli as student_uli, s.adviser, s.training_start, s.training_end, c.course_name,
                                   -- Check if student has any completed courses (indicates reapplication)
-                                  (SELECT COUNT(*) FROM course_applications ca2 WHERE ca2.student_id = ca.student_id AND ca2.status = 'completed') as completed_courses_count
-                           FROM course_applications ca 
-                           JOIN students s ON ca.student_id = s.id 
-                           LEFT JOIN courses c ON ca.course_id = c.course_id
+                                  (SELECT COUNT(*) FROM shortcourse_course_applications ca2 WHERE ca2.student_id = ca.student_id AND ca2.status = 'completed') as completed_courses_count
+                           FROM shortcourse_course_applications ca 
+                           JOIN shortcourse_students s ON ca.student_id = s.id 
+                           LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                            WHERE ca.status = 'pending'
                            ORDER BY ca.applied_at DESC 
                            LIMIT :limit OFFSET :offset");
@@ -392,7 +392,7 @@ try {
     $recent_applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get total course applications count (all statuses - matches admin-course-application.php?page=index)
-    $stmt = $conn->query("SELECT COUNT(*) as total_applications FROM course_applications");
+    $stmt = $conn->query("SELECT COUNT(*) as total_applications FROM shortcourse_course_applications");
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $approved_applications_count = $result ? (int)$result['total_applications'] : 0;
     
@@ -402,7 +402,7 @@ try {
     $approved_offset = ($approved_page - 1) * $approved_per_page;
     
     // Get total count for pagination (keeping this for backward compatibility)
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM course_applications WHERE status = 'approved'");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_course_applications WHERE status = 'approved'");
     $total_approved_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_approved_pages = ceil($total_approved_count / $approved_per_page);
     
@@ -411,9 +411,9 @@ try {
                                    ca.adviser, ca.training_start, ca.training_end,
                                    s.uli, s.first_name, s.last_name, s.email,
                                    c.course_name as course
-                           FROM course_applications ca
-                           JOIN students s ON ca.student_id = s.id
-                           LEFT JOIN courses c ON ca.course_id = c.course_id
+                           FROM shortcourse_course_applications ca
+                           JOIN shortcourse_students s ON ca.student_id = s.id
+                           LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                            WHERE ca.status = 'approved'
                            ORDER BY ca.reviewed_at DESC 
                            LIMIT :limit OFFSET :offset");

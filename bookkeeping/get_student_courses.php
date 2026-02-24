@@ -41,10 +41,10 @@ try {
                     CONCAT(s.first_name, ' ', s.last_name) as student_name,
                     br.receipt_number
                   FROM student_enrollments se
-                  INNER JOIN courses c ON se.course_id = c.course_id
+                  INNER JOIN shortcourse_courses c ON se.course_id = c.course_id
                   LEFT JOIN advisers a ON se.adviser_id = a.adviser_id
-                  INNER JOIN students s ON se.student_id = s.id
-                  LEFT JOIN bookkeeping_receipts br ON se.enrollment_id = br.enrollment_id
+                  INNER JOIN shortcourse_students s ON se.student_id = s.id
+                  LEFT JOIN shortcourse_bookkeeping_receipts br ON se.enrollment_id = br.enrollment_id
                   WHERE se.student_id = :student_id
                   ORDER BY se.enrolled_at DESC";
         
@@ -73,10 +73,10 @@ try {
                         ca.adviser as adviser_name,
                         CONCAT(s.first_name, ' ', s.last_name) as student_name,
                         br.receipt_number
-                      FROM course_applications ca
-                      INNER JOIN courses c ON ca.course_id = c.course_id
-                      INNER JOIN students s ON ca.student_id = s.id
-                      LEFT JOIN bookkeeping_receipts br ON ca.application_id = br.enrollment_id
+                      FROM shortcourse_course_applications ca
+                      INNER JOIN shortcourse_courses c ON ca.course_id = c.course_id
+                      INNER JOIN shortcourse_students s ON ca.student_id = s.id
+                      LEFT JOIN shortcourse_bookkeeping_receipts br ON ca.application_id = br.enrollment_id
                       WHERE ca.student_id = :student_id
                       AND ca.status IN ('approved', 'completed')
                       ORDER BY ca.applied_at DESC";
@@ -106,8 +106,8 @@ try {
                     s.adviser as adviser_name,
                     CONCAT(s.first_name, ' ', s.last_name) as student_name,
                     br.receipt_number
-                  FROM students s
-                  LEFT JOIN bookkeeping_receipts br ON s.id = br.enrollment_id
+                  FROM shortcourse_students s
+                  LEFT JOIN shortcourse_bookkeeping_receipts br ON s.id = br.enrollment_id
                   WHERE s.id = :student_id
                   AND s.course IS NOT NULL
                   AND s.course != ''";

@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($search_type === 'uli') {
             $uli = trim($_POST['uli']);
             if (!empty($uli)) {
-                $stmt = $conn->prepare("SELECT * FROM students WHERE uli = :uli");
+                $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE uli = :uli");
                 $stmt->bindParam(':uli', $uli);
                 $stmt->execute();
                 $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = 'Please enter a valid date of birth';
                 } else {
                     // Search with all criteria for exact match (case-insensitive)
-                    $stmt = $conn->prepare("SELECT * FROM students WHERE 
+                    $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE 
                         LOWER(TRIM(first_name)) = LOWER(TRIM(:first_name)) AND 
                         LOWER(TRIM(last_name)) = LOWER(TRIM(:last_name)) AND 
                         birthday = :birthday AND 
@@ -126,7 +126,7 @@ if (isset($_GET['student_id']) && is_numeric($_GET['student_id'])) {
         $database = new Database();
         $conn = $database->getConnection();
         
-        $stmt = $conn->prepare("SELECT * FROM students WHERE id = :id");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_students WHERE id = :id");
         $stmt->bindParam(':id', $_GET['student_id']);
         $stmt->execute();
         $student_profile = $stmt->fetch(PDO::FETCH_ASSOC);

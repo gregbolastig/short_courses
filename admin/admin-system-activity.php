@@ -57,8 +57,8 @@ try {
     $conn = $database->getConnection();
     
     // Get total count for pagination
-    $count_sql = "SELECT COUNT(*) as total FROM system_activities sa 
-                  LEFT JOIN users u ON sa.user_id = u.id 
+    $count_sql = "SELECT COUNT(*) as total FROM shortcourse_system_activities sa 
+                  LEFT JOIN shortcourse_users u ON sa.user_id = u.id 
                   $where_clause";
     $stmt = $conn->prepare($count_sql);
     foreach ($params as $key => $value) {
@@ -70,8 +70,8 @@ try {
     
     // Get activities with filters and pagination
     $sql = "SELECT sa.*, u.username 
-            FROM system_activities sa 
-            LEFT JOIN users u ON sa.user_id = u.id 
+            FROM shortcourse_system_activities sa 
+            LEFT JOIN shortcourse_users u ON sa.user_id = u.id 
             $where_clause 
             ORDER BY sa.created_at DESC 
             LIMIT :limit OFFSET :offset";
@@ -86,20 +86,20 @@ try {
     $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get activity types for filter (excluding system activities)
-    $stmt = $conn->query("SELECT DISTINCT activity_type FROM system_activities WHERE user_type IN ('student', 'admin') ORDER BY activity_type");
+    $stmt = $conn->query("SELECT DISTINCT activity_type FROM shortcourse_system_activities WHERE user_type IN ('student', 'admin') ORDER BY activity_type");
     $activity_types = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
     // Get statistics (excluding system activities)
-    $stmt = $conn->query("SELECT COUNT(*) as total FROM system_activities WHERE user_type IN ('student', 'admin')");
+    $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_system_activities WHERE user_type IN ('student', 'admin')");
     $total_activities_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    $stmt = $conn->query("SELECT COUNT(*) as today FROM system_activities WHERE DATE(created_at) = CURDATE() AND user_type IN ('student', 'admin')");
+    $stmt = $conn->query("SELECT COUNT(*) as today FROM shortcourse_system_activities WHERE DATE(created_at) = CURDATE() AND user_type IN ('student', 'admin')");
     $today_count = $stmt->fetch(PDO::FETCH_ASSOC)['today'];
     
-    $stmt = $conn->query("SELECT COUNT(*) as this_week FROM system_activities WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND user_type IN ('student', 'admin')");
+    $stmt = $conn->query("SELECT COUNT(*) as this_week FROM shortcourse_system_activities WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND user_type IN ('student', 'admin')");
     $week_count = $stmt->fetch(PDO::FETCH_ASSOC)['this_week'];
     
-    $stmt = $conn->query("SELECT COUNT(*) as this_month FROM system_activities WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND user_type IN ('student', 'admin')");
+    $stmt = $conn->query("SELECT COUNT(*) as this_month FROM shortcourse_system_activities WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND user_type IN ('student', 'admin')");
     $month_count = $stmt->fetch(PDO::FETCH_ASSOC)['this_month'];
     
 } catch (PDOException $e) {
@@ -117,7 +117,7 @@ try {
 
 // Get pending approvals count for sidebar
 try {
-    $stmt = $conn->query("SELECT COUNT(*) as pending FROM students WHERE status = 'pending'");
+    $stmt = $conn->query("SELECT COUNT(*) as pending FROM shortcourse_students WHERE status = 'pending'");
     $pending_approvals = $stmt->fetch(PDO::FETCH_ASSOC)['pending'];
 } catch (PDOException $e) {
     $pending_approvals = 0;

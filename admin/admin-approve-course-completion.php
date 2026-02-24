@@ -65,8 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':id', $student_id);
             $stmt->execute();
             
-            // Update course_applications table
-            $stmt = $conn->prepare("UPDATE course_applications SET 
+            // Update shortcourse_course_applications table
+            $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                 status = 'rejected',
                 reviewed_by = :admin_id,
                 reviewed_at = NOW()

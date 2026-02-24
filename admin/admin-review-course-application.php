@@ -55,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->beginTransaction();
                 
                 // Get student_id and course name first
-                $stmt = $conn->prepare("SELECT student_id FROM course_applications WHERE application_id = :app_id");
+                $stmt = $conn->prepare("SELECT student_id FROM shortcourse_course_applications WHERE application_id = :app_id");
                 $stmt->bindParam(':app_id', $application_id);
                 $stmt->execute();
                 $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
                 $student_id = $app_data['student_id'];
                 
                 // Get course name for students table
-                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = :course_id");
                 $stmt->bindParam(':course_id', $_POST['course_name']);
                 $stmt->execute();
                 $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Students may need to retake courses for different NC levels or as refresher training
                 
                 // Update course application with approved status (first approval)
-                $stmt = $conn->prepare("UPDATE course_applications SET 
+                $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                     status = 'approved',
                     course_id = :course_id,
                     nc_level = :nc_level,
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 // Update students table with course details and approved status (first approval)
-                $stmt = $conn->prepare("UPDATE students SET 
+                $stmt = $conn->prepare("UPDATE shortcourse_students SET 
                     course = :course_name,
                     nc_level = :nc_level,
                     adviser = :adviser,
@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $database = new Database();
             $conn = $database->getConnection();
             
-            $stmt = $conn->prepare("UPDATE course_applications SET 
+            $stmt = $conn->prepare("UPDATE shortcourse_course_applications SET 
                 status = 'rejected',
                 reviewed_by = :admin_id,
                 reviewed_at = NOW(),
@@ -202,10 +202,10 @@ try {
                            COALESCE(c.course_name, ca.course_id) as course_name,
                            c.course_name as application_course_name,
                            c2.course_name as student_course_name
-                           FROM course_applications ca 
-                           JOIN students s ON ca.student_id = s.id 
-                           LEFT JOIN courses c ON ca.course_id = c.course_id
-                           LEFT JOIN courses c2 ON s.course = c2.course_id
+                           FROM shortcourse_course_applications ca 
+                           JOIN shortcourse_students s ON ca.student_id = s.id 
+                           LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
+                           LEFT JOIN shortcourse_courses c2 ON s.course = c2.course_id
                            WHERE ca.application_id = :id AND ca.status = 'pending'");
     $stmt->bindParam(':id', $application_id);
     $stmt->execute();
@@ -259,8 +259,8 @@ try {
                            ca.applied_at,
                            ca.notes,
                            COALESCE(c.course_name, ca.course_id) as course_name
-                           FROM course_applications ca 
-                           LEFT JOIN courses c ON ca.course_id = c.course_id
+                           FROM shortcourse_course_applications ca 
+                           LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                            WHERE ca.student_id = :student_id 
                            AND ca.application_id != :current_id
                            ORDER BY ca.applied_at DESC");
@@ -287,7 +287,7 @@ try {
     }
     
     // Get available courses
-    $stmt = $conn->query("SELECT * FROM courses WHERE is_active = TRUE ORDER BY course_name");
+    $stmt = $conn->query("SELECT * FROM shortcourse_courses WHERE is_active = TRUE ORDER BY course_name");
     $available_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Get available advisers

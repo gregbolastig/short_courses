@@ -34,7 +34,7 @@ try {
                 course,
                 nc_level,
                 adviser
-              FROM students 
+              FROM shortcourse_students 
               WHERE 1=1";
     
     $params = [];

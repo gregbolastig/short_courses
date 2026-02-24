@@ -42,15 +42,15 @@ if ($page === 'index' && isset($_GET['delete']) && is_numeric($_GET['delete'])) 
         // Get application info before deleting
         $stmt = $conn->prepare("
             SELECT ca.*, s.first_name, s.last_name
-            FROM course_applications ca 
-            JOIN students s ON ca.student_id = s.id 
+            FROM shortcourse_course_applications ca 
+            JOIN shortcourse_students s ON ca.student_id = s.id 
             WHERE ca.application_id = ?
         ");
         $stmt->execute([$_GET['delete']]);
         $app = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($app) {
-            $stmt = $conn->prepare("DELETE FROM course_applications WHERE application_id = ?");
+            $stmt = $conn->prepare("DELETE FROM shortcourse_course_applications WHERE application_id = ?");
             $stmt->execute([$_GET['delete']]);
 
             $success_message = "Application for {$app['first_name']} {$app['last_name']} deleted successfully!";
@@ -85,8 +85,8 @@ if ($page === 'index' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
                 // Start transaction to ensure both updates succeed
                 $conn->beginTransaction();
 
-                // Get student_id from course_applications
-                $stmt = $conn->prepare("SELECT student_id FROM course_applications WHERE application_id = :app_id");
+                // Get student_id from shortcourse_course_applications
+                $stmt = $conn->prepare("SELECT student_id FROM shortcourse_course_applications WHERE application_id = :app_id");
                 $stmt->bindParam(':app_id', $application_id, PDO::PARAM_INT);
                 $stmt->execute();
                 $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -97,7 +97,7 @@ if ($page === 'index' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
                 }
 
                 // Get course name for students table
-                $stmt = $conn->prepare("SELECT course_name FROM courses WHERE course_id = :course_id");
+                $stmt = $conn->prepare("SELECT course_name FROM shortcourse_courses WHERE course_id = :course_id");
                 $stmt->bindParam(':course_id', $_POST['course_name'], PDO::PARAM_INT);
                 $stmt->execute();
                 $course_data = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -105,7 +105,7 @@ if ($page === 'index' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
 
                 // Update course application with approval and details
                 $stmt = $conn->prepare("
-                    UPDATE course_applications SET 
+                    UPDATE shortcourse_course_applications SET 
                         status = 'approved',
                         course_id = :course_id,
                         nc_level = :nc_level,
@@ -184,7 +184,7 @@ if ($page === 'index' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['
     } elseif ($action === 'reject' && !empty($application_id)) {
         try {
             $stmt = $conn->prepare("
-                UPDATE course_applications SET 
+                UPDATE shortcourse_course_applications SET 
                     status = 'rejected',
                     reviewed_by = :admin_id,
                     reviewed_at = NOW(),
@@ -231,14 +231,14 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
         
         // Password verified, proceed with deletion
         // Get application details for logging
-        $stmt = $conn->prepare("SELECT student_id, course_id FROM course_applications WHERE application_id = :id");
+        $stmt = $conn->prepare("SELECT student_id, course_id FROM shortcourse_course_applications WHERE application_id = :id");
         $stmt->bindParam(':id', $application_id, PDO::PARAM_INT);
         $stmt->execute();
         $app_data = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($app_data) {
             // Delete the application
-            $stmt = $conn->prepare("DELETE FROM course_applications WHERE application_id = :id");
+            $stmt = $conn->prepare("DELETE FROM shortcourse_course_applications WHERE application_id = :id");
             $stmt->bindParam(':id', $application_id, PDO::PARAM_INT);
             $stmt->execute();
             
@@ -328,9 +328,9 @@ if ($page === 'index') {
         // Get total count
         $count_sql = "
             SELECT COUNT(*) as total
-            FROM course_applications ca 
-            INNER JOIN students s ON ca.student_id = s.id 
-            LEFT JOIN courses c ON ca.course_id = c.course_id 
+            FROM shortcourse_course_applications ca 
+            INNER JOIN shortcourse_students s ON ca.student_id = s.id 
+            LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id 
             {$where_clause}
         ";
         $stmt = $conn->prepare($count_sql);
@@ -347,9 +347,9 @@ if ($page === 'index') {
                    s.email, s.age, s.sex, s.civil_status, s.province, s.city, s.barangay,
                    c.course_name, ca.nc_level,
                    u.username as reviewed_by_name
-            FROM course_applications ca
-            INNER JOIN students s ON ca.student_id = s.id
-            LEFT JOIN courses c ON ca.course_id = c.course_id
+            FROM shortcourse_course_applications ca
+            INNER JOIN shortcourse_students s ON ca.student_id = s.id
+            LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
             LEFT JOIN users u ON ca.reviewed_by = u.id
             {$where_clause}
             ORDER BY ca.applied_at DESC
@@ -366,7 +366,7 @@ if ($page === 'index') {
         $applications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Courses for filter and approval modal
-        $stmt = $conn->query("SELECT course_id, course_name FROM courses WHERE is_active = 1 ORDER BY course_name");
+        $stmt = $conn->query("SELECT course_id, course_name FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
         $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Advisers from faculty table for modal
@@ -404,9 +404,9 @@ if ($page === 'view') {
                        s.adviser, s.training_start, s.training_end,
                        COALESCE(c.course_name, ca.course_id) as course_name,
                        u.username as reviewed_by_name
-                FROM course_applications ca
-                INNER JOIN students s ON ca.student_id = s.id
-                LEFT JOIN courses c ON ca.course_id = c.course_id
+                FROM shortcourse_course_applications ca
+                INNER JOIN shortcourse_students s ON ca.student_id = s.id
+                LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                 LEFT JOIN users u ON ca.reviewed_by = u.id
                 WHERE ca.application_id = :id
             ");
@@ -420,8 +420,8 @@ if ($page === 'view') {
                 // Fetch course history for this student
                 $stmt = $conn->prepare("
                     SELECT ca.*, c.course_name, ca.reviewed_at, ca.applied_at
-                    FROM course_applications ca
-                    LEFT JOIN courses c ON ca.course_id = c.course_id
+                    FROM shortcourse_course_applications ca
+                    LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
                     WHERE ca.student_id = :student_id
                     ORDER BY ca.applied_at DESC
                 ");
@@ -455,9 +455,9 @@ if ($page === 'edit') {
         // Get application with student info
         $stmt = $conn->prepare("
             SELECT ca.*, s.first_name, s.last_name, s.student_id, c.course_name
-            FROM course_applications ca
-            JOIN students s ON ca.student_id = s.id
-            LEFT JOIN courses c ON ca.course_id = c.course_id
+            FROM shortcourse_course_applications ca
+            JOIN shortcourse_students s ON ca.student_id = s.id
+            LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
             WHERE ca.application_id = ?
         ");
         $stmt->execute([$application_id]);
@@ -469,7 +469,7 @@ if ($page === 'edit') {
         }
 
         // Get all courses
-        $stmt = $conn->query("SELECT course_id, course_name, nc_levels FROM courses WHERE is_active = 1 ORDER BY course_name");
+        $stmt = $conn->query("SELECT course_id, course_name, nc_levels FROM shortcourse_courses WHERE is_active = 1 ORDER BY course_name");
         $courses_for_edit = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Get all advisers from faculty table
@@ -489,7 +489,7 @@ if ($page === 'edit') {
             $adviser = !empty($_POST['adviser']) ? $_POST['adviser'] : null;
 
             $stmt = $conn->prepare("
-                UPDATE course_applications 
+                UPDATE shortcourse_course_applications 
                 SET course_id = ?, nc_level = ?, training_start = ?, training_end = ?, adviser = ?
                 WHERE application_id = ?
             ");
