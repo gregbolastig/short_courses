@@ -898,7 +898,7 @@ if ($page === 'edit') {
                                             ];
                                             ?>
                                             <?php if ($p > 1): ?>
-                                                <a href="course_application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $p - 1])); ?>"
+                                                <a href="admin-course-application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $p - 1])); ?>"
                                                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                     <i class="fas fa-chevron-left mr-2"></i>Previous
                                                 </a>
@@ -908,7 +908,7 @@ if ($page === 'edit') {
                                                     <?php if ($i === $p): ?>
                                                         <span class="inline-flex items-center justify-center w-10 h-10 border-2 border-indigo-500 rounded-lg text-sm font-bold text-white bg-indigo-600 shadow-md"><?php echo $i; ?></span>
                                                     <?php else: ?>
-                                                        <a href="course_application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $i])); ?>"
+                                                        <a href="admin-course-application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $i])); ?>"
                                                            class="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm">
                                                             <?php echo $i; ?>
                                                         </a>
@@ -916,7 +916,7 @@ if ($page === 'edit') {
                                                 <?php endfor; ?>
                                             </div>
                                             <?php if ($p < $total_pages): ?>
-                                                <a href="course_application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $p + 1])); ?>"
+                                                <a href="admin-course-application.php?<?php echo http_build_query(array_merge($queryBase, ['p' => $p + 1])); ?>"
                                                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm">
                                                     Next<i class="fas fa-chevron-right ml-2"></i>
                                                 </a>
@@ -995,7 +995,7 @@ if ($page === 'edit') {
                         const params = new URLSearchParams(window.location.search);
                         params.set('page', 'index');
                         params.set('delete', window._deleteApplicationId);
-                        window.location.href = 'course_application.php?' + params.toString();
+                        window.location.href = 'admin-course-application.php?' + params.toString();
                     }
                 </script>
 

@@ -592,6 +592,13 @@ function openApprovalModal(studentId, studentName, course = '', ncLevel = '', ad
     document.body.style.overflow = 'hidden';
 }
 
+// Alias function for course completion approval (same as openApprovalModal)
+function openCompletionApprovalModal(studentId, studentName, courseName, ncLevel = '', adviser = '', trainingStart = '', trainingEnd = '') {
+    console.log('openCompletionApprovalModal called', studentId, studentName, courseName, ncLevel);
+    // Use the same modal as openApprovalModal
+    openApprovalModal(studentId, studentName, '', ncLevel, adviser, trainingStart, trainingEnd);
+}
+
 function closeApprovalModal() {
     document.getElementById('approvalModal').classList.add('hidden');
     document.body.style.overflow = '';

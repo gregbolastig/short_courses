@@ -121,7 +121,7 @@ try {
                 <a href="admin-manage-students.php?page=index" class="border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 py-4 px-1 text-sm font-medium">
                     Manage Students
                 </a>
-                <a href="pending_approvals.php" class="border-b-2 border-secondary-500 text-secondary-600 py-4 px-1 text-sm font-medium">
+                <a href="admin-pending-approvals.php" class="border-b-2 border-secondary-500 text-secondary-600 py-4 px-1 text-sm font-medium">
                     Pending Approvals
                 </a>
             </div>
@@ -239,7 +239,7 @@ try {
                                             View Details
                                         </a>
                                         <div class="flex space-x-2">
-                                            <a href="approve_student.php?id=<?php echo $student['id']; ?>" 
+                                            <a href="admin-approve-student.php?id=<?php echo $student['id']; ?>" 
                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                                 <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
