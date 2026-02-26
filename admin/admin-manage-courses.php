@@ -79,7 +79,7 @@ if ($page === 'index') {
             $admin_password = $_POST['admin_password'];
             
             // Verify admin password
-            $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+            $stmt = $conn->prepare("SELECT password FROM shortcourse_users WHERE id = :user_id");
             $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
             $stmt->execute();
             $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -439,7 +439,7 @@ if ($page === 'view') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -468,6 +468,7 @@ if ($page === 'view') {
             }
         }
     </script>
+    <?php include 'components/dark-mode-config.php'; ?>
     <?php include 'components/admin-styles.php'; ?>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -869,22 +870,6 @@ if ($page === 'view') {
                                 }
                             }
                         });
-
-                        // Show success toast if needed
-                        <?php if ($show_success_toast): ?>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const courseName = <?php echo json_encode($success_toast_course_name); ?>;
-                            const message = <?php echo json_encode($success_toast_message); ?>;
-                            const fullMessage = courseName ? `${message} Course: "${courseName}"` : message;
-                            showToast(fullMessage, 'success');
-                            
-                            // Clean up URL parameters
-                            const url = new URL(window.location);
-                            url.searchParams.delete('success');
-                            url.searchParams.delete('course_name');
-                            window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
-                        });
-                        <?php endif; ?>
                     </script>
                 <?php endif; ?>
 
@@ -1101,16 +1086,11 @@ if ($page === 'view') {
                             <?php endif; ?>
 
                             <?php if (isset($success_message)): ?>
-                                <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-check-circle text-green-400"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    showToast('<?php echo addslashes($success_message); ?>', 'success');
+                                });
+                            </script>
                             <?php endif; ?>
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">

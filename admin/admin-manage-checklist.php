@@ -49,7 +49,7 @@ if ($page === 'index') {
             $admin_password = $_POST['admin_password'];
             
             // Verify admin password
-            $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+            $stmt = $conn->prepare("SELECT password FROM shortcourse_users WHERE id = :user_id");
             $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
             $stmt->execute();
             $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -58,11 +58,11 @@ if ($page === 'index') {
                 $error_message = 'Invalid password. Deletion cancelled.';
             } else {
                 // Password verified, proceed with deletion
-                $stmt = $conn->prepare("SELECT document_name FROM checklist WHERE id = ?");
+                $stmt = $conn->prepare("SELECT document_name FROM shortcourse_checklist WHERE id = ?");
                 $stmt->execute([$item_id]);
                 $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                $stmt = $conn->prepare("DELETE FROM checklist WHERE id = ?");
+                $stmt = $conn->prepare("DELETE FROM shortcourse_checklist WHERE id = ?");
                 $stmt->execute([$item_id]);
 
                 if ($item) {
@@ -114,7 +114,7 @@ if ($page === 'index') {
             $params[':search'] = "%{$search}%";
         }
 
-        $count_sql = "SELECT COUNT(*) as total FROM checklist {$search_condition}";
+        $count_sql = "SELECT COUNT(*) as total FROM shortcourse_checklist {$search_condition}";
         $stmt = $conn->prepare($count_sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -123,7 +123,7 @@ if ($page === 'index') {
         $total_items = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
         $total_pages = (int)ceil($total_items / $per_page);
 
-        $sql = "SELECT * FROM checklist {$search_condition} ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT * FROM shortcourse_checklist {$search_condition} ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $conn->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -133,7 +133,7 @@ if ($page === 'index') {
         $stmt->execute();
         $checklist_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmt = $conn->query("SELECT COUNT(*) as total FROM checklist");
+        $stmt = $conn->query("SELECT COUNT(*) as total FROM shortcourse_checklist");
         $total_checklist_count = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
     } catch (PDOException $e) {
         $error_message = "Database error: " . $e->getMessage();
@@ -161,7 +161,7 @@ if ($page === 'add') {
                 throw new RuntimeException('Document name is required.');
             }
 
-            $stmt = $conn->prepare("INSERT INTO checklist (document_name) VALUES (?)");
+            $stmt = $conn->prepare("INSERT INTO shortcourse_checklist (document_name) VALUES (?)");
             $stmt->execute([$document_name]);
 
             $logger->log(
@@ -197,7 +197,7 @@ if ($page === 'edit') {
     }
 
     try {
-        $stmt = $conn->prepare("SELECT * FROM checklist WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM shortcourse_checklist WHERE id = ?");
         $stmt->execute([$item_id]);
         $checklist_item = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -221,7 +221,7 @@ if ($page === 'edit') {
                 throw new RuntimeException('Document name is required.');
             }
 
-            $stmt = $conn->prepare("UPDATE checklist SET document_name = ? WHERE id = ?");
+            $stmt = $conn->prepare("UPDATE shortcourse_checklist SET document_name = ? WHERE id = ?");
             $stmt->execute([$document_name, $item_id]);
 
             $logger->log(
@@ -242,38 +242,20 @@ if ($page === 'edit') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?> - Student Registration System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            300: '#93c5fd',
-                            400: '#60a5fa',
-                            500: '#1e3a8a',
-                            600: '#1e40af',
-                            700: '#1d4ed8',
-                            800: '#1e3a8a',
-                            900: '#1e293b'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'components/dark-mode-config.php'; ?>
     <?php include 'components/admin-styles.php'; ?>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
     <div class="min-h-screen bg-gray-50">
         <?php include 'components/sidebar.php'; ?>
 
@@ -300,29 +282,19 @@ if ($page === 'edit') {
                             </div>
 
                             <?php if ($error_message): ?>
-                                <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-exclamation-triangle text-red-400"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    showToast('<?php echo addslashes($error_message); ?>', 'error');
+                                });
+                            </script>
                             <?php endif; ?>
 
                             <?php if ($success_message): ?>
-                                <div class="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-check-circle text-green-400"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-green-700"><?php echo htmlspecialchars($success_message); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    showToast('<?php echo addslashes($success_message); ?>', 'success');
+                                });
+                            </script>
                             <?php endif; ?>
 
                             <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
@@ -626,16 +598,11 @@ if ($page === 'edit') {
                             </div>
 
                             <?php if ($error_message): ?>
-                                <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-exclamation-triangle text-red-400"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    showToast('<?php echo addslashes($error_message); ?>', 'error');
+                                });
+                            </script>
                             <?php endif; ?>
 
                             <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
@@ -701,16 +668,11 @@ if ($page === 'edit') {
                             </div>
 
                             <?php if ($error_message): ?>
-                                <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg animate-fade-in">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-exclamation-triangle text-red-400"></i>
-                                        </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm text-red-700"><?php echo htmlspecialchars($error_message); ?></p>
-                                        </div>
-                                    </div>
-                                </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    showToast('<?php echo addslashes($error_message); ?>', 'error');
+                                });
+                            </script>
                             <?php endif; ?>
 
                             <?php if ($checklist_item): ?>

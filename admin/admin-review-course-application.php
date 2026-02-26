@@ -290,8 +290,8 @@ try {
     $stmt = $conn->query("SELECT * FROM shortcourse_courses WHERE is_active = TRUE ORDER BY course_name");
     $available_courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get available advisers
-    $stmt = $conn->query("SELECT * FROM advisers WHERE is_active = TRUE ORDER BY adviser_name");
+    // Get available advisers from faculty table
+    $stmt = $conn->query("SELECT faculty_id, name FROM faculty WHERE status = 'Active' ORDER BY name");
     $advisers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
@@ -300,14 +300,14 @@ try {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Course Application - Admin</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <?php include 'components/dark-mode-config.php'; ?>
         tailwind.config = {
             theme: {
                 extend: {
@@ -326,6 +326,9 @@ try {
     </script>
 </head>
 <body class="bg-gray-50">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
     <?php include 'components/sidebar.php'; ?>
     
     <!-- Main Content -->
@@ -752,8 +755,8 @@ try {
                                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900">
                                         <option value="">Select an adviser</option>
                                         <?php foreach ($advisers as $adviser): ?>
-                                            <option value="<?php echo htmlspecialchars($adviser['adviser_name']); ?>">
-                                                <?php echo htmlspecialchars($adviser['adviser_name']); ?>
+                                            <option value="<?php echo htmlspecialchars($adviser['name']); ?>">
+                                                <?php echo htmlspecialchars($adviser['name']); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -961,5 +964,7 @@ try {
         });
         <?php endif; ?>
     </script>
+    
+    <?php include 'components/admin-scripts.php'; ?>
 </body>
 </html>

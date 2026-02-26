@@ -147,10 +147,10 @@ function createDatabaseAndTable() {
         // Don't insert sample advisers - let users add them manually
         
         // Insert default admin user if not exists
-        $admin_check = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
+        $admin_check = $pdo->query("SELECT COUNT(*) FROM shortcourse_users WHERE role = 'admin'");
         if ($admin_check->fetchColumn() == 0) {
             $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT IGNORE INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT IGNORE INTO shortcourse_users (username, email, password, role) VALUES (?, ?, ?, ?)");
             $stmt->execute(['admin', 'admin@system.com', $admin_password, 'admin']);
         }
         

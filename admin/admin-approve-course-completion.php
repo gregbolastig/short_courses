@@ -110,14 +110,14 @@ try {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Approve Course Completion - Admin</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
+    <?php include 'components/dark-mode-config.php'; ?>
         tailwind.config = {
             theme: {
                 extend: {

@@ -218,7 +218,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
     
     // Verify admin password
     try {
-        $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+        $stmt = $conn->prepare("SELECT password FROM shortcourse_users WHERE id = :user_id");
         $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
         $stmt->execute();
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -634,30 +634,14 @@ if ($page === 'edit') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?> - Jacobo Z. Gonzales Memorial School of Arts and Trades</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            900: '#1e3a8a'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <?php include 'components/dark-mode-config.php'; ?>
     <?php if ($page === 'edit'): ?>
         <?php include 'components/admin-styles.php'; ?>
         <style>

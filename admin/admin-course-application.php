@@ -217,7 +217,7 @@ if (isset($_POST['action'], $_POST['id'], $_POST['admin_password']) && $_POST['a
     
     // Verify admin password
     try {
-        $stmt = $conn->prepare("SELECT password FROM users WHERE id = :user_id");
+        $stmt = $conn->prepare("SELECT password FROM shortcourse_users WHERE id = :user_id");
         $stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
         $stmt->execute();
         $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -350,7 +350,7 @@ if ($page === 'index') {
             FROM shortcourse_course_applications ca
             INNER JOIN shortcourse_students s ON ca.student_id = s.id
             LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
-            LEFT JOIN users u ON ca.reviewed_by = u.id
+            LEFT JOIN shortcourse_users u ON ca.reviewed_by = u.id
             {$where_clause}
             ORDER BY ca.applied_at DESC
             LIMIT :limit OFFSET :offset
@@ -407,7 +407,7 @@ if ($page === 'view') {
                 FROM shortcourse_course_applications ca
                 INNER JOIN shortcourse_students s ON ca.student_id = s.id
                 LEFT JOIN shortcourse_courses c ON ca.course_id = c.course_id
-                LEFT JOIN users u ON ca.reviewed_by = u.id
+                LEFT JOIN shortcourse_users u ON ca.reviewed_by = u.id
                 WHERE ca.application_id = :id
             ");
             $stmt->bindParam(':id', $_GET['id'], PDO::PARAM_INT);
@@ -521,7 +521,7 @@ if ($page === 'edit') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -545,6 +545,7 @@ if ($page === 'edit') {
             }
         }
     </script>
+    <?php include 'components/dark-mode-config.php'; ?>
     <?php include 'components/admin-styles.php'; ?>
 </head>
 <body class="bg-gray-50 min-h-screen">
