@@ -28,8 +28,16 @@
                 
                 if (empty($password)) {
                     $error = 'Please enter a password';
-                } elseif (strlen($password) < 6) {
-                    $error = 'Password must be at least 6 characters long';
+                } elseif (strlen($password) < 8) {
+                    $error = 'Password must be at least 8 characters long';
+                } elseif (!preg_match('/[a-z]/', $password)) {
+                    $error = 'Password must contain at least one lowercase letter';
+                } elseif (!preg_match('/[A-Z]/', $password)) {
+                    $error = 'Password must contain at least one uppercase letter';
+                } elseif (!preg_match('/[0-9]/', $password)) {
+                    $error = 'Password must contain at least one number';
+                } elseif (!preg_match('/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/', $password)) {
+                    $error = 'Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)';
                 } else {
                     $hash = password_hash($password, PASSWORD_DEFAULT);
                 }
@@ -104,9 +112,37 @@ VALUES (
                                name="password" 
                                required
                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Enter password (min 6 characters)"
+                               placeholder="Enter strong password"
                                value="<?php echo htmlspecialchars($password); ?>">
                     </div>
+                    
+                    <!-- Password Requirements -->
+                    <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs font-semibold text-gray-700 mb-2">Password must contain:</p>
+                        <div class="space-y-1 text-xs text-gray-600">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-gray-400 mr-2"></i>
+                                <span>At least 8 characters</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-gray-400 mr-2"></i>
+                                <span>One lowercase letter (a-z)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-gray-400 mr-2"></i>
+                                <span>One uppercase letter (A-Z)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-gray-400 mr-2"></i>
+                                <span>One number (0-9)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-gray-400 mr-2"></i>
+                                <span>One special character (!@#$%^&*...)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <p class="mt-2 text-sm text-gray-500">
                         <i class="fas fa-shield-alt mr-1"></i>
                         Password will be hashed using PHP's password_hash() with PASSWORD_DEFAULT

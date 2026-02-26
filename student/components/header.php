@@ -24,16 +24,16 @@ $header_class = $header_class ?? 'bg-gradient-to-r from-primary-600 via-primary-
                 extend: {
                     colors: {
                         primary: {
-                            50: '#fdf2f2',
-                            100: '#fce7e7',
-                            200: '#f9d5d5',
-                            300: '#f4b5b5',
-                            400: '#ec8888',
-                            500: '#800000',
-                            600: '#660000',
-                            700: '#5c0000',
-                            800: '#4a0000',
-                            900: '#3d0000'
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
                         },
                         maroon: {
                             50: '#fdf2f2',
