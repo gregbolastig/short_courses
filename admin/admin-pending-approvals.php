@@ -20,7 +20,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             $conn = $database->getConnection();
             
             $status = ($action === 'approve') ? 'approved' : 'rejected';
-            $stmt = $conn->prepare("UPDATE students SET status = :status, approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
+            $stmt = $conn->prepare("UPDATE shortcourse_students SET status = :status, approved_by = :admin_id, approved_at = NOW() WHERE id = :id");
             $stmt->bindParam(':status', $status);
             $stmt->bindParam(':admin_id', $_SESSION['user_id']);
             $stmt->bindParam(':id', $student_id);
@@ -48,7 +48,7 @@ try {
     $database = new Database();
     $conn = $database->getConnection();
     
-    $stmt = $conn->query("SELECT * FROM students WHERE status = 'pending' ORDER BY created_at ASC");
+    $stmt = $conn->query("SELECT * FROM shortcourse_students WHERE status = 'pending' ORDER BY created_at ASC");
     $pending_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
@@ -56,41 +56,33 @@ try {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<?php echo ($_SESSION['theme_preference'] ?? 'light') === 'dark' ? 'dark' : ''; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pending Approvals - Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            300: '#93c5fd',
-                            400: '#60a5fa',
-                            500: '#1e3a8a',
-                            600: '#1e40af',
-                            700: '#1d4ed8',
-                            800: '#1e3a8a',
-                            900: '#1e293b'
-                        },
-                        secondary: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            500: '#334155',
-                            600: '#475569',
-                            700: '#64748b'
+        // Tailwind config must be set before loading Tailwind CDN
+        window.tailwind = {
+            config: {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: {
+                                50: '#eff6ff',
+                                500: '#3b82f6',
+                                600: '#2563eb',
+                                700: '#1d4ed8',
+                                900: '#1e3a8a'
+                            }
                         }
                     }
                 }
             }
-        }
+        };
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <?php include 'components/dark-mode-config.php'; ?>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->

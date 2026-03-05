@@ -39,7 +39,7 @@ try {
         echo "</pre>";
         
         // Count applications
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM course_applications");
+        $stmt = $conn->query("SELECT COUNT(*) as count FROM shortcourse_course_applications");
         $count = $stmt->fetch(PDO::FETCH_ASSOC);
         echo "<p>Total applications: " . $count['count'] . "</p>";
     } catch(PDOException $e) {
@@ -55,7 +55,7 @@ try {
         echo "</pre>";
         
         // Count courses
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM courses");
+        $stmt = $conn->query("SELECT COUNT(*) as count FROM shortcourse_courses");
         $count = $stmt->fetch(PDO::FETCH_ASSOC);
         echo "<p>Total courses: " . $count['count'] . "</p>";
     } catch(PDOException $e) {
@@ -75,7 +75,7 @@ try {
     
     // Sample student data
     echo "<h3>Sample Students (first 5):</h3>";
-    $stmt = $conn->query("SELECT id, student_id, first_name, last_name, uli, course, nc_level, adviser, status FROM students LIMIT 5");
+    $stmt = $conn->query("SELECT id, student_id, first_name, last_name, uli, course, nc_level, adviser, status FROM shortcourse_students LIMIT 5");
     echo "<pre>";
     print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
     echo "</pre>";

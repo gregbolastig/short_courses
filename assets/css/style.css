@@ -2,9 +2,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-    --primary-color: #1e3a8a; /* Navy Blue */
-    --primary-light: #3b82f6;
-    --primary-dark: #1e293b;
+    --primary-color: #800000; /* Maroon */
+    --primary-light: #a52a2a;
+    --primary-dark: #5c0000;
     --secondary-color: #334155; /* Slate */
     --secondary-light: #475569;
     --secondary-dark: #1e293b;

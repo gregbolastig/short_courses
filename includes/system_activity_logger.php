@@ -43,7 +43,7 @@ class SystemActivityLogger {
                 $user_agent = $_SERVER['HTTP_USER_AGENT'];
             }
             
-            $sql = "INSERT INTO system_activities (
+            $sql = "INSERT INTO shortcourse_system_activities (
                         user_id, user_type, activity_type, activity_description, 
                         entity_type, entity_id, ip_address, user_agent
                     ) VALUES (

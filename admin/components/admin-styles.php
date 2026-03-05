@@ -45,6 +45,13 @@
     background: #a8a8a8;
 }
 
+/* Profile dropdown width - matches sidebar width */
+.profile-dropdown-width {
+    width: 14rem; /* 224px - matches sidebar width minus padding */
+    left: 0.75rem; /* 12px - matches sidebar padding */
+    right: 0.75rem; /* 12px - matches sidebar padding */
+}
+
 /* Sidebar toggle button - specific styling */
 button[onclick="toggleSidebar()"] {
     @apply bg-white bg-opacity-10 rounded w-5 h-5 flex items-center justify-center transition-all duration-200 hover:bg-opacity-20 hover:scale-110;

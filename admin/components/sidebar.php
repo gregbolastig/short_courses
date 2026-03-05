@@ -121,7 +121,7 @@
                     </button>
                     
                     <!-- Profile Dropdown -->
-                    <div id="profile-dropdown" class="hidden absolute bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 profile-dropdown-width">
+                    <div id="profile-dropdown" class="hidden absolute bottom-full left-0 right-0 mb-2 mx-3 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                         <div class="px-4 py-3 border-b border-gray-100">
                             <div class="flex items-center space-x-3">
                                 <div class="bg-blue-600 rounded-full p-2">
@@ -165,7 +165,7 @@
                         <?php endif; ?>
                         
                         <div class="py-1">
-                            <a href="<?php echo $in_subfolder ? '../profile.php' : 'profile.php'; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                            <a href="<?php echo $in_subfolder ? '../admin-profile.php' : 'admin-profile.php'; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-blue-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-user-cog text-blue-600"></i>
                                 </div>
@@ -174,7 +174,7 @@
                                     <p class="text-xs text-gray-500">Manage your profile</p>
                                 </div>
                             </a>
-                            <a href="<?php echo $in_subfolder ? '../preferences.php' : 'preferences.php'; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
+                            <a href="<?php echo $in_subfolder ? '../admin-preferences.php' : 'admin-preferences.php'; ?>" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200">
                                 <div class="bg-purple-100 rounded-lg p-2 mr-3">
                                     <i class="fas fa-cog text-purple-600"></i>
                                 </div>

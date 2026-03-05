@@ -1,8 +1,11 @@
 <?php
+// Set timezone to Philippines
+date_default_timezone_set('Asia/Manila');
+
 // Database configuration and setup
 class Database {
     private $host = 'localhost';
-    private $db_name = 'student_registration_db';
+    private $db_name = 'grading_system';
     private $username = 'root';
     private $password = '';
     private $conn;
@@ -147,10 +150,10 @@ function createDatabaseAndTable() {
         // Don't insert sample advisers - let users add them manually
         
         // Insert default admin user if not exists
-        $admin_check = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
+        $admin_check = $pdo->query("SELECT COUNT(*) FROM shortcourse_users WHERE role = 'admin'");
         if ($admin_check->fetchColumn() == 0) {
             $admin_password = password_hash('admin123', PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT IGNORE INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT IGNORE INTO shortcourse_users (username, email, password, role) VALUES (?, ?, ?, ?)");
             $stmt->execute(['admin', 'admin@system.com', $admin_password, 'admin']);
         }
         

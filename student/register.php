@@ -147,28 +147,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $database = new Database();
             $conn = $database->getConnection();
             
+            if (!$conn) {
+                $errors[] = 'Database connection failed';
+                error_log("Database connection failed in registration");
+            } else {
+                // Verify table exists
+                $stmt = $conn->prepare("SHOW TABLES LIKE 'shortcourse_students'");
+                $stmt->execute();
+                if (!$stmt->fetch()) {
+                    $errors[] = 'Database table shortcourse_students does not exist';
+                    error_log("Table shortcourse_students does not exist");
+                }
+            }
+            
             // Check for unique student_id
-            $stmt = $conn->prepare("SELECT id FROM students WHERE student_id = :student_id");
+            $stmt = $conn->prepare("SELECT id FROM shortcourse_students WHERE student_id = :student_id");
             $stmt->bindParam(':student_id', $student_id);
             $stmt->execute();
             
             // Generate new student_id if current one exists
             while ($stmt->fetch()) {
                 $student_id = 'STU' . date('Y') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-                $stmt = $conn->prepare("SELECT id FROM students WHERE student_id = :student_id");
+                $stmt = $conn->prepare("SELECT id FROM shortcourse_students WHERE student_id = :student_id");
                 $stmt->bindParam(':student_id', $student_id);
                 $stmt->execute();
             } 
            
-            $sql = "INSERT INTO students (
+            // Combine birth province and city into place_of_birth
+            $place_of_birth = ($_POST['birth_city'] ?? '') . ', ' . ($_POST['birth_province'] ?? '');
+           
+            $sql = "INSERT INTO shortcourse_students (
                 student_id, first_name, middle_name, last_name, extension_name, birthday, age, sex, civil_status,
-                contact_number, province, city, barangay, street_address, birth_province, birth_city,
+                contact_number, province, city, barangay, street_address, place_of_birth,
                 guardian_last_name, guardian_first_name, guardian_middle_name, guardian_extension, parent_contact, 
                 email, profile_picture, uli, last_school, school_province, school_city, 
                 verification_code, is_verified, status
             ) VALUES (
                 :student_id, :first_name, :middle_name, :last_name, :extension_name, :birthday, :age, :sex, :civil_status,
-                :contact_number, :province, :city, :barangay, :street_address, :birth_province, :birth_city,
+                :contact_number, :province, :city, :barangay, :street_address, :place_of_birth,
                 :guardian_last_name, :guardian_first_name, :guardian_middle_name, :guardian_extension, :parent_contact,
                 :email, :profile_picture, :uli, :last_school, :school_province, :school_city,
                 :verification_code, TRUE, 'pending'
@@ -194,8 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':city', $_POST['city']);
             $stmt->bindParam(':barangay', $_POST['barangay']);
             $stmt->bindParam(':street_address', $_POST['street_address']);
-            $stmt->bindParam(':birth_province', $_POST['birth_province']);
-            $stmt->bindParam(':birth_city', $_POST['birth_city']);
+            $stmt->bindParam(':place_of_birth', $place_of_birth);
             $stmt->bindParam(':guardian_last_name', $_POST['guardian_last_name']);
             $stmt->bindParam(':guardian_first_name', $_POST['guardian_first_name']);
             $stmt->bindParam(':guardian_middle_name', $_POST['guardian_middle_name']);
@@ -243,6 +258,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
         } catch (PDOException $e) {
+            // Log the detailed error for debugging
+            error_log("Registration Error: " . $e->getMessage());
+            error_log("Error Code: " . $e->getCode());
+            error_log("SQL State: " . $e->errorInfo[0] ?? 'N/A');
+            
             if ($e->getCode() == 23000) {
                 $errors[] = 'Email or ULI already exists. Please use different values.';
             } else {
@@ -445,14 +465,31 @@ include 'components/header.php';
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="form-group">
+                            <label for="region" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-globe text-gray-400 mr-2"></i>Region
+                            </label>
+                            <select id="region" name="region_reference" 
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                <option value="">Loading regions...</option>
+                            </select>
+                            <div id="region-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
+                                <div class="loading-spinner mr-2"></div>
+                                Loading regions...
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Optional - helps filter provinces
+                            </p>
+                        </div>
                         <div class="form-group">
                             <label for="province" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-map text-primary-500 mr-2"></i>Province *
                             </label>
                             <select id="province" name="province" required 
                                     class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                <option value="">Loading provinces...</option>
+                                <option value="">Select region first</option>
                             </select>
                             <div id="province-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
                                 <div class="loading-spinner mr-2"></div>
@@ -465,7 +502,7 @@ include 'components/header.php';
                             </label>
                             <select id="city" name="city" required 
                                     class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                <option value="">Select city/municipality</option>
+                                <option value="">Select province first</option>
                             </select>
                             <div id="city-loading" class="hidden mt-2 flex items-center text-sm text-gray-500">
                                 <div class="loading-spinner mr-2"></div>
@@ -503,14 +540,24 @@ include 'components/header.php';
                         <h4 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                             <i class="fas fa-baby text-primary-500 mr-2"></i>Place of Birth *
                         </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="form-group">
+                                <label for="birth_region" class="block text-sm font-semibold text-gray-700 mb-2">
+                                    <i class="fas fa-globe text-gray-400 mr-2"></i>Region
+                                </label>
+                                <select id="birth_region" name="birth_region_reference" 
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                    <option value="">Select region</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Optional</p>
+                            </div>
                             <div class="form-group">
                                 <label for="birth_province" class="block text-sm font-semibold text-gray-700 mb-2">
                                     <i class="fas fa-map text-primary-500 mr-2"></i>Province *
                                 </label>
                                 <select id="birth_province" name="birth_province" required 
                                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                    <option value="">Select province</option>
+                                    <option value="">Select region first</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -519,7 +566,7 @@ include 'components/header.php';
                                 </label>
                                 <select id="birth_city" name="birth_city" required 
                                         class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                    <option value="">Select city/municipality</option>
+                                    <option value="">Select province first</option>
                                 </select>
                             </div>
                         </div>
@@ -641,14 +688,24 @@ include 'components/header.php';
                         </p>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="form-group">
+                            <label for="school_region" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-globe text-gray-400 mr-2"></i>School Region
+                            </label>
+                            <select id="school_region" name="school_region_reference" 
+                                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
+                                <option value="">Select region</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Optional</p>
+                        </div>
                         <div class="form-group">
                             <label for="school_province" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-map text-primary-500 mr-2"></i>School Province *
                             </label>
                             <select id="school_province" name="school_province" required 
                                     class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                <option value="">Select school province</option>
+                                <option value="">Select region first</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -657,7 +714,7 @@ include 'components/header.php';
                             </label>
                             <select id="school_city" name="school_city" required 
                                     class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 hover:border-gray-300">
-                                <option value="">Select school city/municipality</option>
+                                <option value="">Select province first</option>
                             </select>
                         </div>
                     </div>
@@ -1032,14 +1089,44 @@ include 'components/header.php';
             });
         }
         
-        // Load provinces
-        async function loadProvinces(selectId) {
+        // Load regions
+        async function loadRegions(selectId) {
             try {
-                console.log(`Loading provinces for ${selectId}`);
+                console.log(`Loading regions for ${selectId}`);
                 showLoading(selectId);
-                const response = await fetch(`${PSGC_API_BASE}/provinces/`);
-                const provinces = await response.json();
-                console.log(`Loaded ${provinces.length} provinces for ${selectId}:`, provinces.slice(0, 3));
+                const response = await fetch(`${PSGC_API_BASE}/regions/`);
+                const regions = await response.json();
+                console.log(`Loaded ${regions.length} regions for ${selectId}`);
+                
+                populateSelect(selectId, regions, 'Select region');
+                hideLoading(selectId);
+            } catch (error) {
+                console.error('Error loading regions:', error);
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">Error loading regions</option>';
+                hideLoading(selectId);
+            }
+        }
+        
+        // Load provinces by region
+        async function loadProvincesByRegion(regionCode, selectId) {
+            try {
+                console.log(`Loading provinces for region ${regionCode} into ${selectId}`);
+                showLoading(selectId);
+                
+                let provinces = [];
+                
+                // Special handling for NCR (has cities directly, no provinces)
+                if (regionCode === '130000000') {
+                    // For NCR, we'll create a pseudo-province entry
+                    provinces = [{ code: regionCode, name: 'Metro Manila' }];
+                } else {
+                    // Load provinces for other regions
+                    const response = await fetch(`${PSGC_API_BASE}/regions/${regionCode}/provinces/`);
+                    provinces = await response.json();
+                }
+                
+                console.log(`Loaded ${provinces.length} provinces for ${selectId}`);
                 
                 populateSelect(selectId, provinces, 'Select province');
                 hideLoading(selectId);
@@ -1052,13 +1139,24 @@ include 'components/header.php';
         }
         
         // Load cities/municipalities
-        async function loadCities(provinceCode, selectId) {
+        async function loadCities(provinceCode, selectId, regionCode = null) {
             try {
                 console.log(`Loading cities for province ${provinceCode} into ${selectId}`);
                 showLoading(selectId);
-                const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
-                const cities = await response.json();
-                console.log(`Loaded ${cities.length} cities for ${selectId}:`, cities);
+                
+                let cities = [];
+                
+                // Special handling for NCR - load cities directly from region
+                if (regionCode === '130000000' || provinceCode === '130000000') {
+                    const response = await fetch(`${PSGC_API_BASE}/regions/130000000/cities-municipalities/`);
+                    cities = await response.json();
+                } else {
+                    // Regular provinces
+                    const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
+                    cities = await response.json();
+                }
+                
+                console.log(`Loaded ${cities.length} cities for ${selectId}`);
                 
                 populateSelect(selectId, cities, 'Select city/municipality');
                 hideLoading(selectId);
@@ -1731,10 +1829,10 @@ include 'components/header.php';
             // Save form data on input changes
             setupFormPersistence();
             
-            // Load provinces for address, birth place, and school
-            loadProvinces('province');
-            loadProvinces('birth_province');
-            loadProvinces('school_province');
+            // Load regions for all location sections
+            loadRegions('region');
+            loadRegions('birth_region');
+            loadRegions('school_region');
             
             // Load country codes for phone numbers
             loadCountryCodes('country_code');
@@ -1912,24 +2010,49 @@ include 'components/header.php';
                 }
             });
             
-            // Province change handlers
+            // ===== ADDRESS SECTION CASCADING DROPDOWNS =====
+            
+            // Region change handler for address
+            const regionSelect = document.getElementById('region');
+            if (regionSelect) {
+                regionSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const regionCode = selectedOption.dataset.code;
+                    
+                    // Clear dependent dropdowns
+                    document.getElementById('province').innerHTML = '<option value="">Select province</option>';
+                    document.getElementById('city').innerHTML = '<option value="">Select province first</option>';
+                    document.getElementById('barangay').innerHTML = '<option value="">Select city first</option>';
+                    
+                    if (regionCode) {
+                        loadProvincesByRegion(regionCode, 'province');
+                    }
+                });
+            }
+            
+            // Province change handler for address
             const provinceSelect = document.getElementById('province');
             if (provinceSelect) {
                 provinceSelect.addEventListener('change', function() {
                     const selectedOption = this.options[this.selectedIndex];
                     const provinceCode = selectedOption.dataset.code;
                     
+                    // Get region code for special handling
+                    const regionSelect = document.getElementById('region');
+                    const regionOption = regionSelect.options[regionSelect.selectedIndex];
+                    const regionCode = regionOption.dataset.code;
+                    
                     // Clear dependent dropdowns
                     document.getElementById('city').innerHTML = '<option value="">Select city/municipality</option>';
-                    document.getElementById('barangay').innerHTML = '<option value="">Select barangay</option>';
+                    document.getElementById('barangay').innerHTML = '<option value="">Select city first</option>';
                     
                     if (provinceCode) {
-                        loadCities(provinceCode, 'city');
+                        loadCities(provinceCode, 'city', regionCode);
                     }
                 });
             }
             
-            // City change handler
+            // City change handler for address
             const citySelect = document.getElementById('city');
             if (citySelect) {
                 citySelect.addEventListener('change', function() {
@@ -1945,18 +2068,21 @@ include 'components/header.php';
                 });
             }
             
-            // School province change handler
-            const schoolProvinceSelect = document.getElementById('school_province');
-            if (schoolProvinceSelect) {
-                schoolProvinceSelect.addEventListener('change', function() {
+            // ===== BIRTH PLACE SECTION CASCADING DROPDOWNS =====
+            
+            // Birth region change handler
+            const birthRegionSelect = document.getElementById('birth_region');
+            if (birthRegionSelect) {
+                birthRegionSelect.addEventListener('change', function() {
                     const selectedOption = this.options[this.selectedIndex];
-                    const provinceCode = selectedOption.dataset.code;
+                    const regionCode = selectedOption.dataset.code;
                     
-                    // Clear school city dropdown
-                    document.getElementById('school_city').innerHTML = '<option value="">Select school city/municipality</option>';
+                    // Clear dependent dropdowns
+                    document.getElementById('birth_province').innerHTML = '<option value="">Select province</option>';
+                    document.getElementById('birth_city').innerHTML = '<option value="">Select province first</option>';
                     
-                    if (provinceCode) {
-                        loadCities(provinceCode, 'school_city');
+                    if (regionCode) {
+                        loadProvincesByRegion(regionCode, 'birth_province');
                     }
                 });
             }
@@ -1965,17 +2091,59 @@ include 'components/header.php';
             const birthProvinceSelect = document.getElementById('birth_province');
             if (birthProvinceSelect) {
                 birthProvinceSelect.addEventListener('change', function() {
-                    console.log('Birth province changed:', this.value);
                     const selectedOption = this.options[this.selectedIndex];
                     const provinceCode = selectedOption.dataset.code;
-                    console.log('Province code:', provinceCode);
+                    
+                    // Get region code for special handling
+                    const birthRegionSelect = document.getElementById('birth_region');
+                    const regionOption = birthRegionSelect.options[birthRegionSelect.selectedIndex];
+                    const regionCode = regionOption.dataset.code;
                     
                     // Clear birth city dropdown
                     document.getElementById('birth_city').innerHTML = '<option value="">Select city/municipality</option>';
                     
                     if (provinceCode) {
-                        console.log('Loading cities for birth province:', provinceCode);
-                        loadCities(provinceCode, 'birth_city');
+                        loadCities(provinceCode, 'birth_city', regionCode);
+                    }
+                });
+            }
+            
+            // ===== SCHOOL LOCATION SECTION CASCADING DROPDOWNS =====
+            
+            // School region change handler
+            const schoolRegionSelect = document.getElementById('school_region');
+            if (schoolRegionSelect) {
+                schoolRegionSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const regionCode = selectedOption.dataset.code;
+                    
+                    // Clear dependent dropdowns
+                    document.getElementById('school_province').innerHTML = '<option value="">Select province</option>';
+                    document.getElementById('school_city').innerHTML = '<option value="">Select province first</option>';
+                    
+                    if (regionCode) {
+                        loadProvincesByRegion(regionCode, 'school_province');
+                    }
+                });
+            }
+            
+            // School province change handler
+            const schoolProvinceSelect = document.getElementById('school_province');
+            if (schoolProvinceSelect) {
+                schoolProvinceSelect.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const provinceCode = selectedOption.dataset.code;
+                    
+                    // Get region code for special handling
+                    const schoolRegionSelect = document.getElementById('school_region');
+                    const regionOption = schoolRegionSelect.options[schoolRegionSelect.selectedIndex];
+                    const regionCode = regionOption.dataset.code;
+                    
+                    // Clear school city dropdown
+                    document.getElementById('school_city').innerHTML = '<option value="">Select city/municipality</option>';
+                    
+                    if (provinceCode) {
+                        loadCities(provinceCode, 'school_city', regionCode);
                     }
                 });
             }

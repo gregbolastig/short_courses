@@ -34,7 +34,7 @@ try {
     $conn = $database->getConnection();
     
     // Create bookkeeping_receipts table if it doesn't exist
-    $create_table = "CREATE TABLE IF NOT EXISTS bookkeeping_receipts (
+    $create_table = "CREATE TABLE IF NOT EXISTS shortcourse_bookkeeping_receipts (
         id INT AUTO_INCREMENT PRIMARY KEY,
         student_id INT NOT NULL,
         enrollment_id INT NOT NULL,
@@ -45,12 +45,12 @@ try {
         UNIQUE KEY unique_enrollment_receipt (enrollment_id),
         INDEX idx_student_id (student_id),
         INDEX idx_receipt_number (receipt_number),
-        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+        FOREIGN KEY (student_id) REFERENCES shortcourse_students(id) ON DELETE CASCADE
     )";
     $conn->exec($create_table);
     
     // Check if receipt already exists for this enrollment
-    $check_query = "SELECT id, receipt_number FROM bookkeeping_receipts WHERE enrollment_id = :enrollment_id";
+    $check_query = "SELECT id, receipt_number FROM shortcourse_bookkeeping_receipts WHERE enrollment_id = :enrollment_id";
     $check_stmt = $conn->prepare($check_query);
     $check_stmt->bindParam(':enrollment_id', $enrollment_id, PDO::PARAM_INT);
     $check_stmt->execute();
@@ -58,7 +58,7 @@ try {
     
     if ($existing) {
         // Update existing receipt
-        $query = "UPDATE bookkeeping_receipts 
+        $query = "UPDATE shortcourse_bookkeeping_receipts 
                   SET receipt_number = :receipt_number, 
                       created_by = :created_by,
                       updated_at = CURRENT_TIMESTAMP
@@ -80,7 +80,7 @@ try {
         }
     } else {
         // Insert new receipt
-        $query = "INSERT INTO bookkeeping_receipts 
+        $query = "INSERT INTO shortcourse_bookkeeping_receipts 
                   (student_id, enrollment_id, receipt_number, created_by) 
                   VALUES (:student_id, :enrollment_id, :receipt_number, :created_by)";
         

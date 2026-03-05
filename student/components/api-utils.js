@@ -9,9 +9,7 @@ const COUNTRY_API_BASE = 'https://restcountries.com/v3.1';
 
 // Cache for API responses
 const apiCache = {
-    provinces: null,
-    countries: null,
-    cities: {},
+    countries: null
     barangays: {}
 };
 
@@ -49,7 +47,7 @@ function populateSelect(selectId, options, placeholder = 'Select option', valueF
     });
 }
 
-// Load provinces with caching
+// Load provinces with caching (includes special regions: NCR, CAR, ARMM)
 async function loadProvinces(selectId, selectedValue = '') {
     try {
         console.log(`Loading provinces for ${selectId}`);
@@ -60,14 +58,22 @@ async function loadProvinces(selectId, selectedValue = '') {
             const response = await fetch(`${PSGC_API_BASE}/provinces/`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
-            // Sort provinces alphabetically by name
-            apiCache.provinces = data.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Add special administrative regions that are not in the provinces endpoint
+            const specialRegions = [
+                { code: '130000000', name: 'National Capital Region (NCR)' },
+                { code: '140000000', name: 'Cordillera Administrative Region (CAR)' },
+                { code: '150000000', name: 'Autonomous Region in Muslim Mindanao (ARMM)' }
+            ];
+            
+            // Combine and sort provinces alphabetically by name
+            apiCache.provinces = [...specialRegions, ...data].sort((a, b) => a.name.localeCompare(b.name));
         }
         
         const provinces = apiCache.provinces;
-        console.log(`Loaded ${provinces.length} provinces for ${selectId}`);
+        console.log(`Loaded ${provinces.length} provinces/regions for ${selectId}`);
         
-        populateSelect(selectId, provinces, 'Select province');
+        populateSelect(selectId, provinces, 'Select province/region');
         
         // Restore selected value if provided
         if (selectedValue) {
@@ -90,7 +96,7 @@ async function loadProvinces(selectId, selectedValue = '') {
     }
 }
 
-// Load cities/municipalities with caching
+// Load cities/municipalities with caching (handles special regions)
 async function loadCities(provinceCode, selectId, selectedValue = '') {
     try {
         console.log(`Loading cities for province ${provinceCode} into ${selectId}`);
@@ -100,7 +106,24 @@ async function loadCities(provinceCode, selectId, selectedValue = '') {
         
         // Use cached data if available
         if (!apiCache.cities[cacheKey]) {
-            const response = await fetch(`${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`);
+            let endpoint;
+            
+            // Special handling for NCR, CAR, and ARMM (use regions endpoint)
+            if (provinceCode === '130000000') {
+                // NCR - Region 13
+                endpoint = `${PSGC_API_BASE}/regions/130000000/cities-municipalities/`;
+            } else if (provinceCode === '140000000') {
+                // CAR - Region 14
+                endpoint = `${PSGC_API_BASE}/regions/140000000/provinces/`;
+            } else if (provinceCode === '150000000') {
+                // ARMM - Region 15
+                endpoint = `${PSGC_API_BASE}/regions/150000000/provinces/`;
+            } else {
+                // Regular provinces
+                endpoint = `${PSGC_API_BASE}/provinces/${provinceCode}/cities-municipalities/`;
+            }
+            
+            const response = await fetch(endpoint);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             // Sort cities alphabetically by name

@@ -202,14 +202,18 @@ window.addEventListener('resize', function() {
         
         // Reset main content margin on mobile using CSS class
         if (mainContent) {
-            mainContent.classList.remove('sidebar-collapsed');
+            mainContent.classList.remove('sidebar-collapsed', 'md:ml-16');
+            mainContent.classList.add('md:ml-64');
         }
         
+        // IMPORTANT: Clear inline styles to make text visible again
         sidebarTexts.forEach(text => {
             text.style.display = '';
+            text.style.opacity = '';
         });
         sidebarTextElements.forEach(text => {
             text.style.display = '';
+            text.style.opacity = '';
         });
         
         if (toggleIcon) {
@@ -251,6 +255,33 @@ window.addEventListener('resize', function() {
         if (toggleButton) {
             toggleButton.classList.remove('right-1');
             toggleButton.classList.add('right-2');
+        }
+    }
+    
+    // Additional check: If transitioning TO desktop (>= 768px), ensure sidebar content is visible
+    if (window.innerWidth >= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarTexts = document.querySelectorAll('.sidebar-text');
+        const sidebarTextElements = document.querySelectorAll('#sidebar-text');
+        
+        // Clear any inline styles that might hide content
+        sidebarTexts.forEach(text => {
+            if (text.style.display === 'none' || text.style.opacity === '0') {
+                text.style.display = '';
+                text.style.opacity = '';
+            }
+        });
+        sidebarTextElements.forEach(text => {
+            if (text.style.display === 'none' || text.style.opacity === '0') {
+                text.style.display = '';
+                text.style.opacity = '';
+            }
+        });
+        
+        // Ensure sidebar has proper width classes
+        if (sidebar && !sidebarCollapsed) {
+            sidebar.classList.remove('w-16');
+            sidebar.classList.add('w-64');
         }
     }
 });
@@ -664,4 +695,36 @@ function showToast(message, type = 'success') {
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
+
+// Theme Toggle Function
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.classList.contains('dark') ? 'dark' : 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    if (newTheme === 'dark') {
+        html.classList.add('dark');
+    } else {
+        html.classList.remove('dark');
+    }
+    
+    // Save preference via AJAX
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=update_theme&theme=' + newTheme
+    }).then(() => {
+        showToast('Theme changed to ' + newTheme + ' mode', 'success');
+    });
+}
+
+// Apply theme on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedTheme = '<?php echo $_SESSION["theme_preference"] ?? "light"; ?>';
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+    }
+});
 </script>

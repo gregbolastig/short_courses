@@ -13,7 +13,7 @@ try {
     $conn = $database->getConnection();
     
     // Get all checklist items
-    $stmt = $conn->query("SELECT id, document_name FROM checklist ORDER BY document_name ASC");
+    $stmt = $conn->query("SELECT id, document_name FROM shortcourse_checklist ORDER BY document_name ASC");
     $checklist_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode([

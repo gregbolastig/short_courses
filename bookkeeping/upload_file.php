@@ -71,7 +71,7 @@ try {
             file_size INT NOT NULL,
             uploaded_by INT NOT NULL,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES shortcourse_students(id) ON DELETE CASCADE,
             FOREIGN KEY (enrollment_id) REFERENCES student_enrollments(enrollment_id) ON DELETE CASCADE,
             INDEX idx_student_id (student_id),
             INDEX idx_enrollment_id (enrollment_id)
